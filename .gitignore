@@ -77,3 +77,6 @@ docs-site/node_modules/
 
 # ── Pre-built release tarball (regenerate via build-release.sh) ────────
 wasp-release.tar.gz
+
+# ── agent-nginx is operator-only (agentwasp.com landing) — NOT for public repo ──
+containers/agent-nginx/
