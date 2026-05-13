@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="wasp-dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Agent Wasp{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <script src="/static/js/htmx.min.js" nonce="{{ request.state.csp_nonce }}"></script>
+    <script nonce="{{ request.state.csp_nonce }}">
+        // Disable htmx indicator <style> injection (no nonce = CSP violation) and
+        // remove 'style' from settle attributes (prevent htmx-applied inline styles).
+        htmx.config.includeIndicatorStyles = false;
+        htmx.config.attributesToSettle = htmx.config.attributesToSettle.filter(function(a){ return a !== 'style'; });
+    </script>
+    {% block page_css %}{% endblock %}
+    {% if request.state.csrf_token is defined and request.state.csrf_token %}
+    <meta name="csrf-token" content="{{ request.state.csrf_token }}">
+    {% endif %}
+    <meta name="csp-nonce" content="{{ request.state.csp_nonce }}">
+    <script nonce="{{ request.state.csp_nonce }}">
+        (function() {
+            var saved = localStorage.getItem('wasp-theme');
+            if (saved) document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+    <script nonce="{{ request.state.csp_nonce }}">
+        function toggleTheme() {
+            var html = document.documentElement;
+            var current = html.getAttribute('data-theme');
+            var next = current === 'wasp-dark' ? 'wasp-light' : 'wasp-dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('wasp-theme', next);
+            updateThemeIcon(next);
+        }
+        function updateThemeIcon(theme) {
+            document.querySelectorAll('.theme-sun').forEach(function(el) { el.classList.toggle('hidden', theme === 'wasp-light'); });
+            document.querySelectorAll('.theme-moon').forEach(function(el) { el.classList.toggle('hidden', theme === 'wasp-dark'); });
+        }
+        function toggleSidebar() {
+            var cb = document.getElementById('sidebar-toggle');
+            if (cb) cb.checked = !cb.checked;
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // On mobile, always start with sidebar closed (prevents bfcache restoring it open)
+            if (window.innerWidth < 1024) {
+                var st = document.getElementById('sidebar-toggle');
+                if (st) st.checked = false;
+            }
+            updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+            document.body.addEventListener('htmx:configRequest', function(evt) {
+                var meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta) { evt.detail.headers['X-CSRF-Token'] = meta.content; }
+            });
+            document.addEventListener('submit', function(e) {
+                var form = e.target;
+                if (form.hasAttribute('hx-post')) return;
+                if (!form.method || form.method.toLowerCase() !== 'post') return;
+                e.preventDefault();
+                var meta = document.querySelector('meta[name="csrf-token"]');
+                var headers = meta ? {'X-CSRF-Token': meta.content} : {};
+                var actionUrl = form.getAttribute('action') || window.location.pathname;
+                fetch(actionUrl, {
+                    method: 'POST', headers: headers, body: new FormData(form)
+                }).then(function(r) {
+                    var dest = r.url;
+                    try { var u = new URL(r.url); dest = u.pathname + u.search + u.hash; } catch(ex) {}
+                    window.location.href = dest;
+                }).catch(function(err) { console.error('[Form Submit Error]', err); });
+            });
+        });
+    </script>
+</head>
+<body class="min-h-screen bg-base-200">
+{% block body %}
+<div class="drawer lg:drawer-open">
+    <input id="sidebar-toggle" type="checkbox" class="drawer-toggle" autocomplete="off">
+
+    <!-- Page content -->
+    <div class="drawer-content flex flex-col">
+        <!-- Mobile top bar -->
+        <div class="navbar bg-base-100 shadow-sm lg:hidden navbar-wasp sticky top-0 z-40">
+            <div class="navbar-start">
+                <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-square">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+                    </svg>
+                </label>
+            </div>
+            <div class="navbar-center">
+                <a href="/overview" class="flex items-center gap-2">
+                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-12 logo-dark">
+                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-12 logo-light">
+                </a>
+            </div>
+            <div class="navbar-end gap-1">
+                <button id="btn-theme-toggle-top" class="btn btn-ghost btn-sm btn-circle theme-toggle" title="Toggle theme" data-action="wasp:toggleTheme">
+                    <svg class="theme-sun h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg class="theme-moon h-5 w-5 text-primary hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <!-- app.js must load BEFORE block-content so page scripts can call registerWaspActions -->
+        <script src="/static/app.js" nonce="{{ request.state.csp_nonce }}"></script>
+        <main id="spa-main" class="flex-1 px-4 py-6 lg:px-8 max-w-full mx-auto w-full fade-in">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer footer-center p-4 text-base-content/40 text-xs">
+            <div class="flex items-center gap-2 justify-center">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                <p>Agent Wasp</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="drawer-side z-50">
+        <label for="sidebar-toggle" aria-label="close sidebar" class="drawer-overlay"></label>
+        <aside class="bg-base-100 w-60 h-screen sticky top-0 flex flex-col border-r border-base-300/50 overflow-hidden">
+            <!-- Logo -->
+            <div class="px-3 py-1.5 flex items-center justify-center border-b border-base-300/50">
+                <a href="/overview" class="flex items-center">
+                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-9 logo-dark">
+                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-9 logo-light">
+                </a>
+            </div>
+
+            <!-- Navigation -->
+            <ul class="menu menu-sm flex-1 flex-col flex-nowrap px-2 py-0.5 gap-0 overflow-y-auto text-xs">
+
+                <!-- ── Dashboard ─────────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 py-0">Dashboard</span></li>
+                <li><a href="/overview" class="nav-link rounded gap-2 py-[1px] {% if request.url.path == '/overview' %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    Overview
+                </a></li>
+                <li><a href="/chat" class="nav-link rounded gap-2 py-[1px] {% if '/chat' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    Chat
+                </a></li>
+
+                <!-- ── Configurations ─────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">Configurations</span></li>
+                <li><a href="/models" class="nav-link rounded gap-2 py-[1px] {% if '/models' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    Models
+                </a></li>
+                <li><a href="/skills" class="nav-link rounded gap-2 py-[1px] {% if '/skills' in request.url.path and '/skill-evolution' not in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Skills
+                </a></li>
+                <li><a href="/skill-evolution" class="nav-link rounded gap-2 py-[1px] {% if '/skill-evolution' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                    Skill Evolution
+                </a></li>
+                <li><a href="/identity" class="nav-link rounded gap-2 py-[1px] {% if '/identity' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Identity
+                </a></li>
+                <li><a href="/integrations" class="nav-link rounded gap-2 py-[1px] {% if '/integrations' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Integrations
+                </a></li>
+
+                <!-- ── System ──────────────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">System</span></li>
+                <li><a href="/config" class="nav-link rounded gap-2 py-[1px] {% if request.url.path.startswith('/config') %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Config
+                </a></li>
+                <li><a href="/scheduler" class="nav-link rounded gap-2 py-[1px] {% if request.url.path == '/scheduler' or request.url.path.startswith('/scheduler/') %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Scheduler
+                </a></li>
+                <li><a href="/agents" class="nav-link rounded gap-2 py-[1px] {% if '/agents' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    Agents
+                </a></li>
+                <li><a href="/goals" class="nav-link rounded gap-2 py-[1px] {% if '/goals' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Goals
+                </a></li>
+                <li><a href="/tasks" class="nav-link rounded gap-2 py-[1px] {% if '/tasks' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    Tasks
+                </a></li>
+                <li><a href="/memory" class="nav-link rounded gap-2 py-[1px] {% if '/memory' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
+                    Memory
+                </a></li>
+                <li><a href="/vector-memory" class="nav-link rounded gap-2 py-[1px] {% if '/vector-memory' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" /></svg>
+                    Vector Memory
+                </a></li>
+                <li><a href="/world-model" class="nav-link rounded gap-2 py-[1px] {% if '/world-model' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    World Model
+                </a></li>
+                <li><a href="/knowledge-graph" class="nav-link rounded gap-2 py-[1px] {% if '/knowledge-graph' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    Knowledge Graph
+                </a></li>
+                <li><a href="/cognitive" class="nav-link rounded gap-2 py-[1px] {% if '/cognitive' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    Cognitive
+                </a></li>
+
+                <!-- ── Governance ──────────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">Governance</span></li>
+                <li><a href="/behavioral-rules" class="nav-link rounded gap-2 py-[1px] {% if '/behavioral-rules' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    Behavioral Rules
+                </a></li>
+                <li><a href="/self-improve" class="nav-link rounded gap-2 py-[1px] {% if '/self-improve' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    Self-Improve
+                </a></li>
+                <li><a href="/subscriptions" class="nav-link rounded gap-2 py-[1px] {% if '/subscriptions' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    Subscriptions
+                </a></li>
+
+                <!-- ── Observability ───────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">Observability</span></li>
+                <li><a href="/health" class="nav-link rounded gap-2 py-[1px] {% if '/health' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    Health
+                </a></li>
+                <li><a href="/audit" class="nav-link rounded gap-2 py-[1px] {% if '/audit' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    Audit Log
+                </a></li>
+                <li><a href="/traces/" class="nav-link rounded gap-2 py-[1px] {% if '/traces' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Decision Traces
+                </a></li>
+                <li><a href="/live" class="nav-link rounded gap-2 py-[1px] {% if '/live' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728M3.515 20.485a12 12 0 010-16.97M8.464 15.536a5 5 0 010-7.072M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Live Feed
+                </a></li>
+                <li><a href="/metrics" class="nav-link rounded gap-2 py-[1px] {% if '/metrics' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    Metrics
+                </a></li>
+
+            </ul>
+
+            <!-- Mini Neural Brain widget -->
+            <div class="border-t border-base-300/30 flex flex-col items-center justify-center gap-1 py-2">
+                <a href="/brain" title="Open Neural Brain" class="brain-mini-link">
+                    <canvas id="brain-mini" width="64" height="64"></canvas>
+                </a>
+                <span class="neural-brain-label">Neural Brain</span>
+            </div>
+
+
+            <!-- Bottom: controls -->
+            <div class="px-3 py-1.5 border-t border-base-300/50 flex items-center justify-end gap-1">
+                <a href="/reset" title="Panic Reset — erase agent brain" class="btn btn-ghost btn-sm btn-circle text-error/50 hover:text-error hover:bg-error/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </a>
+                <button id="btn-shortcuts-open" class="btn btn-ghost btn-sm btn-circle" title="Keyboard shortcuts (?)" data-action="wasp:openShortcutsModal">
+                    <span class="text-xs font-bold text-base-content/40">?</span>
+                </button>
+                <button id="btn-theme-toggle-sidebar" class="btn btn-ghost btn-sm btn-circle theme-toggle" title="Toggle theme" data-action="wasp:toggleTheme">
+                    <svg class="theme-sun h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg class="theme-moon h-4 w-4 text-primary hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+                <a href="/logout" class="btn btn-ghost btn-sm text-error hover:bg-error/10 gap-1" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Logout
+                </a>
+            </div>
+        </aside>
+    </div>
+</div>
+
+{% endblock %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+var canvas=document.getElementById('brain-mini');
+if(!canvas) return;
+var ctx=canvas.getContext('2d');
+var S=64,cx=32,cy=32,R=29;
+var dpr=window.devicePixelRatio||1;
+canvas.width=S*dpr; canvas.height=S*dpr;
+ctx.scale(dpr,dpr);
+
+var CAT_COLOR={core:'#ffffff',skill:'#F97316',knowledge:'#8B5CF6',memory:'#3B82F6',epistemic:'#10B981',goal:'#EF4444',self_model:'#FBBF24'};
+var CAT_R3D={core:0,self_model:40,goal:65,skill:95,epistemic:130,memory:155,knowledge:185};
+var SCALE=0.38;
+
+var neurons=[],connections=[],signals=[],time=0,loaded=false;
+var rotY=0,rotX=0.18;
+
+function fibSphere(idx,total,r){
+    if(total<=1) return {x:r,y:0,z:0};
+    var phi=Math.acos(1-2*(idx+0.5)/total);
+    var theta=Math.PI*(1+Math.sqrt(5))*idx;
+    return {x:r*Math.sin(phi)*Math.cos(theta),y:r*Math.sin(phi)*Math.sin(theta),z:r*Math.cos(phi)};
+}
+
+function project(ox,oy,oz){
+    var cosX=Math.cos(rotX),sinX=Math.sin(rotX);
+    var ry1=oy*cosX-oz*sinX,rz1=oy*sinX+oz*cosX;
+    var cosY=Math.cos(rotY),sinY=Math.sin(rotY);
+    var rx2=ox*cosY+rz1*sinY,rz2=-ox*sinY+rz1*cosY;
+    var fov=320*SCALE; var maxR=200;
+    var pz=rz2+maxR+fov; if(pz<1) pz=1;
+    var sc=fov/pz*SCALE;
+    return {sx:cx+rx2*sc,sy:cy-ry1*sc,depth:Math.max(0,Math.min(1,(rz2+maxR)/(maxR*2)))};
+}
+
+function load(){
+    fetch('/brain/data').then(function(r){return r.json();}).then(function(data){
+        neurons=[]; connections=[]; signals=[];
+        var byCat={},idxMap={};
+        data.nodes.forEach(function(n){
+            var c=n.category||'knowledge';
+            if(!byCat[c]) byCat[c]=[];
+            byCat[c].push(n);
+        });
+        Object.keys(byCat).forEach(function(cat){
+            var arr=byCat[cat];
+            var r3=CAT_R3D[cat]!==undefined?CAT_R3D[cat]:160;
+            arr.forEach(function(n,i){
+                var p3=cat==='core'?{x:0,y:0,z:0}:fibSphere(i,arr.length,r3);
+                var jit=r3*0.06;
+                var ox=p3.x+(cat==='core'?0:(Math.random()-.5)*jit);
+                var oy=p3.y+(cat==='core'?0:(Math.random()-.5)*jit);
+                var oz=p3.z+(cat==='core'?0:(Math.random()-.5)*jit);
+                var idx=neurons.length;
+                idxMap[n.id]=idx;
+                neurons.push({
+                    ox:ox,oy:oy,oz:oz,x:cx,y:cy,depth:0.5,
+                    r:cat==='core'?2.5:0.8+(n.size||0.8)*0.65,
+                    color:CAT_COLOR[cat]||'#888',
+                    energy:0,baseEnergy:cat==='core'?.35:.04,
+                    pulsePhase:Math.random()*Math.PI*2,
+                    pulseSpeed:.012+Math.random()*.01,
+                    category:cat,lastFired:0
+                });
+            });
+        });
+        data.edges.forEach(function(e){
+            var fi=idxMap[e.source],ti=idxMap[e.target];
+            if(fi===undefined||ti===undefined) return;
+            if((e.strength||0)<0.3) return;
+            connections.push({from:fi,to:ti,weight:e.strength||.5,activity:0,offFrac:(Math.random()-.5)*.3});
+        });
+        loaded=true;
+    }).catch(function(){});
+}
+
+function fireNeuron(idx){
+    var n=neurons[idx];
+    if(!n||time-(n.lastFired||0)<15) return;
+    n.energy=1; n.lastFired=time;
+    for(var i=0;i<connections.length;i++){
+        var c=connections[i];
+        if(c.from===idx&&Math.random()<c.weight*.6)
+            signals.push({ci:i,progress:0,speed:.018+Math.random()*.012,color:n.color});
+    }
+}
+
+function getMid(nF,nT,offFrac){
+    var mx=(nF.x+nT.x)/2,my=(nF.y+nT.y)/2;
+    var dx=nT.x-nF.x,dy=nT.y-nF.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+    return {x:mx+(-dy/len)*offFrac*len,y:my+(dx/len)*offFrac*len};
+}
+function bzPt(t,x0,y0,cx2,cy2,x1,y1){
+    var it=1-t;
+    return {x:it*it*x0+2*it*t*cx2+t*t*x1,y:it*it*y0+2*it*t*cy2+t*t*y1};
+}
+
+function draw(){
+    requestAnimationFrame(draw);
+    time++;
+
+    // Render bg clipped to circle
+    ctx.fillStyle='#050508';
+    ctx.beginPath(); ctx.arc(cx,cy,R+1,0,Math.PI*2); ctx.fill();
+
+    if(!loaded){
+        ctx.fillStyle='rgba(102,126,234,0.5)';
+        for(var k=0;k<5;k++){
+            var a=(k/5)*Math.PI*2+time*0.04;
+            ctx.beginPath(); ctx.arc(cx+Math.cos(a)*10,cy+Math.sin(a)*10,1.6,0,Math.PI*2); ctx.fill();
+        }
+        ctx.strokeStyle='rgba(244,191,42,0.45)'; ctx.lineWidth=0.8;
+        ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+        return;
+    }
+
+    // Update
+    rotY+=.0022;
+    for(var i=0;i<neurons.length;i++){
+        var n=neurons[i];
+        var p=project(n.ox,n.oy,n.oz);
+        n.x=p.sx; n.y=p.sy; n.depth=p.depth;
+        n.pulsePhase+=n.pulseSpeed;
+        n.energy*=.95; if(n.energy<n.baseEnergy) n.energy=n.baseEnergy;
+    }
+    if(time%35===0&&neurons.length>0) fireNeuron(Math.floor(Math.random()*neurons.length));
+    if(time%110===0&&neurons.length>0) fireNeuron(0);
+    for(var i=signals.length-1;i>=0;i--){
+        var s=signals[i]; s.progress+=s.speed;
+        if(s.progress>=1){
+            var c=connections[s.ci];
+            connections[s.ci].activity=1;
+            if(!s.reverse){
+                var tgt=c.to;
+                var rc=s.color;
+                if(tgt<neurons.length){
+                    neurons[tgt].energy=Math.min(1,neurons[tgt].energy+.5);
+                    neurons[tgt].flash=(neurons[tgt].flash||0)+1;
+                    rc=neurons[tgt].color;
+                }
+                signals.splice(i,1);
+                signals.push({ci:s.ci,progress:0,speed:s.speed*.85,color:rc,reverse:true});
+            } else {
+                var src=c.from;
+                if(src<neurons.length) neurons[src].energy=Math.min(1,neurons[src].energy+.3);
+                signals.splice(i,1);
+            }
+        }
+    }
+    for(var i=0;i<connections.length;i++) connections[i].activity*=.93;
+
+    ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.clip();
+
+    // Radial lines from core to every node
+    for(var i=0;i<neurons.length;i++){
+        if(neurons[i].category!=='core') continue;
+        var nC=neurons[i];
+        for(var j=0;j<neurons.length;j++){
+            if(neurons[j].category==='core') continue;
+            var nJ=neurons[j];
+            var avgD=(nC.depth+nJ.depth)*.5;
+            ctx.beginPath(); ctx.moveTo(nC.x,nC.y); ctx.lineTo(nJ.x,nJ.y);
+            ctx.strokeStyle='rgba(255,255,255,'+(0.22+avgD*0.18).toFixed(3)+')';
+            ctx.lineWidth=0.5; ctx.stroke();
+        }
+    }
+
+    // Connections
+    for(var i=0;i<connections.length;i++){
+        var c=connections[i],nF=neurons[c.from],nT=neurons[c.to];
+        var avgD=(nF.depth+nT.depth)*.5;
+        var alpha=(.12+c.activity*.85)*(.4+avgD*.8);
+        var m=getMid(nF,nT,c.offFrac);
+        ctx.beginPath(); ctx.moveTo(nF.x,nF.y);
+        ctx.quadraticCurveTo(m.x,m.y,nT.x,nT.y);
+        ctx.strokeStyle='rgba(0,191,255,'+alpha.toFixed(3)+')';
+        ctx.lineWidth=(.5+c.activity*1.5)*(.4+avgD*.7); ctx.stroke();
+    }
+    // Signals (forward + return)
+    for(var i=0;i<signals.length;i++){
+        var s=signals[i],c=connections[s.ci];
+        var nF=s.reverse?neurons[c.to]:neurons[c.from];
+        var nT=s.reverse?neurons[c.from]:neurons[c.to];
+        var m=getMid(nF,nT,c.offFrac);
+        var pt=bzPt(s.progress,nF.x,nF.y,m.x,m.y,nT.x,nT.y);
+        var sz=s.reverse?1.1:1.5;
+        ctx.beginPath(); ctx.arc(pt.x,pt.y,sz,0,Math.PI*2);
+        ctx.fillStyle=s.color; ctx.shadowColor=s.color; ctx.shadowBlur=6;
+        ctx.globalAlpha=s.reverse?0.7:1;
+        ctx.fill(); ctx.shadowBlur=0; ctx.globalAlpha=1;
+    }
+    // Neurons sorted back-to-front
+    var ns=neurons.slice().sort(function(a,b){return a.depth-b.depth;});
+    for(var i=0;i<ns.length;i++){
+        var n=ns[i];
+        var pulse=Math.sin(n.pulsePhase)*.2+.8;
+        var r=n.r*(.85+n.energy*.4)*pulse*(.3+n.depth*.7);
+        if(n.flash>0){
+            ctx.beginPath(); ctx.arc(n.x,n.y,r*3.5,0,Math.PI*2);
+            ctx.strokeStyle='rgba(244,191,42,'+(n.flash*.2)+')';
+            ctx.lineWidth=1.2; ctx.stroke(); ctx.lineWidth=1;
+            n.flash=Math.max(0,n.flash-.07);
+        }
+        ctx.beginPath(); ctx.arc(n.x,n.y,r,0,Math.PI*2);
+        ctx.fillStyle=n.color;
+        ctx.globalAlpha=(.4+n.depth*.8)*(.55+n.energy*.65); ctx.fill(); ctx.globalAlpha=1;
+        if(n.energy>.55){
+            ctx.beginPath(); ctx.arc(n.x,n.y,r*.4,0,Math.PI*2);
+            ctx.fillStyle='#fff'; ctx.globalAlpha=n.energy*.7; ctx.fill(); ctx.globalAlpha=1;
+        }
+    }
+
+    ctx.restore();
+    ctx.strokeStyle='rgba(244,191,42,0.4)'; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+}
+
+document.addEventListener('DOMContentLoaded',function(){ load(); draw(); });
+setInterval(load,30000);
+})();
+</script>
+<!-- Keyboard Shortcuts Modal -->
+<div id="shortcuts-modal" class="modal" data-close-on-backdrop-click="wasp:closeShortcutsModal">
+    <div class="modal-box max-w-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-base">Keyboard Shortcuts</h3>
+            <button class="btn btn-ghost btn-xs btn-circle" id="btn-shortcuts-close" data-action="wasp:closeShortcutsModal">✕</button>
+        </div>
+        <div class="space-y-3 text-sm">
+            <div>
+                <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">Navigation</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">1</kbd><span class="text-base-content/70">Overview</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">2</kbd><span class="text-base-content/70">Memory</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">3</kbd><span class="text-base-content/70">Chat</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">4</kbd><span class="text-base-content/70">Models</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">5</kbd><span class="text-base-content/70">Skills</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">6</kbd><span class="text-base-content/70">Scheduler</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">7</kbd><span class="text-base-content/70">Health</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">8</kbd><span class="text-base-content/70">Live Feed</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">9</kbd><span class="text-base-content/70">Audit Log</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">0</kbd><span class="text-base-content/70">Metrics</span></div>
+                </div>
+            </div>
+            <div class="divider my-1"></div>
+            <div>
+                <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">Actions</p>
+                <div class="space-y-1.5">
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">r</kbd><span class="text-base-content/70">Refresh page</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">?</kbd><span class="text-base-content/70">Show this dialog</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">Esc</kbd><span class="text-base-content/70">Close dialog</span></div>
+                </div>
+            </div>
+        </div>
+        <p class="text-xs text-base-content/30 mt-4">Shortcuts are disabled when typing in input fields.</p>
+    </div>
+</div>
+
+<!-- Global confirm modal — one instance for all pages via showConfirmModal() -->
+<dialog id="modal-confirm-global" class="modal">
+    <div class="modal-box">
+        <h3 id="modal-cg-title" class="font-bold text-lg mb-2">Confirm</h3>
+        <p id="modal-cg-msg" class="py-2 text-sm text-base-content/80"></p>
+        <div class="modal-action mt-4">
+            <button id="modal-cg-cancel" class="btn btn-ghost btn-sm">Cancel</button>
+            <button id="modal-cg-ok" class="btn btn-sm btn-primary">Confirm</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+<script nonce="{{ request.state.csp_nonce }}">
+window.showConfirmModal = function(opts) {
+    var o = opts || {};
+    return new Promise(function(resolve) {
+        var dlg = document.getElementById('modal-confirm-global');
+        if (!dlg) { resolve(false); return; }
+        document.getElementById('modal-cg-title').textContent = o.title || 'Confirm';
+        document.getElementById('modal-cg-msg').textContent   = o.message || 'Are you sure?';
+        var okBtn     = document.getElementById('modal-cg-ok');
+        var cancelBtn = document.getElementById('modal-cg-cancel');
+        okBtn.textContent     = o.confirmText || 'Confirm';
+        cancelBtn.textContent = o.cancelText  || 'Cancel';
+        okBtn.className = 'btn btn-sm ' + (o.danger ? 'btn-error' : 'btn-primary');
+        dlg.showModal();
+        function cleanup() {
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+        }
+        function onOk()     { cleanup(); dlg.close(); resolve(true);  }
+        function onCancel() { cleanup(); dlg.close(); resolve(false); }
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        dlg.addEventListener('cancel', function() { cleanup(); resolve(false); }, {once: true});
+    });
+};
+</script>
+
+<script src="/static/js/marked.min.js" nonce="{{ request.state.csp_nonce }}"></script>
+
+{% block extra_scripts %}{% endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+/* ── WASP Phase 4 / 4.1: Idle Controller + Global State ──────────────── */
+(function () {
+    'use strict';
+    var IDLE_MS = 15000;
+    var _timer  = null;
+    var _active = false;  // true while SSE streaming
+
+    /* ── Global state object ─────────────────────────────────────────────
+       Readable from anywhere via window.__waspState.
+       data-wasp-mode on <body> is the authoritative CSS gate.            */
+    window.__waspState = { mode: 'idle', lastUpdate: Date.now() };
+
+    function _setWaspState(mode) {
+        try {
+            window.__waspState.mode = mode;
+            window.__waspState.lastUpdate = Date.now();
+            document.body.setAttribute('data-wasp-mode', mode);
+        } catch (_) {}
+    }
+    window._setWaspState = _setWaspState;
+
+    /* ── Breathing helpers ───────────────────────────────────────────────*/
+    // Excluded IDs: execution panels only — normal named cards still breathe
+    var _EXCL_IDS = ['exec-panel-wrap', 'trace-panel'];
+
+    function _enable() {
+        if (_active) return;
+        document.querySelectorAll('main .card').forEach(function (el) {
+            if (!el.closest('.wasp-active') && !_EXCL_IDS.includes(el.id)) {
+                el.classList.add('wasp-breathing');
+            }
+        });
+    }
+
+    function _disable() {
+        document.querySelectorAll('.wasp-breathing').forEach(function (el) {
+            el.classList.remove('wasp-breathing');
+        });
+        if (_timer) { clearTimeout(_timer); _timer = null; }
+    }
+
+    function _schedule() {
+        if (_timer) clearTimeout(_timer);
+        _timer = setTimeout(_enable, IDLE_MS);
+    }
+
+    // Throttled activity handler — max once per 2s to allow idle timer to
+    // actually reach 15s during normal use (mousemove fires ~60x/s otherwise)
+    var _lastActivity = 0;
+    function _onActivity() {
+        var now = Date.now();
+        if (now - _lastActivity < 2000) return;
+        _lastActivity = now;
+        _disable();
+        if (!_active) _schedule();
+    }
+
+    /* ── Streaming hook (called from chat.html SSE flow) ─────────────── */
+    window._waspSetStreaming = function (on) {
+        _active = on;
+        if (on) { _disable(); }
+        else    { _schedule(); }
+    };
+
+    // Passive user-activity listeners (mousemove throttled above)
+    ['mousemove', 'keydown', 'pointerdown', 'scroll'].forEach(function (ev) {
+        document.addEventListener(ev, _onActivity, { passive: true });
+    });
+
+    // Initialise state and kick off idle timer
+    _setWaspState('idle');
+    _schedule();
+}());
+</script>
+
+<!-- ── SPA Navigation: preserve chat state across section changes ──────── -->
+<script nonce="{{ request.state.csp_nonce }}">
+(function () {
+'use strict';
+
+/* ── Per-page dynamic CSS injection ─────────────────────────────────────────
+   Each page template may define a page_css block with a <style> block
+   containing server-rendered CSS (provider colors, animation delays, etc.).
+   On SPA navigation we swap the rules using adoptedStyleSheets (pure CSSOM —
+   never touches the DOM, never blocked by CSP style-src nonce policy).       */
+
+/* Single adopted sheet — created once, rules replaced on every navigation.  */
+var _dynSheet = null;
+
+function _getDynSheet() {
+    if (!_dynSheet) {
+        try {
+            _dynSheet = new CSSStyleSheet();
+            document.adoptedStyleSheets = (document.adoptedStyleSheets || []).concat([_dynSheet]);
+        } catch(e) { _dynSheet = null; }
+    }
+    return _dynSheet;
+}
+
+function _applyDynCss(cssText) {
+    var sheet = _getDynSheet();
+    if (sheet) {
+        try { sheet.replaceSync(cssText || ''); return; } catch(e) {}
+    }
+    // Fallback for browsers that don't support adoptedStyleSheets: use a
+    // <style> element with the current page nonce (may still log a warning
+    // in strict CSP environments, but keeps layout intact).
+    var existing = document.getElementById('spa-dyn-style');
+    if (existing) existing.remove();
+    if (!cssText) return;
+    var nonce = (document.querySelector('meta[name="csp-nonce"]') || {}).content || '';
+    var s = document.createElement('style');
+    s.id = 'spa-dyn-style';
+    s.textContent = cssText;
+    if (nonce) s.setAttribute('nonce', nonce);
+    document.head.appendChild(s);
+}
+
+function _injectPageCss(doc) {
+    var el = doc.getElementById('page-dyn-style');
+    // Remove the initial server-rendered <style> blocks so their [data-ds="N"]
+    // rules don't bleed into subsequent pages and corrupt layouts.
+    var existing = document.getElementById('spa-dyn-style');
+    if (existing) existing.remove();
+    var original = document.getElementById('page-dyn-style');
+    if (original) original.remove();
+    _applyDynCss(el ? el.textContent : '');
+}
+
+/* Hidden slot where we park the chat DOM when navigating away.
+   Moving DOM nodes (not cloning) keeps the JS closure and SSE stream alive. */
+var _chatSlot = null;
+
+function _isInternal(href) {
+    if (!href) return false;
+    if (!href.startsWith('/')) return false;
+    if (href.startsWith('//')) return false;
+    return true;
+}
+
+function _isChat(path) {
+    return path === '/chat' || path.startsWith('/chat?') || path.startsWith('/chat/');
+}
+
+/* Re-run scripts from the fetched document that are NOT part of base.html */
+function _isBaseScript(s) {
+    var src = s.getAttribute('src') || '';
+    if (src.includes('/static/js/htmx'))   return true;  // local htmx
+    if (src.includes('/static/app.js'))    return true;
+    if (src.includes('/static/js/marked')) return true;  // loaded globally in base
+    var t = s.textContent;
+    if (t.includes('brain-mini'))         return true;  // brain widget
+    if (t.includes('IDLE_MS'))            return true;  // idle controller
+    if (t.includes('openShortcutsModal')) return true;  // shortcuts modal
+    if (t.includes('toggleTheme'))        return true;  // theme toggle
+    if (t.includes('spa-main'))           return true;  // this very script
+    return false;
+}
+
+function _runScripts(doc) {
+    // The current page's nonce (from <meta name="csp-nonce">) is propagated to
+    // dynamically-inserted scripts. Under 'strict-dynamic', scripts created by a
+    // nonce-bearing script inherit trust — this covers both src-based and inline scripts.
+    var currentNonce = (document.querySelector('meta[name="csp-nonce"]') || {}).content || '';
+    doc.querySelectorAll('body script').forEach(function (old) {
+        if (_isBaseScript(old)) return;
+        var ns = document.createElement('script');
+        var src = old.getAttribute('src');
+        if (src) {
+            // External script — only inject if not already in document
+            if (document.querySelector('script[src="' + src + '"]')) return;
+            ns.src = src;
+            ns.async = false;
+        } else {
+            // Wrap inline scripts in an IIFE before re-injecting. Without this,
+            // a re-visit to a page that declares `const X = ...` at top level
+            // throws `redeclaration of const X` on the second injection, which
+            // aborts the entire script and silently breaks tab bars, click
+            // handlers, and any init code below the bad line. The IIFE gives
+            // each re-execution its own scope; anything the template needs to
+            // expose globally is still free to do `window.foo = ...`.
+            var body = old.textContent || '';
+            ns.textContent = '(function(){\n' + body + '\n})();';
+        }
+        if (currentNonce) ns.nonce = currentNonce;
+        document.body.appendChild(ns);
+        if (!src) document.body.removeChild(ns);
+    });
+}
+
+function _updateNav(path) {
+    document.querySelectorAll('a.nav-link').forEach(function (a) {
+        var ap = (a.getAttribute('href') || '').split('?')[0];
+        var active = ap === path ||
+            (ap.length > 1 && ap !== '/overview' && path.startsWith(ap + '/'));
+        // Use exact class names matching the HTML attributes (no CSS escaping)
+        a.classList.toggle('active',        active);
+        a.classList.toggle('bg-primary/10', active);
+        a.classList.toggle('text-primary',  active);
+        a.classList.toggle('font-semibold', active);
+    });
+}
+
+function _animateIn(main) {
+    main.classList.remove('fade-in');
+    void main.offsetWidth;   // reflow to restart animation
+    main.classList.add('fade-in');
+}
+
+function _navigate(href, pushState) {
+    if (pushState === undefined) pushState = true;
+
+    var main = document.getElementById('spa-main');
+    if (!main) { if (pushState) window.location.href = href; return; }
+
+    var fromPath = location.pathname;
+    var toPath   = href.split('?')[0];
+
+    // True no-op: same path AND same query string. Comparing only the path
+    // would make every "?tab=..." / "?type=..." / "?page=..." click a no-op,
+    // which silently breaks tab bars, filter pills, and pagination across
+    // the whole dashboard.
+    var fromUrl = fromPath + (location.search || '');
+    if (pushState && fromUrl === href) return;
+
+    var fromChat = _isChat(fromPath);
+    var toChat   = _isChat(toPath);
+
+    /* ── Returning to chat: restore preserved nodes (JS + SSE stay alive) */
+    if (toChat && _chatSlot) {
+        main.innerHTML = '';
+        while (_chatSlot.firstChild) main.appendChild(_chatSlot.firstChild);
+        document.body.removeChild(_chatSlot);
+        // Restore saved chat CSS
+        if (_chatSlot._savedCss !== undefined) {
+            var existing = document.getElementById('spa-dyn-style');
+            if (existing) existing.remove();
+            _applyDynCss(_chatSlot._savedCss || '');
+        }
+        _chatSlot = null;
+        if (pushState) history.pushState({}, '', href);
+        _updateNav(toPath);
+        _animateIn(main);
+        // Re-focus the textarea if present
+        var ta = document.getElementById('chat-input');
+        if (ta) { setTimeout(function () { ta.focus(); }, 80); }
+        return;
+    }
+
+    /* ── Leaving chat: park its nodes so the SSE stream isn't killed */
+    if (fromChat && !toChat) {
+        _chatSlot = document.createElement('div');
+        _chatSlot.id = 'chat-preserve-slot';
+        _chatSlot.className = 'chat-preserve-slot';
+        // Save chat's current dynamic CSS so we can restore it on return.
+        // With adoptedStyleSheets we read rules from the sheet; fallback reads the <style> element.
+        var savedCss = '';
+        if (_dynSheet && _dynSheet.cssRules && _dynSheet.cssRules.length) {
+            savedCss = Array.from(_dynSheet.cssRules).map(function(r) { return r.cssText; }).join('\n');
+        } else {
+            var dynStyle = document.getElementById('spa-dyn-style');
+            if (dynStyle) savedCss = dynStyle.textContent;
+        }
+        _chatSlot._savedCss = savedCss;
+        while (main.firstChild) _chatSlot.appendChild(main.firstChild);
+        document.body.appendChild(_chatSlot);
+    }
+
+    /* ── Fetch and inject new page content */
+    fetch(href, { credentials: 'same-origin' })
+        .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+        })
+        .then(function (html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var newMain = doc.querySelector('#spa-main, main');
+            if (!newMain) { window.location.href = href; return; }
+
+            _injectPageCss(doc);
+            main.innerHTML = newMain.innerHTML;
+            if (window.applyDynStyles) window.applyDynStyles(main);
+            _runScripts(doc);
+
+            if (pushState) history.pushState({}, '', href);
+            _updateNav(toPath);
+            _animateIn(main);
+            window.scrollTo(0, 0);
+
+            // Re-init htmx on newly injected content
+            if (window.htmx) { try { htmx.process(main); } catch(_) {} }
+        })
+        .catch(function () { window.location.href = href; });
+}
+
+/* ── Intercept sidebar / nav link clicks ──────────────────────────────── */
+document.addEventListener('click', function (e) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (!_isInternal(href))               return;
+    if (href === '/logout')               return;
+    if (href.startsWith('#'))             return;
+    if (link.getAttribute('target'))      return;
+    if (link.hasAttribute('download'))    return;
+    // Close mobile sidebar on nav click
+    if (window.innerWidth < 1024) {
+        var st = document.getElementById('sidebar-toggle');
+        if (st) st.checked = false;
+    }
+    e.preventDefault();
+    _navigate(href);
+}, true);
+
+/* ── Browser back / forward ──────────────────────────────────────────── */
+window.addEventListener('popstate', function () {
+    _navigate(location.pathname + location.search, false);
+});
+
+history.replaceState({}, '', location.href);
+
+// Dynamic CSS is now applied via nonce-protected <style id="page-dyn-style"> blocks
+// in each template's page_css block and re-injected on SPA navigation.
+}());
+</script>
+</body>
+</html>

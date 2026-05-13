@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}Config — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#64748b; }
+[data-ds="2"] { background:#64748b; }
+[data-ds="3"] { border-left:3px solid #8b5cf650; }
+[data-ds="4"] { color:#8b5cf6; }
+[data-ds="5"] { background:#8b5cf620;color:#8b5cf6;border:1px solid #8b5cf640; }
+[data-ds="6"] { background:#0d1117;color:#c9d1d9;border:1px solid rgba(255,255,255,0.08);min-height:320px;max-height:560px; }
+[data-ds="8"] { border:1px solid rgba(255,255,255,0.04); }
+[data-ds="9"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <div class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" data-ds="1"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight leading-tight">Config Center</h1>
+      <p class="text-xs text-base-content/50 mt-0.5">How the agent <span class="font-semibold">operates</span> — prime.md system prompt, feature flags &amp; runtime parameters</p>
+    </div>
+  </div>
+  <span class="text-xs text-base-content/20 font-mono">Flags stored in Redis — most apply live, restart required for subsystems</span>
+</div>
+
+<div class="flex flex-col gap-5">
+
+  <!-- ── Row 1: prime.md editor ─────────────────────────────────────────── -->
+  <div class="card bg-base-100 shadow-sm wasp-accent" data-ds="3">
+    <div class="card-body p-5">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0" data-ds="4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="font-semibold text-sm">prime.md</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="prime-save-status" class="text-xs text-base-content/30 font-mono hidden"></span>
+          <button class="btn btn-sm btn-ghost gap-1.5 opacity-50 hover:opacity-90" data-action="config:confirmResetPrime" title="Reset to generic default">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Reset
+          </button>
+          <button id="btn-prime-save" class="btn btn-sm gap-1.5" data-action="config:savePrime" data-ds="5">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save
+          </button>
+        </div>
+      </div>
+      <span class="text-xs text-base-content/25 font-mono block mb-3">{{ prime_path }}</span>
+      <p class="text-xs text-base-content/30 mb-3 leading-relaxed">
+        Injected at the top of every system prompt. Changes take effect immediately — no restart needed.
+        Use this for operator-level instructions and behavioral overrides.
+      </p>
+      <textarea id="prime-editor"
+                class="w-full font-mono text-xs leading-relaxed resize-none focus:outline-none focus:ring-1 rounded-lg p-3"
+                data-ds="6"
+                spellcheck="false"
+                placeholder="# Operational Directives&#10;Execute immediately...">{{ prime_content }}</textarea>
+      <div class="flex justify-between mt-1">
+        <span class="text-xs text-base-content/20 font-mono" id="prime-char-count">{{ prime_content|length }} chars</span>
+        <span class="text-xs text-base-content/20 font-mono">Ctrl+S to save</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 2: Feature Flags ───────────────────────────────────────────── -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center gap-2 mb-5">
+        <svg class="h-4 w-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+        <span class="font-semibold text-sm">Feature Flags</span>
+        <span class="text-xs text-base-content/25 font-mono">runtime toggles</span>
+      </div>
+
+      {% set groups = ["autonomy","execution","learning","memory","safety"] %}
+      {% set group_labels = {"autonomy":"Autonomy","execution":"Execution","learning":"Learning","memory":"Memory","safety":"Safety"} %}
+      {% set group_colors = {"autonomy":"#f59e0b","execution":"#8b5cf6","learning":"#10b981","memory":"#3b82f6","safety":"#ef4444"} %}
+      {% set restart_flags = ["goal_engine_enabled","agents_enabled","scheduler_enabled","integrations_enabled","governor_enabled"] %}
+
+      <!-- Groups as columns -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        {% for group in groups %}
+        {% set gflags = feature_flags | selectattr("group","equalto",group) | list %}
+        {% if gflags %}
+        <div>
+          <!-- Group header -->
+          <div class="flex items-center gap-1.5 mb-2 pb-1.5" style="border-bottom:1px solid {{ group_colors[group] }}22">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:{{ group_colors[group] }}"></span>
+            <span class="text-xs font-semibold uppercase tracking-widest font-mono" style="color:{{ group_colors[group] }}">{{ group_labels[group] }}</span>
+          </div>
+          <!-- Flags in this group -->
+          <div class="flex flex-col gap-1">
+            {% for flag in gflags %}
+            <div class="flex items-start justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-base-200/30 transition-colors" data-ds="8">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1 flex-wrap">
+                  <span class="text-xs font-medium text-base-content/80 leading-tight">{{ flag.label }}</span>
+                  {% if flag.key in restart_flags %}
+                  <span class="text-xs font-mono shrink-0" style="color:rgba(255,255,255,0.2)">↻</span>
+                  {% endif %}
+                </div>
+                <div class="text-xs text-base-content/30 mt-0.5 leading-relaxed">{{ flag.desc }}</div>
+              </div>
+              <input type="checkbox" class="toggle toggle-xs mt-0.5 shrink-0"
+                     data-ds="9" data-dv="color:{{ group_colors[group] }}"
+                     id="flag-{{ flag.key }}"
+                     {% if flag.value %}checked{% endif %}
+                     data-flag-key="{{ flag.key }}"
+                     data-action="config:setFlag">
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      <p class="text-xs text-base-content/20 mt-4">↻ marks flags that require a container restart to take effect.</p>
+    </div>
+  </div>
+
+  <!-- ── Row 3: Runtime Params ──────────────────────────────────────────── -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="h-4 w-4 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="font-semibold text-sm">Runtime Params</span>
+        <span class="text-xs text-base-content/20 font-mono">read-only · env / config.py</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-0.5">
+        {% for key, val in runtime_params.items() %}
+        <div class="flex items-center justify-between py-1.5 px-2 rounded hover:bg-base-200/20 gap-2">
+          <span class="text-xs font-mono text-base-content/35 truncate">{{ key }}</span>
+          <span class="text-xs font-mono font-semibold text-base-content/70 shrink-0">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="text-xs text-base-content/20 mt-3 leading-relaxed">
+        Set via environment variables. To change permanently, update docker-compose.yml and rebuild.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Reset Prime Modal ─────────────────────────────────────────────────── -->
+<dialog id="modal-reset-prime" class="modal">
+  <div class="modal-box max-w-sm" style="background:#1c1c1e;border:1px solid rgba(251,191,36,0.25)">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3)">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color:#FBBF24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </div>
+      <div>
+        <h3 class="font-bold text-sm">Reset to Default</h3>
+        <p class="text-xs text-base-content/40 mt-0.5">This will overwrite your current prime.md</p>
+      </div>
+    </div>
+    <p class="text-xs text-base-content/50 mb-4">The editor will be replaced with the generic default template and saved automatically. Your current content will be lost.</p>
+    <div class="flex gap-2 justify-end">
+      <button class="btn btn-ghost btn-sm" data-dialog-close="modal-reset-prime">Cancel</button>
+      <button class="btn btn-sm font-semibold" style="background:#FBBF24;border-color:#FBBF24;color:#000" data-action="config:doResetPrime">Reset</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+var editor = document.getElementById('prime-editor');
+if (editor) {
+  editor.addEventListener('input', function() {
+    document.getElementById('prime-char-count').textContent = editor.value.length + ' chars';
+  });
+}
+
+window.savePrime = async function() {
+  var content = editor ? editor.value : '';
+  var status = document.getElementById('prime-save-status');
+  status.textContent = 'Saving…';
+  status.className = 'text-xs font-mono text-base-content/40';
+  status.classList.remove('hidden');
+  try {
+    var r = await fetch('/config/api/prime', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf()},
+      body: JSON.stringify({content: content}),
+    });
+    var d = await r.json();
+    if (d.ok) {
+      status.textContent = 'Saved ✓';
+      status.style.color = '#10b981';
+      setTimeout(function(){ status.classList.add('hidden'); }, 2500);
+    } else {
+      status.textContent = 'Error: ' + (d.error || 'unknown');
+      status.style.color = '#ef4444';
+    }
+  } catch(e) {
+    status.textContent = 'Request failed';
+    status.style.color = '#ef4444';
+  }
+};
+
+window.setFlag = async function(key, value) {
+  try {
+    var r = await fetch('/config/api/flag', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf()},
+      body: JSON.stringify({key: key, value: value}),
+    });
+    var d = await r.json();
+    if (!d.ok) {
+      showToast(d.error || 'Failed to set flag', 'error');
+      var el = document.getElementById('flag-' + key);
+      if (el) el.checked = !value;
+    } else if (d.restart_required) {
+      showToast((value ? 'Enabled' : 'Disabled') + ': ' + key + ' — restart required', 'warning');
+    } else {
+      showToast((value ? 'Enabled' : 'Disabled') + ': ' + key + ' — applied live', 'success');
+    }
+  } catch(e) {
+    showToast('Request failed', 'error');
+  }
+};
+
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    savePrime();
+  }
+});
+
+window.confirmResetPrime = function() {
+  document.getElementById('modal-reset-prime').showModal();
+};
+
+window.doResetPrime = async function() {
+  document.getElementById('modal-reset-prime').close();
+  var status = document.getElementById('prime-save-status');
+  status.textContent = 'Loading default…';
+  status.className = 'text-xs font-mono text-base-content/40';
+  status.classList.remove('hidden');
+  try {
+    var r = await fetch('/config/api/prime/default', {credentials: 'same-origin'});
+    var d = await r.json();
+    if (!d.ok) { WaspToast.show(d.error || 'Could not load default', 'error'); status.classList.add('hidden'); return; }
+    if (editor) {
+      editor.value = d.content;
+      document.getElementById('prime-char-count').textContent = d.content.length + ' chars';
+    }
+    await window.savePrime();
+    WaspToast.show('Reset to default ✓', 'success');
+  } catch(e) {
+    WaspToast.show('Request failed', 'error');
+    status.classList.add('hidden');
+  }
+};
+
+registerWaspActions('config', {
+  'savePrime':         function() { window.savePrime(); },
+  'setFlag':           function(el) { window.setFlag(el.dataset.flagKey, el.checked); },
+  'confirmResetPrime': function() { window.confirmResetPrime(); },
+  'doResetPrime':      function() { window.doResetPrime(); },
+});
+})();
+</script>
+{% endblock %}

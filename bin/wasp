@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+# wasp — beginner-friendly CLI wrapping docker compose for the WASP stack
+set -Eeuo pipefail
+
+SCRIPT="$(readlink -f "$0" 2>/dev/null || realpath "$0")"
+WASP_DIR="${WASP_INSTALL_DIR:-$(cd "$(dirname "$SCRIPT")/.." && pwd)}"
+cd "$WASP_DIR"
+
+ENV_FILE="${WASP_DIR}/.env"
+ONBOARD_MARKER="${WASP_DIR}/.wasp-onboarded"
+COMPOSE=( docker compose --project-directory "$WASP_DIR" )
+
+# shellcheck source=../lib/ui.sh
+source "${WASP_DIR}/lib/ui.sh"
+
+require_env() {
+    [[ -f "$ENV_FILE" ]] || { ui_err "No .env at $ENV_FILE — run install.sh or 'wasp onboard' first"; exit 1; }
+}
+
+cmd_help() {
+    ui_logo "self-hosted autonomous agent"
+cat <<EOF
+${C_BOLD}wasp${C_RESET} — control the WASP stack
+
+  ${C_BOLD}wasp onboard${C_RESET}              Configure Telegram, provider keys, dashboard
+  ${C_BOLD}wasp start${C_RESET} | ${C_BOLD}up${C_RESET}        Start all services
+  ${C_BOLD}wasp stop${C_RESET} | ${C_BOLD}down${C_RESET}       Stop all services
+  ${C_BOLD}wasp restart${C_RESET}              Restart services
+  ${C_BOLD}wasp status${C_RESET}               Show container status
+  ${C_BOLD}wasp logs${C_RESET} [service]       Stream logs (all or one service)
+  ${C_BOLD}wasp health${C_RESET}               Run health probes (exit non-zero on failure)
+  ${C_BOLD}wasp update${C_RESET}               Pull latest, rebuild, restart, verify
+  ${C_BOLD}wasp backup${C_RESET}               Create timestamped backup archive
+  ${C_BOLD}wasp restore${C_RESET} <archive>    Restore from a backup archive
+  ${C_BOLD}wasp reset${C_RESET}                Wipe runtime state (NOT volumes); preserves .env
+  ${C_BOLD}wasp uninstall${C_RESET}            Remove WASP (asks before deleting data)
+
+${C_DIM}Install dir: ${WASP_DIR}${C_RESET}
+${C_DIM}Docs:        ${WASP_DIR}/docs/${C_RESET}
+EOF
+}
+
+cmd_start() {
+    ui_info "Starting services"
+    "${COMPOSE[@]}" up -d
+    ui_ok "Started — try: ${C_BOLD}wasp status${C_RESET}"
+}
+cmd_stop()    { ui_info "Stopping services"; "${COMPOSE[@]}" stop; ui_ok "Stopped"; }
+cmd_restart() { ui_info "Restarting services"; "${COMPOSE[@]}" restart; ui_ok "Restarted"; }
+cmd_status()  { "${COMPOSE[@]}" ps; }
+cmd_logs() {
+    local svc="${1:-}"
+    if [[ -n "$svc" ]]; then
+        "${COMPOSE[@]}" logs --tail=100 -f "$svc"
+    else
+        "${COMPOSE[@]}" logs --tail=50 -f
+    fi
+}
+
+cmd_health() {
+    local quiet=false
+    [[ "${1:-}" == "--quiet" ]] && quiet=true
+    if [[ -x "${WASP_DIR}/scripts/health.sh" ]]; then
+        if $quiet; then
+            "${WASP_DIR}/scripts/health.sh" --quiet
+        else
+            "${WASP_DIR}/scripts/health.sh"
+        fi
+    else
+        ui_err "scripts/health.sh missing"
+        exit 1
+    fi
+}
+
+cmd_update() {
+    require_env
+    ui_logo "update"
+    if [[ -d "${WASP_DIR}/.git" ]]; then
+        ui_run "Pulling latest from git" git -C "$WASP_DIR" pull --ff-only
+    else
+        ui_warn "Not a git checkout — skipping git pull"
+    fi
+    ui_run "Rebuilding containers" "${COMPOSE[@]}" build --pull
+    ui_run "Restarting services" "${COMPOSE[@]}" up -d
+    sleep 3
+    cmd_health || ui_warn "Health check failed after update — check logs"
+    ui_ok "Update complete"
+}
+
+cmd_backup() {
+    require_env
+    local stamp; stamp="$(date -u +%Y%m%d-%H%M%S)"
+    mkdir -p "${WASP_DIR}/backups"
+    local archive="${WASP_DIR}/backups/wasp-${stamp}.tar.gz"
+    local tmpdir; tmpdir="$(mktemp -d)"
+
+    ui_info "Backing up to $archive"
+
+    # 1. .env (operator credentials + provider keys)
+    cp "$ENV_FILE" "${tmpdir}/.env"
+
+    # 2. Postgres dump
+    "${COMPOSE[@]}" exec -T agent-postgres pg_dump -U agent -d agent \
+        --clean --if-exists > "${tmpdir}/postgres.sql" \
+        || { ui_err "Postgres dump failed"; rm -rf "$tmpdir"; return 1; }
+
+    # 3. Each named volume → tar.gz inside the archive
+    #    Discover volume names from compose (project-prefixed)
+    local project; project="$(basename "$WASP_DIR")"
+    local -a volumes=("${project}_redis-data" "${project}_postgres-data")
+    # Optional volumes (may not exist on every deploy)
+    for v in "${project}_ollama-data" "${project}_core-memory" "${project}_core-logs" \
+             "${project}_core-screenshots" "${project}_core-browser-sessions" \
+             "${project}_core-uploads"; do
+        if docker volume inspect "$v" >/dev/null 2>&1; then
+            volumes+=("$v")
+        fi
+    done
+
+    for vol in "${volumes[@]}"; do
+        if docker volume inspect "$vol" >/dev/null 2>&1; then
+            ui_info "  → volume: $vol"
+            docker run --rm \
+                -v "${vol}:/src:ro" \
+                -v "${tmpdir}:/dst" \
+                alpine:3 \
+                tar -czf "/dst/vol-${vol}.tar.gz" -C /src . \
+                2>/dev/null || ui_warn "  failed to snapshot $vol"
+        fi
+    done
+
+    # 4. Bundle + verify
+    tar -czf "$archive" -C "$tmpdir" .
+    rm -rf "$tmpdir"
+
+    # 5. Verify the archive is non-trivial and contains expected entries
+    if ! tar -tzf "$archive" >/dev/null 2>&1; then
+        ui_err "Backup archive is corrupt — removed"; rm -f "$archive"; return 1
+    fi
+    local entries; entries=$(tar -tzf "$archive" | wc -l)
+    if (( entries < 2 )); then
+        ui_warn "Backup looks empty ($entries entries)"
+    fi
+    local size; size=$(du -h "$archive" | cut -f1)
+    ui_ok "Backup → $archive ($size, $entries entries)"
+}
+
+cmd_restore() {
+    local archive="${1:-}"
+    if [[ -z "$archive" || ! -f "$archive" ]]; then
+        ui_err "Usage: wasp restore <archive.tar.gz>"
+        return 1
+    fi
+    # NOTE: do NOT require_env first — restore must work on a fresh install.
+
+    local tmpdir; tmpdir="$(mktemp -d)"
+    ui_info "Extracting $archive"
+    tar -xzf "$archive" -C "$tmpdir" \
+        || { ui_err "Extract failed"; rm -rf "$tmpdir"; return 1; }
+
+    # 1. .env (only if missing — never overwrite a populated .env)
+    if [[ -f "${tmpdir}/.env" && ! -f "$ENV_FILE" ]]; then
+        cp "${tmpdir}/.env" "$ENV_FILE"
+        ui_ok "Restored .env"
+    fi
+
+    ui_info "Stopping services for atomic restore"
+    "${COMPOSE[@]}" stop agent-core agent-telegram agent-broker || true
+
+    # 2. Volume restore
+    local project; project="$(basename "$WASP_DIR")"
+    for tgz in "$tmpdir"/vol-*.tar.gz; do
+        [[ -f "$tgz" ]] || continue
+        local vol; vol=$(basename "$tgz" .tar.gz | sed 's/^vol-//')
+        if docker volume inspect "$vol" >/dev/null 2>&1 || docker volume create "$vol" >/dev/null; then
+            ui_info "  ← volume: $vol"
+            docker run --rm \
+                -v "${vol}:/dst" \
+                -v "${tgz}:/src.tar.gz:ro" \
+                alpine:3 \
+                sh -c "rm -rf /dst/* /dst/.[!.]* /dst/..?* 2>/dev/null; tar -xzf /src.tar.gz -C /dst" \
+                2>/dev/null || ui_warn "  failed to restore $vol"
+        fi
+    done
+
+    # 3. Postgres restore (after agent-postgres comes up — make sure it's running)
+    "${COMPOSE[@]}" up -d agent-postgres
+    sleep 4
+    if [[ -f "${tmpdir}/postgres.sql" ]]; then
+        ui_info "  ← postgres dump"
+        "${COMPOSE[@]}" exec -T agent-postgres psql -U agent -d agent < "${tmpdir}/postgres.sql" \
+            > /dev/null 2>&1 || ui_warn "Postgres restore had errors"
+    fi
+
+    rm -rf "$tmpdir"
+    cmd_restart
+    ui_ok "Restore complete"
+}
+
+cmd_reset() {
+    ui_warn "This stops services and removes the onboarding marker. Volumes are kept."
+    read -r -p "Type RESET to confirm: " confirm
+    [[ "$confirm" == "RESET" ]] || { ui_err "Aborted"; exit 1; }
+    "${COMPOSE[@]}" down
+    rm -f "$ONBOARD_MARKER"
+    ui_ok "Reset done. Run: ${C_BOLD}wasp onboard && wasp start${C_RESET}"
+}
+
+cmd_uninstall() {
+    ui_logo "uninstall"
+    ui_warn "This removes containers and (optionally) the install directory."
+    read -r -p "Delete data volumes (postgres, redis, /data)? [y/N]: " del_data
+    read -r -p "Delete install dir ${WASP_DIR}? [y/N]: " del_dir
+    ui_info "Stopping services"
+    if [[ "$del_data" =~ ^[Yy]$ ]]; then
+        "${COMPOSE[@]}" down -v
+        ui_ok "Data volumes removed"
+    else
+        "${COMPOSE[@]}" down
+    fi
+    sudo rm -f /usr/local/bin/wasp
+    if [[ "$del_dir" =~ ^[Yy]$ ]]; then
+        sudo rm -rf "$WASP_DIR"
+        ui_ok "Install dir removed"
+    else
+        ui_ok "Install dir kept at $WASP_DIR"
+    fi
+    ui_log "Bye."
+}
+
+cmd_onboard() {
+    if [[ -x "${WASP_DIR}/scripts/onboard.sh" ]]; then
+        "${WASP_DIR}/scripts/onboard.sh" "$@"
+    else
+        ui_err "scripts/onboard.sh missing"
+        exit 1
+    fi
+}
+
+case "${1:-help}" in
+    help|--help|-h) cmd_help ;;
+    onboard)        shift; cmd_onboard "$@" ;;
+    start|up)       cmd_start ;;
+    stop|down)      cmd_stop ;;
+    restart)        cmd_restart ;;
+    status|ps)      cmd_status ;;
+    logs)           shift; cmd_logs "$@" ;;
+    health)         shift; cmd_health "$@" ;;
+    update)         cmd_update ;;
+    backup)         cmd_backup ;;
+    restore)        shift; cmd_restore "$@" ;;
+    reset)          cmd_reset ;;
+    uninstall)      cmd_uninstall ;;
+    *) ui_err "Unknown command: $1"; cmd_help; exit 1 ;;
+esac

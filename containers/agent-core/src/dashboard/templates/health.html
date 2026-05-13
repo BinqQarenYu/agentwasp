@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+{% from "macros.html" import pill, sparkline %}
+{% block title %}Health — Agent Wasp{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { --size:4.5rem; --thickness:5px; }
+[data-ds="2"] { background:#10B98120;color:#10B981;border:1px solid #10B98130; }
+[data-ds="3"] { background:#EF444420;color:#EF4444;border:1px solid #EF444430; }
+[data-ds="4"] { }
+[data-ds="5"] { }
+[data-ds="6"] { overflow:visible; }
+[data-ds="7"] { background:oklch(var(--a)/0.7); }
+[data-ds="8"] { background:oklch(var(--er)/0.7); }
+[data-ds="9"] { background:#EF444420;color:#EF4444;border:1px solid #EF444430; }
+[data-ds="10"] { background:#F59E0B20;color:#F59E0B;border:1px solid #F59E0B30; }
+[data-ds="11"] { background:#10B98120;color:#10B981;border:1px solid #10B98130; }
+[data-ds="12"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Helpers ──────────────────────────────────────────────────────────────── #}
+{%- set score_color = "text-success" if score and score >= 80 else "text-warning" if score and score >= 50 else "text-error" -%}
+{%- set score_label = "Excellent" if score and score >= 80 else "Good" if score and score >= 60 else "Degraded" if score and score >= 40 else "Critical" -%}
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Health & Introspection</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">Real-time system status · auto-refresh 30s</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <span id="refresh-indicator" class="hidden text-xs text-base-content/30 flex items-center gap-1">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>live
+        </span>
+        <div class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono" id="health-clock"></div>
+    </div>
+</div>
+
+<!-- ── Stats bar ─────────────────────────────────────────────────────────── -->
+<div class="flex flex-wrap gap-2 mb-5">
+    {% if score is not none %}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Score</span>
+        <span id="sb-score" class="font-bold font-mono text-sm {{ score_color }}">{{ score }}</span>
+        <span id="sb-label" class="text-xs text-base-content/35">{{ score_label }}</span>
+    </div>
+    {% endif %}
+    {% if latest %}
+    {%- set cpu_pct = latest.get("system",{}).get("cpu",{}).get("percent",0) -%}
+    {%- set ram_pct = latest.get("system",{}).get("ram",{}).get("percent",0) -%}
+    {%- set disk_pct = latest.get("system",{}).get("disk",{}).get("percent",0) -%}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">CPU</span>
+        <span id="sb-cpu" class="font-bold font-mono text-sm {% if cpu_pct >= 90 %}text-error{% elif cpu_pct >= 70 %}text-warning{% else %}text-success{% endif %}">{{ cpu_pct }}%</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">RAM</span>
+        <span id="sb-ram" class="font-bold font-mono text-sm {% if ram_pct >= 90 %}text-error{% elif ram_pct >= 75 %}text-warning{% else %}text-success{% endif %}">{{ ram_pct }}%</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Disk</span>
+        <span id="sb-disk" class="font-bold font-mono text-sm {% if disk_pct >= 90 %}text-error{% elif disk_pct >= 75 %}text-warning{% else %}text-success{% endif %}">{{ disk_pct }}%</span>
+    </div>
+    {% endif %}
+    {% if perf %}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">24h Events</span>
+        <span id="sb-events" class="font-bold font-mono text-sm text-accent">{{ perf.total_events }}</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Error Rate</span>
+        <span id="sb-errrate" class="font-bold font-mono text-sm {% if perf.error_rate > 5 %}text-error{% elif perf.error_rate > 0 %}text-warning{% else %}text-success{% endif %}">{{ perf.error_rate }}%</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Avg Latency</span>
+        <span id="sb-latency" class="font-bold font-mono text-sm text-base-content/60">{{ perf.avg_latency_ms }}ms</span>
+    </div>
+    {% endif %}
+    {% if caps %}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Uptime</span>
+        <span id="sb-uptime" class="font-bold font-mono text-sm text-info">{{ caps.uptime_hours }}h</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── Services + Health Score ──────────────────────────────────────────── -->
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+
+    {# Health score card #}
+    {% if score is not none %}
+    <div class="card bg-base-100 shadow-sm wasp-accent wasp-breathing">
+        <div class="card-body p-4 items-center justify-center gap-2">
+            <div class="radial-progress {{ score_color }}"
+                 data-ds="1" data-dv="--value:{{ score}}"
+                 id="score-ring">
+                <span class="text-sm font-bold" id="score-val">{{ score }}</span>
+            </div>
+            <div class="text-center">
+                <div class="font-semibold text-sm">Health Score</div>
+                <div class="text-xs text-base-content/40" id="score-label">{{ score_label }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Service cards #}
+    {% if latest %}
+    {% for svc, info in latest.get("services", {}).items() %}
+    <div class="card bg-base-100 shadow-sm wasp-accent" id="svc-{{ svc }}" data-svc="{{ svc }}">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold capitalize text-sm">{{ svc }}</h3>
+                {% if info.get("healthy") %}
+                <span id="svc-pill-{{ svc }}" class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-mono" data-ds="2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>OK
+                </span>
+                {% else %}
+                <span id="svc-pill-{{ svc }}" class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-mono" data-ds="3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-error"></span>FAIL
+                </span>
+                {% endif %}
+            </div>
+            <div class="text-xs text-base-content/50 space-y-0.5">
+                {% if info.get("latency_ms") is not none %}
+                <div class="flex items-center justify-between">
+                    <span class="text-base-content/35">Latency</span>
+                    <span id="svc-lat-{{ svc }}" class="font-mono text-base-content/60">{{ info.latency_ms }}ms</span>
+                </div>
+                {% endif %}
+                {% if info.get("error") %}
+                <div id="svc-err-{{ svc }}" class="text-error truncate" title="{{ info.error }}">{{ info.error[:60] }}</div>
+                {% endif %}
+                {% if info.get("models") %}
+                <div id="svc-models-{{ svc }}" class="text-base-content/35 truncate">{{ info.models | join(", ") }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+</div>
+
+<!-- ── System Resources ──────────────────────────────────────────────────── -->
+{% if latest %}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+    {%- set disk = latest.get("system",{}).get("disk",{}) -%}
+    {%- set ram  = latest.get("system",{}).get("ram",{}) -%}
+    {%- set cpu  = latest.get("system",{}).get("cpu",{}) -%}
+
+    {% for label, key, metric, spark_json, warn_pct, crit_pct, unit_top, unit_bot in [
+        ("Disk", "disk", disk, disk_spark, 75, 90, disk.get("used_gb","?") ~ " / " ~ disk.get("total_gb","?") ~ " GB", ""),
+        ("RAM",  "ram",  ram,  ram_spark,  75, 90, ram.get("used_mb","?") ~ " / " ~ ram.get("total_mb","?") ~ " MB", ""),
+        ("CPU",  "cpu",  cpu,  cpu_spark,  70, 90, cpu.get("cores","?") ~ " cores", latest.get("system",{}).get("uptime_hours","?") ~ "h uptime"),
+    ] %}
+    {%- set pct = metric.get("percent", 0) -%}
+    {%- set is_crit = pct >= crit_pct -%}
+    {%- set is_warn = pct >= warn_pct and not is_crit -%}
+    {%- set color = "#EF4444" if is_crit else "#F59E0B" if is_warn else "#10B981" -%}
+    <div class="card bg-base-100 shadow-sm wasp-accent" data-resource-card="{{ key }}" data-warn="{{ warn_pct }}" data-crit="{{ crit_pct }}">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold text-sm">{{ label }}</h3>
+                <span id="res-pct-{{ key }}" class="font-mono text-sm font-bold tabular-nums" data-ds="4" data-dv="color:{{ color}}">{{ pct }}%</span>
+            </div>
+            <div class="w-full bg-base-300 rounded-full h-1.5 mb-2">
+                <div id="res-bar-{{ key }}" class="h-1.5 rounded-full transition-all duration-700"
+                     data-ds="5" data-dv="width:{{ pct}}%; background:{{ color }}; {% if is_crit %}box-shadow:0 0 6px {{ color }}{% endif %}"></div>
+            </div>
+            <div class="text-xs text-base-content/35 mb-2">{{ unit_top }}{% if unit_bot %} · {{ unit_bot }}{% endif %}</div>
+            <div class="w-full h-7 mt-1 resource-spark-wrap" id="res-spark-{{ key }}"
+                 data-spark='{{ spark_json }}'
+                 data-spark-color="{{ color }}">
+                <svg class="resource-spark-svg w-full" height="28" viewBox="0 0 1 28" preserveAspectRatio="none" data-ds="6"></svg>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Performance 24h ───────────────────────────────────────────────────── -->
+{% if perf %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+    <!-- Stats + top events -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5">
+            <div class="flex items-center gap-2 mb-4">
+                <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="font-semibold text-sm">Performance (24h)</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="bg-base-200 rounded-xl px-3 py-2.5 text-center">
+                    <div class="text-xl font-bold text-primary tabular-nums" id="perf-events">{{ perf.total_events }}</div>
+                    <div class="text-xs text-base-content/40">Events</div>
+                </div>
+                <div class="bg-base-200 rounded-xl px-3 py-2.5 text-center">
+                    <div class="text-xl font-bold tabular-nums" id="perf-latency"><span id="perf-latency-val">{{ perf.avg_latency_ms }}</span><span class="text-xs font-normal text-base-content/40">ms</span></div>
+                    <div class="text-xs text-base-content/40">Avg Latency</div>
+                </div>
+                <div class="bg-base-200 rounded-xl px-3 py-2.5 text-center">
+                    <div class="text-xl font-bold tabular-nums {% if perf.errors > 0 %}text-error{% else %}text-success{% endif %}" id="perf-errors">{{ perf.errors }}</div>
+                    <div class="text-xs text-base-content/40">Errors</div>
+                </div>
+                <div class="bg-base-200 rounded-xl px-3 py-2.5 text-center">
+                    <div class="text-xl font-bold tabular-nums {% if perf.error_rate > 5 %}text-error{% elif perf.error_rate > 0 %}text-warning{% else %}text-success{% endif %}" id="perf-errrate">{{ perf.error_rate }}%</div>
+                    <div class="text-xs text-base-content/40">Error Rate</div>
+                </div>
+            </div>
+            {% if perf.top_events %}
+            <div>
+                <div class="text-xs font-semibold text-base-content/35 uppercase tracking-widest mb-2">Top Event Types</div>
+                <div class="space-y-1" id="perf-top-events">
+                    {% for ev in perf.top_events %}
+                    <div class="flex items-center justify-between rounded-lg px-3 py-1.5 bg-base-200/60 hover:bg-base-200 transition-colors">
+                        <span class="font-mono text-xs text-base-content/65">{{ ev.type }}</span>
+                        <span class="text-xs font-bold font-mono text-accent">{{ ev.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Hourly activity sparkline -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    <span class="font-semibold text-sm">Activity (last 24h)</span>
+                </div>
+                <span class="text-xs text-base-content/30 font-mono">hourly buckets</span>
+            </div>
+            <svg id="hourly-svg" viewBox="0 0 460 110" xmlns="http://www.w3.org/2000/svg" class="w-full"></svg>
+            <div class="flex items-center justify-between mt-1">
+                <span class="text-xs text-base-content/25 font-mono">24h ago</span>
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center gap-1 text-xs text-base-content/40"><span class="inline-block w-2.5 h-2.5 rounded-sm" data-ds="7"></span>events</span>
+                    <span class="flex items-center gap-1 text-xs text-base-content/40"><span class="inline-block w-2.5 h-2.5 rounded-sm" data-ds="8"></span>errors</span>
+                </div>
+                <span class="text-xs text-base-content/25 font-mono">now</span>
+            </div>
+            <!-- Capabilities mini-table below the chart -->
+            {% if caps %}
+            <div class="mt-4 pt-3 border-t border-base-200/60 space-y-1">
+                {% for label, val, color in [
+                    ("Model",    caps.active_model or "None",     "text-accent"),
+                    ("Provider", caps.active_provider or "None",  "text-info"),
+                    ("Skills",   caps.skills_enabled ~ "/" ~ caps.skills_total, "text-success"),
+                    ("Memory",   caps.memory_total ~ " entries",  "text-secondary"),
+                ] %}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-base-content/40">{{ label }}</span>
+                    <span class="font-semibold font-mono {{ color }}">{{ val }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+<!-- ── Recent Health Checks ──────────────────────────────────────────────── -->
+{% if history %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-5">
+        <div class="flex items-center gap-2 mb-3">
+            <svg class="h-4 w-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="font-semibold text-sm">Recent Health Checks</span>
+            <span class="text-xs font-mono text-base-content/30">{{ history|length }} entries</span>
+        </div>
+        <div class="overflow-x-auto" id="history-table-wrap">
+            <table class="table table-sm w-full">
+                <thead>
+                    <tr class="text-xs text-base-content/30 uppercase tracking-widest">
+                        <th>Time</th>
+                        <th>Redis</th>
+                        <th>Postgres</th>
+                        <th>Ollama</th>
+                        <th>Disk</th>
+                        <th>RAM</th>
+                        <th>CPU</th>
+                        <th class="text-right">Check ms</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody">
+                    {% for entry in history %}
+                    {%- set has_fail = false -%}
+                    {%- for svc in ["redis","postgres","ollama"] -%}
+                        {%- if not entry.get("services",{}).get(svc,{}).get("healthy",true) -%}
+                            {%- set has_fail = true -%}
+                        {%- endif -%}
+                    {%- endfor -%}
+                    <tr class="transition-colors {% if has_fail %}bg-error/5 hover:bg-error/10{% else %}hover:bg-base-200/40{% endif %}"
+                        data-ts="{{ entry.timestamp }}">
+                        <td class="font-mono text-xs text-base-content/50" data-ts-cell="{{ entry.timestamp }}">{{ entry.timestamp[:16].replace("T"," ") if entry.timestamp else "—" }}</td>
+                        {% for svc in ["redis", "postgres", "ollama"] %}
+                        {%- set info = entry.get("services",{}).get(svc,{}) -%}
+                        <td>
+                            {% if info.get("healthy") %}
+                            <span class="text-xs font-mono text-success">✓</span>
+                            {% else %}
+                            <span class="text-xs font-mono text-error font-bold">✗</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        {%- set d = entry.get("system",{}).get("disk",{}) -%}
+                        {%- set r = entry.get("system",{}).get("ram",{}) -%}
+                        {%- set c = entry.get("system",{}).get("cpu",{}) -%}
+                        <td class="font-mono text-xs {% if d.get('percent',0) >= 90 %}text-error{% elif d.get('percent',0) >= 75 %}text-warning{% else %}text-base-content/50{% endif %}">{{ d.get("percent","?") }}%</td>
+                        <td class="font-mono text-xs {% if r.get('percent',0) >= 90 %}text-error{% elif r.get('percent',0) >= 75 %}text-warning{% else %}text-base-content/50{% endif %}">{{ r.get("percent","?") }}%</td>
+                        <td class="font-mono text-xs {% if c.get('percent',0) >= 90 %}text-error{% elif c.get('percent',0) >= 70 %}text-warning{% else %}text-base-content/50{% endif %}">{{ c.get("percent","?") }}%</td>
+                        <td class="text-right font-mono text-xs text-base-content/35">{{ entry.get("check_ms","?") }}ms</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Safety & Execution Control ───────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+        <div class="flex items-center gap-2 mb-4">
+            <svg class="h-4 w-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <span class="font-semibold text-sm">Safety & Execution Control</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <!-- Soft Gate -->
+            <div class="p-3 rounded-xl bg-base-200/50">
+                <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest mb-2">Last Soft Gate</div>
+                {% if safety_data.gate_decision %}
+                <div class="flex items-center gap-2 mb-1.5">
+                    {% if safety_data.gate_decision == "BLOCK" %}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full font-mono" data-ds="9">BLOCK</span>
+                    {% elif safety_data.gate_decision == "WARN" %}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full font-mono" data-ds="10">WARN</span>
+                    {% else %}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full font-mono" data-ds="11">ALLOW</span>
+                    {% endif %}
+                    <span class="text-xs text-base-content/30 font-mono">{{ safety_data.gate_ts or "—" }}</span>
+                </div>
+                {% if safety_data.gate_reason %}
+                <p class="text-xs text-base-content/50 font-mono truncate" title="{{ safety_data.gate_reason }}">{{ safety_data.gate_reason }}</p>
+                {% endif %}
+                {% else %}
+                <p class="text-xs text-base-content/25 italic">No self-improve executions yet</p>
+                {% endif %}
+            </div>
+
+            <!-- CRIT-3 Daily Budget -->
+            <div class="p-3 rounded-xl bg-base-200/50">
+                <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest mb-2">CRIT-3 Daily Budget</div>
+                <div class="flex items-end gap-2 mb-2">
+                    <span class="text-3xl font-bold tabular-nums {% if safety_data.crit3_count >= safety_data.crit3_limit %}text-error{% elif safety_data.crit3_count > 0 %}text-warning{% else %}text-success{% endif %}">
+                        {{ safety_data.crit3_count }}
+                    </span>
+                    <span class="text-base-content/30 text-sm mb-0.5">/ {{ safety_data.crit3_limit }}</span>
+                </div>
+                <div class="w-full bg-base-300 rounded-full h-1.5">
+                    {%- set crit_pct2 = (safety_data.crit3_count / safety_data.crit3_limit * 100)|round|int -%}
+                    <div class="h-1.5 rounded-full transition-all duration-700 {% if safety_data.crit3_count >= safety_data.crit3_limit %}bg-error{% elif safety_data.crit3_count > 0 %}bg-warning{% else %}bg-success{% endif %}"
+                         data-ds="12" data-dv="width:{{ crit_pct2}}%"></div>
+                </div>
+                <p class="text-xs text-base-content/25 mt-1.5">Critical-path self-edits today</p>
+            </div>
+
+            <!-- Saccadic Vision -->
+            <div class="p-3 rounded-xl bg-base-200/50">
+                <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest mb-2">Saccadic Vision</div>
+                {% if safety_data.saccadic_last %}
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="w-2 h-2 rounded-full bg-info animate-pulse shrink-0"></span>
+                    <span class="font-mono text-sm text-base-content/70">{{ safety_data.saccadic_last }}</span>
+                </div>
+                {% if safety_data.saccadic_hash %}
+                <p class="text-xs text-base-content/35 font-mono">hash: {{ safety_data.saccadic_hash }}…</p>
+                {% endif %}
+                {% else %}
+                <p class="text-xs text-base-content/25 italic">No perception events yet</p>
+                {% endif %}
+            </div>
+
+            <!-- Behavioral Learning Queue -->
+            <div class="p-3 rounded-xl bg-base-200/50">
+                <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest mb-2">Learning Queue</div>
+                <div class="flex items-end gap-2 mb-2">
+                    <span class="text-3xl font-bold tabular-nums {% if behavioral_pending >= 40 %}text-error{% elif behavioral_pending >= 20 %}text-warning{% else %}text-success{% endif %}">
+                        {{ behavioral_pending }}
+                    </span>
+                    <span class="text-base-content/30 text-sm mb-0.5">/ 50</span>
+                </div>
+                <div class="w-full bg-base-300 rounded-full h-1.5 mb-1.5">
+                    {%- set bq_pct = (behavioral_pending / 50 * 100)|round|int -%}
+                    <div class="h-1.5 rounded-full transition-all duration-700 {% if behavioral_pending >= 40 %}bg-error{% elif behavioral_pending >= 20 %}bg-warning{% else %}bg-success{% endif %}"
+                         style="width:{{ bq_pct }}%"></div>
+                </div>
+                {% if behavioral_pending >= 40 %}
+                <p class="text-xs text-error/70">Near cap — LLM storm risk</p>
+                {% elif behavioral_pending >= 20 %}
+                <p class="text-xs text-warning/70">High — corrections pending analysis</p>
+                {% else %}
+                <p class="text-xs text-base-content/25">Corrections pending LLM analysis</p>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+'use strict';
+
+// ── SSR data ──────────────────────────────────────────────────────────────
+const HOURLY_SSR = {{ (perf.hourly if perf else []) | tojson }};
+
+// ── Resource sparklines (full-width, measured at runtime) ─────────────────
+function renderResourceSparks() {
+    document.querySelectorAll('.resource-spark-wrap').forEach(function(wrap) {
+        const data = JSON.parse(wrap.dataset.spark || '[]');
+        if (!data || data.length < 2) return;
+        const svg = wrap.querySelector('.resource-spark-svg');
+        if (!svg) return;
+        const W = wrap.clientWidth || 200;
+        const H = 28, pad = 2;
+        const min = Math.min(...data), max = Math.max(...data);
+        const range = max - min || 1;
+        const color = wrap.dataset.sparkColor || '#10B981';
+
+        const pts = data.map((v, i) => {
+            const x = (pad + (i / (data.length - 1)) * (W - pad * 2)).toFixed(1);
+            const y = (H - pad - ((v - min) / range) * (H - pad * 2)).toFixed(1);
+            return x + ',' + y;
+        });
+        const polyStr = pts.join(' ');
+        const fx = pts[0].split(',')[0], lx = pts[pts.length-1].split(',')[0];
+        const areaStr = polyStr + ' ' + lx + ',' + (H - pad) + ' ' + fx + ',' + (H - pad);
+        // Use wrap element id for gradient uniqueness — prevents color bleed across disk/ram/cpu
+        const gradId = 'sg-' + (wrap.id || ('w' + W));
+
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        svg.innerHTML = `
+            <defs>
+                <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+                    <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+                </linearGradient>
+            </defs>
+            <polygon points="${areaStr}" fill="url(#${gradId})"/>
+            <polyline points="${polyStr}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    });
+}
+// Render after layout is done
+requestAnimationFrame(() => { setTimeout(renderResourceSparks, 50); });
+
+// ── Live clock ────────────────────────────────────────────────────────────
+const clkEl = document.getElementById('health-clock');
+function tickClock() {
+    if (!clkEl) return;
+    const d = new Date();
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    clkEl.textContent = days[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + ' ' + months[d.getMonth()]
+        + ' · ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+tickClock();
+setInterval(tickClock, 30000);
+
+// ── Hourly activity chart ─────────────────────────────────────────────────
+function renderHourly(hourly) {
+    const svg = document.getElementById('hourly-svg');
+    if (!svg || !hourly || !hourly.length) return;
+    const W = 460, H = 110, padL = 4, padR = 4, padT = 8, padB = 22;
+    const chartH = H - padT - padB;
+    const n = hourly.length;
+    const barW = Math.floor((W - padL - padR) / n);
+    const gap = Math.max(1, Math.floor(barW * 0.2));
+    const maxTotal = Math.max(...hourly.map(h => h.total), 1);
+    let html = '';
+
+    // Gridlines
+    for (let i = 0; i <= 3; i++) {
+        const y = padT + chartH - (i / 3) * chartH;
+        html += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="oklch(var(--bc)/0.05)" stroke-width="1"/>`;
+    }
+
+    hourly.forEach((h, i) => {
+        const x = padL + i * barW + gap / 2;
+        const w = barW - gap;
+        const totalH = h.total > 0 ? Math.max(3, (h.total / maxTotal) * chartH) : 0;
+        const errH   = h.total > 0 ? Math.max(0, (h.errors / maxTotal) * chartH) : 0;
+        const isNow  = i === n - 1;
+
+        if (totalH > 0) {
+            html += `<rect x="${x.toFixed(1)}" y="${(padT + chartH - totalH).toFixed(1)}" width="${w}" height="${totalH.toFixed(1)}"
+                rx="2" fill="oklch(var(--a)/${isNow ? '0.8' : '0.4'})" >
+                <title>Hour ${i}: ${h.total} events, ${h.errors} errors</title></rect>`;
+        }
+        if (errH > 0) {
+            html += `<rect x="${x.toFixed(1)}" y="${(padT + chartH - errH).toFixed(1)}" width="${w}" height="${errH.toFixed(1)}"
+                rx="2" fill="oklch(var(--er)/0.7)"/>`;
+        }
+        // X labels every 4h
+        if (i % 4 === 0) {
+            html += `<text x="${(x + w/2).toFixed(1)}" y="${(padT + chartH + 14).toFixed(1)}"
+                text-anchor="middle" font-size="9" fill="oklch(var(--bc)/0.3)">${i}h</text>`;
+        }
+    });
+
+    svg.innerHTML = html;
+}
+renderHourly(HOURLY_SSR);
+
+// ── Time-ago ──────────────────────────────────────────────────────────────
+function timeAgo(iso) {
+    if (!iso) return '—';
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)    return Math.round(diff) + 's ago';
+    if (diff < 3600)  return Math.round(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+}
+
+// Apply time-ago to history rows
+function applyTimeAgo() {
+    document.querySelectorAll('[data-ts-cell]').forEach(el => {
+        const ts = el.getAttribute('data-ts-cell');
+        if (ts) el.textContent = timeAgo(ts);
+    });
+}
+applyTimeAgo();
+
+// ── Color helpers ─────────────────────────────────────────────────────────
+function resourceColor(pct, warn, crit) {
+    if (pct >= crit) return '#EF4444';
+    if (pct >= warn) return '#F59E0B';
+    return '#10B981';
+}
+function applyColorClass(el, val, thresholds) {
+    // thresholds: [[limit, className], ...] checked in order
+    el.className = el.className.replace(/\btext-(error|warning|success)\b/g, '');
+    for (const [limit, cls] of thresholds) {
+        if (val >= limit) { el.classList.add(cls); return; }
+    }
+    el.classList.add(thresholds[thresholds.length - 1][1]);
+}
+
+// ── Update stats bar ──────────────────────────────────────────────────────
+function updateStatsBar(data) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; };
+    const el  = (id) => document.getElementById(id);
+
+    // ── Health score ──────────────────────────────────────────────────────
+    if (data.score !== null && data.score !== undefined) {
+        const s = data.score;
+        const scoreLabel = s >= 80 ? 'Excellent' : s >= 60 ? 'Good' : s >= 40 ? 'Degraded' : 'Critical';
+        const scoreCls   = s >= 80 ? 'text-success' : s >= 50 ? 'text-warning' : 'text-error';
+        set('sb-score',    s);
+        set('sb-label',    scoreLabel);
+        set('score-val',   s);
+        set('score-label', scoreLabel);
+        // Stats bar score color
+        const sbScore = el('sb-score');
+        if (sbScore) {
+            sbScore.className = sbScore.className.replace(/\btext-(error|warning|success)\b/g, '') + ' ' + scoreCls;
+        }
+        // Radial ring: update --value and color class
+        const ring = el('score-ring');
+        if (ring) {
+            ring.style.setProperty('--value', s);
+            ring.className = ring.className.replace(/\btext-(error|warning|success)\b/g, '') + ' ' + scoreCls;
+        }
+    }
+
+    // ── Performance ───────────────────────────────────────────────────────
+    if (data.perf) {
+        const p = data.perf;
+        set('sb-events',       p.total_events);
+        set('sb-latency',      p.avg_latency_ms + 'ms');
+        set('perf-events',     p.total_events);
+        set('perf-latency-val', p.avg_latency_ms);
+
+        // Error count color
+        set('perf-errors', p.errors);
+        const errEl = el('perf-errors');
+        if (errEl) applyColorClass(errEl, p.errors, [[1,'text-error'],[0,'text-success']]);
+
+        // Error rate color (stats bar + perf grid)
+        set('sb-errrate',  p.error_rate + '%');
+        set('perf-errrate', p.error_rate + '%');
+        const sbErr = el('sb-errrate'), perfErr = el('perf-errrate');
+        const errThresh = [[5,'text-error'],[0.01,'text-warning'],[0,'text-success']];
+        if (sbErr)   applyColorClass(sbErr,   p.error_rate, errThresh);
+        if (perfErr) applyColorClass(perfErr, p.error_rate, errThresh);
+
+        if (p.hourly) renderHourly(p.hourly);
+    }
+
+    // ── System resources ──────────────────────────────────────────────────
+    if (data.latest) {
+        const sys  = data.latest.system || {};
+        const vals = {
+            cpu:  { pct: (sys.cpu  || {}).percent || 0, warn: 70, crit: 90 },
+            ram:  { pct: (sys.ram  || {}).percent || 0, warn: 75, crit: 90 },
+            disk: { pct: (sys.disk || {}).percent || 0, warn: 75, crit: 90 },
+        };
+
+        // Stats bar chips
+        const sbThresholds = {
+            cpu:  [[90,'text-error'],[70,'text-warning'],[0,'text-success']],
+            ram:  [[90,'text-error'],[75,'text-warning'],[0,'text-success']],
+            disk: [[90,'text-error'],[75,'text-warning'],[0,'text-success']],
+        };
+        for (const [key, v] of Object.entries(vals)) {
+            const sbEl = el('sb-' + key);
+            if (sbEl) { sbEl.textContent = v.pct + '%'; applyColorClass(sbEl, v.pct, sbThresholds[key]); }
+        }
+
+        // Uptime chip (uptime_hours lives at system level)
+        const uptimeEl = el('sb-uptime');
+        if (uptimeEl && sys.uptime_hours !== undefined) uptimeEl.textContent = sys.uptime_hours + 'h';
+
+        // Service status pills + latency
+        const svcs = data.latest.services || {};
+        for (const [svc, info] of Object.entries(svcs)) {
+            const pill = el('svc-pill-' + svc);
+            if (pill) {
+                if (info.healthy) {
+                    pill.style.cssText = 'background:#10B98120;color:#10B981;border:1px solid #10B98130';
+                    pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>OK';
+                } else {
+                    pill.style.cssText = 'background:#EF444420;color:#EF4444;border:1px solid #EF444430';
+                    pill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-error"></span>FAIL';
+                }
+            }
+            const latEl = el('svc-lat-' + svc);
+            if (latEl && info.latency_ms !== undefined) latEl.textContent = info.latency_ms + 'ms';
+            const errEl2 = el('svc-err-' + svc);
+            if (errEl2) errEl2.textContent = info.error ? info.error.substring(0, 60) : '';
+        }
+
+        // Resource cards: percentage text, progress bar, sparkline re-render
+        document.querySelectorAll('[data-resource-card]').forEach(card => {
+            const key  = card.dataset.resourceCard;
+            const warn = parseFloat(card.dataset.warn) || 75;
+            const crit = parseFloat(card.dataset.crit) || 90;
+            if (!vals[key]) return;
+
+            const pct   = vals[key].pct;
+            const color = resourceColor(pct, warn, crit);
+
+            // Percent label
+            const pctEl = el('res-pct-' + key);
+            if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = color; }
+
+            // Progress bar
+            const barEl = el('res-bar-' + key);
+            if (barEl) {
+                barEl.style.width      = pct + '%';
+                barEl.style.background = color;
+                barEl.style.boxShadow  = pct >= crit ? `0 0 6px ${color}` : '';
+            }
+
+            // Sparkline: append new point, keep 12 max, re-render
+            const sparkWrap = el('res-spark-' + key);
+            if (sparkWrap) {
+                let sparkData = JSON.parse(sparkWrap.dataset.spark || '[]');
+                sparkData.push(pct);
+                if (sparkData.length > 12) sparkData = sparkData.slice(-12);
+                sparkWrap.dataset.spark      = JSON.stringify(sparkData);
+                sparkWrap.dataset.sparkColor = color;
+                // Re-render this one sparkline inline
+                const svg = sparkWrap.querySelector('.resource-spark-svg');
+                if (svg && sparkData.length >= 2) {
+                    const W = sparkWrap.clientWidth || 200;
+                    const H = 28, pad = 2;
+                    const min = Math.min(...sparkData), max = Math.max(...sparkData);
+                    const range = max - min || 1;
+                    const pts = sparkData.map((v, i) => {
+                        const x = (pad + (i / (sparkData.length - 1)) * (W - pad * 2)).toFixed(1);
+                        const y = (H - pad - ((v - min) / range) * (H - pad * 2)).toFixed(1);
+                        return x + ',' + y;
+                    });
+                    const polyStr = pts.join(' ');
+                    const fx = pts[0].split(',')[0], lx = pts[pts.length-1].split(',')[0];
+                    const areaStr = polyStr + ' ' + lx + ',' + (H - pad) + ' ' + fx + ',' + (H - pad);
+                    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+                    svg.innerHTML = `<defs><linearGradient id="sg-r-${key}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+                        <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+                    </linearGradient></defs>
+                    <polygon points="${areaStr}" fill="url(#sg-r-${key})"/>
+                    <polyline points="${polyStr}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+                }
+            }
+        });
+    }
+}
+
+// ── Rebuild history table ─────────────────────────────────────────────────
+function rebuildHistory(history) {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody || !history || !history.length) return;
+    tbody.innerHTML = history.map(entry => {
+        const svcs = entry.services || {};
+        const hasFail = ['redis','postgres','ollama'].some(s => !(svcs[s] || {}).healthy);
+        const sys = entry.system || {};
+        const d = sys.disk || {}, r = sys.ram || {}, c = sys.cpu || {};
+
+        const svcCells = ['redis','postgres','ollama'].map(s => {
+            const ok = (svcs[s] || {}).healthy;
+            return `<td><span class="text-xs font-mono ${ok ? 'text-success' : 'text-error font-bold'}">${ok ? '✓' : '✗'}</span></td>`;
+        }).join('');
+
+        const diskCls = d.percent >= 90 ? 'text-error' : d.percent >= 75 ? 'text-warning' : 'text-base-content/50';
+        const ramCls  = r.percent >= 90 ? 'text-error' : r.percent >= 75 ? 'text-warning' : 'text-base-content/50';
+        const cpuCls  = c.percent >= 90 ? 'text-error' : c.percent >= 70 ? 'text-warning' : 'text-base-content/50';
+
+        return `<tr class="transition-colors ${hasFail ? 'bg-error/5 hover:bg-error/10' : 'hover:bg-base-200/40'}">
+            <td class="font-mono text-xs text-base-content/50" data-ts-cell="${entry.timestamp}">${timeAgo(entry.timestamp)}</td>
+            ${svcCells}
+            <td class="font-mono text-xs ${diskCls}">${d.percent ?? '?'}%</td>
+            <td class="font-mono text-xs ${ramCls}">${r.percent ?? '?'}%</td>
+            <td class="font-mono text-xs ${cpuCls}">${c.percent ?? '?'}%</td>
+            <td class="text-right font-mono text-xs text-base-content/35">${entry.check_ms ?? '?'}ms</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────
+async function doRefresh() {
+    const ind = document.getElementById('refresh-indicator');
+    try {
+        const r = await fetch('/health/api/latest');
+        const d = await r.json();
+        if (!d.ok) return;
+        updateStatsBar(d);
+        if (d.history) rebuildHistory(d.history);
+        if (ind) { ind.classList.remove('hidden'); setTimeout(() => ind.classList.add('hidden'), 2000); }
+    } catch (e) { console.warn('[health] Background refresh failed:', e.message); }
+}
+
+setInterval(doRefresh, 30000);
+setTimeout(doRefresh, 5000);  // initial refresh after 5s for freshness
+
+// Initial time-ago pass every minute
+setInterval(applyTimeAgo, 60000);
+
+}());
+</script>
+{% endblock %}

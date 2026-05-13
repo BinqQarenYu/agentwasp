@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Subscriptions — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#10b981; }
+[data-ds="2"] { background:#10b981; }
+[data-ds="3"] { color:#10b981; }
+[data-ds="4"] { color:#3b82f6; }
+[data-ds="5"] { color:#f59e0b; }
+[data-ds="6"] { background:#10b98110;border:1px solid #10b98120; }
+[data-ds="7"] { color:#10b981; }
+[data-ds="8"] { background:#f59e0b15;color:#f59e0b; }
+[data-ds="9"] { }
+[data-ds="10"] { background:#f59e0b15;border:1px solid #f59e0b30; }
+[data-ds="11"] { color:#f59e0b; }
+[data-ds="12"] { color:#f59e0b; }
+[data-ds="13"] { }
+[data-ds="14"] { background:#10b98115;color:#10b981; }
+[data-ds="15"] { background:#ef444415;color:#ef4444; }
+[data-ds="16"] { background:rgba(255,255,255,0.04); }
+[data-ds="17"] { background:#3b82f615;color:#3b82f6; }
+[data-ds="18"] { }
+[data-ds="19"] { background:#3b82f615;border:1px solid #3b82f630; }
+[data-ds="20"] { color:#3b82f6; }
+[data-ds="21"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <div class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" data-ds="1"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight leading-tight">Subscriptions</h1>
+      <p class="text-xs text-base-content/40 font-mono mt-0.5">RSS feeds &amp; price alerts — checked every 5 minutes</p>
+    </div>
+  </div>
+  <button id="btn-subs-reload" class="btn btn-sm btn-ghost gap-1.5 opacity-60 hover:opacity-100" data-action="wasp:reload">
+    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    Refresh
+  </button>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-3 gap-3 mb-5">
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono" data-ds="3">{{ active_count }}</div>
+      <div class="text-xs text-base-content/40">Active</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono" data-ds="4">{{ rss_subs|length }}</div>
+      <div class="text-xs text-base-content/40">RSS Feeds</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono" data-ds="5">{{ price_subs|length }}</div>
+      <div class="text-xs text-base-content/40">Price Alerts</div>
+    </div>
+  </div>
+</div>
+
+{% if not subs %}
+<!-- Empty state -->
+<div class="card bg-base-100 shadow-sm wasp-accent">
+  <div class="card-body p-12 text-center">
+    <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" data-ds="6">
+      <svg class="h-7 w-7 opacity-30" data-ds="7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+    </div>
+    <p class="text-sm text-base-content/40 mb-1">No subscriptions yet</p>
+    <p class="text-xs text-base-content/25">Ask the agent to create RSS or price alert subscriptions via chat</p>
+    <div class="mt-4 text-xs font-mono text-base-content/25 bg-base-200/50 rounded-lg p-3 text-left">
+      <p>subscribe(action="rss", url="https://...", name="My Feed")</p>
+      <p class="mt-1">subscribe(action="price", symbol="BTC", above="100000")</p>
+    </div>
+  </div>
+</div>
+{% else %}
+
+<!-- Price Alerts -->
+{% if price_subs %}
+<div class="mb-5">
+  <div class="flex items-center gap-2 mb-3 px-1">
+    <span class="text-xs font-semibold text-base-content/40 uppercase tracking-widest">Price Alerts</span>
+    <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="8">{{ price_subs|length }}</span>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    {% for s in price_subs %}
+    <div class="card bg-base-100 shadow-sm wasp-accent wasp-event-enter sub-card"
+         id="sub-{{ s.id|replace(':', '-')|replace('.', '-') }}"
+         data-raw-id="{{ s.id }}"
+         data-ds="9" data-dv="border-left:3px solid {% if s.status=='active' %}#f59e0b50{% else %}#f59e0b18{% endif %}; {% if s.status!='active' %}opacity:0.55{% endif %}">
+      <div class="card-body p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" data-ds="10">
+              <svg class="h-4 w-4" data-ds="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm">{{ s.name }}</div>
+              <div class="text-xs font-mono font-bold" data-ds="12">{{ s.symbol }}</div>
+            </div>
+          </div>
+          <span class="text-xs px-1.5 py-0.5 rounded-full font-mono shrink-0 {% if s.status=='active' %}text-success{% else %}text-base-content/30{% endif %}"
+                data-ds="13" data-dv="background:{% if s.status=='active' %}#10b98115{% else %}rgba(255,255,255,0.05){% endif %}">
+            {{ s.status }}
+          </span>
+        </div>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          {% if s.above %}<span class="text-xs px-1.5 py-0.5 rounded font-mono" data-ds="14">↑ ${{ "{:,.0f}".format(s.above) }}</span>{% endif %}
+          {% if s.below %}<span class="text-xs px-1.5 py-0.5 rounded font-mono" data-ds="15">↓ ${{ "{:,.0f}".format(s.below) }}</span>{% endif %}
+          <span class="text-xs px-1.5 py-0.5 rounded font-mono text-base-content/35" data-ds="16">every {{ s.interval_label }}</span>
+        </div>
+        <div class="text-xs text-base-content/25 font-mono mt-1">
+          checked: {{ s.last_check }} · alerted: {{ s.last_alert }}
+        </div>
+        <div class="flex gap-1 mt-2 pt-2 border-t border-base-200/40">
+          {% if s.status == 'active' %}
+          <button class="btn btn-xs btn-ghost opacity-50 hover:opacity-100" data-action="subs:pauseSub" data-id="{{ s.id }}">Pause</button>
+          {% else %}
+          <button class="btn btn-xs btn-ghost opacity-50 hover:opacity-100 text-success" data-action="subs:resumeSub" data-id="{{ s.id }}">Resume</button>
+          {% endif %}
+          <button class="btn btn-xs btn-ghost text-error opacity-40 hover:opacity-100 ml-auto" data-action="subs:deleteSub" data-id="{{ s.id }}">Delete</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- RSS Feeds -->
+{% if rss_subs %}
+<div>
+  <div class="flex items-center gap-2 mb-3 px-1">
+    <span class="text-xs font-semibold text-base-content/40 uppercase tracking-widest">RSS Feeds</span>
+    <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="17">{{ rss_subs|length }}</span>
+  </div>
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-0">
+      <div class="divide-y divide-base-200/30">
+        {% for s in rss_subs %}
+        <div class="flex items-center gap-3 p-3 hover:bg-base-200/20 transition-colors sub-row"
+             id="sub-{{ s.id|replace(':', '-')|replace('.', '-') }}"
+             data-raw-id="{{ s.id }}"
+             data-ds="18" data-dv="{% if s.status!='active' %}opacity:0.5{% endif %}">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" data-ds="19">
+            <svg class="h-3.5 w-3.5" data-ds="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7M6 17a1 1 0 110 2 1 1 0 010-2z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-xs">{{ s.name }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded-full font-mono {% if s.status=='active' %}text-success{% else %}text-base-content/30{% endif %}"
+                    data-ds="21" data-dv="background:{% if s.status=='active' %}#10b98115{% else %}rgba(255,255,255,0.05){% endif %}">{{ s.status }}</span>
+              <span class="text-xs font-mono text-base-content/30">every {{ s.interval_label }}</span>
+              {% if s.seen_count %}<span class="text-xs text-base-content/25 font-mono">{{ s.seen_count }} seen</span>{% endif %}
+            </div>
+            <div class="text-xs text-base-content/30 font-mono truncate mt-0.5">{{ s.url }}</div>
+            <div class="text-xs text-base-content/20 font-mono mt-0.5">checked: {{ s.last_check }}</div>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            {% if s.status == 'active' %}
+            <button class="btn btn-xs btn-ghost opacity-40 hover:opacity-100" data-action="subs:pauseSub" data-id="{{ s.id }}">Pause</button>
+            {% else %}
+            <button class="btn btn-xs btn-ghost text-success opacity-60 hover:opacity-100" data-action="subs:resumeSub" data-id="{{ s.id }}">Resume</button>
+            {% endif %}
+            <button class="btn btn-xs btn-ghost text-error opacity-30 hover:opacity-100" data-action="subs:deleteSub" data-id="{{ s.id }}">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+function safeId(rawId) {
+  return rawId.replace(/[:.]/g, '-');
+}
+
+window.pauseSub = async function(id) {
+  await setStatus(id, 'pause');
+};
+window.resumeSub = async function(id) {
+  await setStatus(id, 'resume');
+};
+
+async function setStatus(id, action) {
+  try {
+    var r = await fetch('/subscriptions/api/' + encodeURIComponent(id) + '/' + action, {method:'POST', headers:{'X-CSRF-Token':getCsrf()}});
+    var d = await r.json();
+    if (d.ok) {
+      showToast(action === 'pause' ? 'Paused' : 'Resumed', 'success');
+      setTimeout(function(){ location.reload(); }, 600);
+    } else { showToast(d.error || 'Failed', 'error'); }
+  } catch(e) { showToast('Request failed', 'error'); }
+}
+
+window.deleteSub = async function(id) {
+  if (!await showConfirmModal({ title: 'Delete Subscription', message: 'Delete this subscription?', confirmText: 'Delete', danger: true })) return;
+  try {
+    var r = await fetch('/subscriptions/api/' + encodeURIComponent(id), {method:'DELETE', headers:{'X-CSRF-Token':getCsrf()}});
+    var d = await r.json();
+    if (d.ok) {
+      var sid = safeId(id);
+      var el = document.querySelector('#sub-' + sid + ', .sub-card[data-raw-id="' + id + '"], .sub-row[data-raw-id="' + id + '"]');
+      if (el) { el.style.transition='all 0.3s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); },300); }
+      showToast('Deleted', 'success');
+    } else { showToast(d.error || 'Delete failed', 'error'); }
+  } catch(e) { showToast('Request failed', 'error'); }
+};
+
+registerWaspActions('subs', {
+  'pauseSub':  function(el) { pauseSub(el.dataset.id); },
+  'resumeSub': function(el) { resumeSub(el.dataset.id); },
+  'deleteSub': function(el) { deleteSub(el.dataset.id); },
+});
+})();
+</script>
+{% endblock %}

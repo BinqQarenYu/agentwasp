@@ -1,0 +1,171 @@
+services:
+  agent-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - wasp-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  agent-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agent
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - wasp-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  agent-core:
+    build:
+      context: ./containers/agent-core
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    shm_size: '2gb'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      agent-redis:
+        condition: service_healthy
+      agent-postgres:
+        condition: service_healthy
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
+    environment:
+      REDIS_URL: redis://agent-redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://agent:${POSTGRES_PASSWORD}@agent-postgres:5432/agent
+      OLLAMA_BASE_URL: http://agent-ollama:11434
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-anthropic}
+      TIMEZONE: ${TIMEZONE:-UTC}
+      SCHEDULER_NOTIFY_CHAT_ID: ${SCHEDULER_NOTIFY_CHAT_ID:-}
+      DASHBOARD_SECRET: ${DASHBOARD_SECRET:-}
+      DASHBOARD_USER: ${DASHBOARD_USER:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-}
+      MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SOVEREIGN_MODE: ${SOVEREIGN_MODE:-true}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS:-}
+      WASP_HOST_DIR: ${WASP_HOST_DIR:-/opt/wasp}
+      GMAIL_RECIPIENT_ALLOWLIST: ${GMAIL_RECIPIENT_ALLOWLIST:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - core-memory:/data/memory
+      - core-logs:/data/logs
+      - core-config:/data/config
+      - core-backups:/data/backups
+      - core-shared:/data/shared
+      - core-screenshots:/data/screenshots
+      - core-uploads:/data/chat-uploads
+      - core-browser-sessions:/data/browser_sessions
+      - core-skills:/data/skills
+      # Docker socket is NOT mounted into agent-core on the public default.
+      # The integration-manager skill's auto-restart fallback message tells
+      # the operator to run `docker restart <container>` manually after
+      # changing integration env vars. The broker container still has socket
+      # access for compose orchestration. To opt in to auto-restart inside
+      # agent-core, add this volume back yourself (read-only is fine for the
+      # restart API call): /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - wasp-net
+
+  agent-telegram:
+    build:
+      context: ./containers/agent-telegram
+      dockerfile: Dockerfile
+    # on-failure (not unless-stopped): if no token is set, the bridge exits
+    # cleanly with code 0 — we don't want to restart it in a loop.
+    restart: on-failure
+    depends_on:
+      agent-redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://agent-redis:6379/0
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - core-logs:/data/logs
+      - core-shared:/data/shared
+      - core-screenshots:/data/screenshots
+      - core-uploads:/data/chat-uploads
+    networks:
+      - wasp-net
+
+  agent-broker:
+    build:
+      context: ./containers/agent-broker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      agent-redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://agent-redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - wasp-net
+
+  agent-ollama:
+    # Always starts with the stack — but no models are downloaded by default.
+    # The agent only pulls a model when the user clicks "Install" on the
+    # dashboard /models page (or asks the agent in chat). Image alone is ~1.5GB;
+    # models add 4-8GB each. To disable Ollama entirely on a host, run:
+    #   docker compose stop agent-ollama && docker compose rm -f agent-ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - wasp-net
+
+volumes:
+  redis-data:
+  postgres-data:
+  core-memory:
+  core-logs:
+  core-config:
+  core-backups:
+  core-shared:
+  core-screenshots:
+  core-uploads:
+  core-browser-sessions:
+  core-skills:
+  ollama-models:
+
+networks:
+  wasp-net:
+    driver: bridge

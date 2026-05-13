@@ -1,0 +1,114 @@
+{# ============================================================
+   Agent Wasp — Jinja2 Macro Library
+   Usage: {% from "macros.html" import pill, empty_state, ... %}
+   ============================================================ #}
+
+{# ----------------------------------------------------------------
+   pill(text, variant, size, dot)
+   variant: success | warning | danger | info | primary | secondary | neutral
+   size: xs | sm | md
+   dot: boolean — show animated pulse dot
+   ---------------------------------------------------------------- #}
+{% macro pill(text, variant="neutral", size="sm", dot=false) -%}
+<span class="pill pill-{{ variant }} pill-{{ size }}">
+  {%- if dot %}<span class="pill-pulse"></span>{% endif -%}
+  {{- text -}}
+</span>
+{%- endmacro %}
+
+{# ----------------------------------------------------------------
+   empty_state(title, hint, icon_path)
+   ---------------------------------------------------------------- #}
+{% macro empty_state(title, hint="", icon_path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2") %}
+<div class="empty-state">
+  <svg xmlns="http://www.w3.org/2000/svg" class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ icon_path }}" />
+  </svg>
+  <p class="empty-state-title">{{ title }}</p>
+  {% if hint %}<p class="empty-state-hint">{{ hint }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   risk_indicator(level, show_label)
+   level: safe | file | network | system
+   ---------------------------------------------------------------- #}
+{% macro risk_indicator(level, show_label=true) %}
+{% set labels = {"safe": "Safe", "file": "File I/O", "network": "Network", "system": "System"} %}
+<span class="inline-flex items-center gap-1.5">
+  <span class="risk-dot risk-{{ level }}" title="{{ labels.get(level, level) }}"></span>
+  {% if show_label %}<span class="text-xs risk-label-{{ level }}">{{ labels.get(level, level) }}</span>{% endif %}
+</span>
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   sparkline(values_json, color, width, height)
+   values_json: a JSON-serialized list e.g. "[10,20,15]"
+   color: success | warning | danger | info | primary | neutral
+   ---------------------------------------------------------------- #}
+{% macro sparkline(values_json, color="primary", width=80, height=28) %}
+<svg class="sparkline sparkline-{{ color }}"
+     width="{{ width }}" height="{{ height }}"
+     viewBox="0 0 {{ width }} {{ height }}"
+     data-sparkline="{{ values_json }}"
+     aria-hidden="true"
+     overflow="visible">
+  <polygon points="" />
+  <polyline points="" />
+</svg>
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   kpi_card(value, label, hint, color, sparkline_values, sparkline_color)
+   ---------------------------------------------------------------- #}
+{% macro kpi_card(value, label, hint="", color="text-primary", spark="", spark_color="primary") %}
+<div class="kpi-card">
+  <div class="kpi-label">{{ label }}</div>
+  <div class="kpi-value {{ color }} tabular">{{ value }}</div>
+  {% if hint %}
+  <div class="kpi-hint">{{ hint }}</div>
+  {% endif %}
+  {% if spark %}
+  <div class="mt-1">
+    {{ sparkline(spark, spark_color, 100, 24) }}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   section_header(title, icon_path, badge_text, badge_variant, actions_html)
+   ---------------------------------------------------------------- #}
+{% macro section_header(title, icon_path="", badge_text="", badge_variant="primary") %}
+<div class="section-head">
+  {% if icon_path %}
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon_path }}" />
+  </svg>
+  {% endif %}
+  <h2>{{ title }}</h2>
+  {% if badge_text %}
+  {{ pill(badge_text, badge_variant, "xs") }}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   status_pill(value, size)
+   Standardized status display
+   ---------------------------------------------------------------- #}
+{% macro status_pill(value, size="sm") %}
+{%- if value == true or value == "ok" or value == "healthy" or value == "active" -%}
+  {{ pill("OK", "success", size, dot=true) }}
+{%- elif value == "paused" -%}
+  {{ pill("PAUSED", "warning", size) }}
+{%- elif value == "warn" or value == "warning" or value == "degraded" -%}
+  {{ pill("WARN", "warning", size) }}
+{%- elif value == false or value == "error" or value == "fail" or value == "down" -%}
+  {{ pill("FAIL", "danger", size) }}
+{%- elif value == "idle" -%}
+  {{ pill("IDLE", "neutral", size) }}
+{%- else -%}
+  {{ pill(value | upper, "neutral", size) }}
+{%- endif %}
+{% endmacro %}

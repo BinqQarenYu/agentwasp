@@ -1,0 +1,921 @@
+{% extends "base.html" %}
+{% from "macros.html" import empty_state %}
+{% block title %}Goals - Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { min-width:${svgW}px;display:block; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Title ───────────────────────────────────────────────────────────────── #}
+<div class="mb-4">
+  <h1 class="text-2xl font-bold tracking-tight">Autonomous Goals</h1>
+  <p class="text-sm text-base-content/50 mt-0.5">Multi-step plans the agent executes autonomously
+    {% if not goal_engine_enabled %}
+    <span class="badge badge-error badge-xs ml-1">Engine offline</span>
+    {% endif %}
+  </p>
+</div>
+
+{# ── Stats + action bar ───────────────────────────────────────────────────── #}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <div class="flex flex-wrap items-center gap-2">
+
+    {# Total #}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Goals</div>
+        <div class="text-lg font-bold tabular-nums leading-none" id="stat-total">{{ stats.total }}</div>
+      </div>
+    </div>
+
+    {# Active / Planning — hidden when 0 #}
+    <div id="stat-active-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.active == 0 %}hidden{% endif %}">
+      <span class="w-2 h-2 rounded-full bg-success animate-pulse shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Running</div>
+        <div class="text-lg font-bold tabular-nums text-success leading-none" id="stat-active">{{ stats.active }}</div>
+      </div>
+    </div>
+
+    {# Completed — hidden when 0 #}
+    <div id="stat-completed-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.completed == 0 %}hidden{% endif %}">
+      <span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Done</div>
+        <div class="text-lg font-bold tabular-nums text-primary leading-none" id="stat-completed">{{ stats.completed }}</div>
+      </div>
+    </div>
+
+    {# Failed — hidden when 0 #}
+    <div id="stat-failed-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.failed == 0 %}hidden{% endif %}">
+      <span class="w-2 h-2 rounded-full bg-error shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Failed</div>
+        <div class="text-lg font-bold tabular-nums text-error leading-none" id="stat-failed">{{ stats.failed }}</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button id="btn-goals-refresh" class="btn btn-ghost btn-sm gap-1.5" title="Refresh" data-action="goals:refreshNow">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Refresh
+    </button>
+    {% if templates %}
+    <button data-dialog-open="modal-templates" class="btn btn-ghost btn-sm gap-1.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      Templates ({{ templates|length }})
+    </button>
+    {% endif %}
+    {% if goal_engine_enabled %}
+    <button data-dialog-open="modal-create" class="btn btn-primary btn-sm btn-glow gap-1.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      New Goal
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Goal Cards ───────────────────────────────────────────────────────────── #}
+{% if not goals %}
+{{ empty_state("No goals yet", "Create a goal and WASP will autonomously plan and execute it step by step.", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01") }}
+{% else %}
+<div class="grid grid-cols-1 gap-4">
+  {% for g in goals %}
+  {%- set step_pct = ((g.step_count / g.max_steps * 100) | int) if g.max_steps > 0 else 0 %}
+  <div class="card bg-base-100 shadow-sm wasp-accent" data-goal-id="{{ g.id }}">
+    <div class="card-body p-5 gap-3">
+
+      {# ── Top row: dot + info + actions ── #}
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0 flex-1">
+
+          {# State dot #}
+          <div class="shrink-0 mt-1.5">
+            {% if g.state == 'active' %}
+            <span class="goal-dot w-3 h-3 rounded-full bg-success animate-pulse block" title="Active"></span>
+            {% elif g.state == 'planning' %}
+            <span class="goal-dot w-3 h-3 rounded-full bg-info animate-pulse block" title="Planning"></span>
+            {% elif g.state == 'paused' %}
+            <span class="goal-dot w-3 h-3 rounded-full bg-warning block" title="Paused"></span>
+            {% elif g.state == 'completed' %}
+            <span class="goal-dot w-3 h-3 rounded-full bg-primary block" title="Completed"></span>
+            {% else %}
+            <span class="goal-dot w-3 h-3 rounded-full bg-error block" title="Failed"></span>
+            {% endif %}
+          </div>
+
+          <div class="min-w-0 flex-1">
+            {# Title #}
+            <h3 class="font-bold text-sm leading-snug" title="{{ g.objective }}">{{ g.title or g.objective[:70] }}</h3>
+
+            {# Badges row — separated from title #}
+            <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+              {# State #}
+              {% if g.state == 'active' %}
+              <span class="goal-state-badge badge badge-success badge-sm">ACTIVE</span>
+              {% elif g.state == 'planning' %}
+              <span class="goal-state-badge badge badge-info badge-sm">PLANNING</span>
+              {% elif g.state == 'paused' %}
+              <span class="goal-state-badge badge badge-warning badge-sm">PAUSED</span>
+              {% elif g.state == 'completed' %}
+              <span class="goal-state-badge badge badge-success badge-outline badge-sm">✓ Done</span>
+              {% else %}
+              <span class="goal-state-badge badge badge-error badge-sm">FAILED</span>
+              {% endif %}
+              {# Autonomy mode #}
+              {% if g.autonomy_mode == 'full' %}
+              <span class="badge badge-success badge-outline badge-sm" title="Full autonomy — runs all tasks without confirmation">FULL AUTO</span>
+              {% elif g.autonomy_mode == 'semi' %}
+              <span class="badge badge-warning badge-outline badge-sm" title="Semi-auto — confirms high-risk tasks">SEMI AUTO</span>
+              {% else %}
+              <span class="badge badge-error badge-outline badge-sm" title="Assist — confirms every task">ASSIST</span>
+              {% endif %}
+              {# Template origin #}
+              {% if g.template_name %}
+              <span class="badge badge-ghost badge-sm text-base-content/40" title="From template: {{ g.template_name }}">⬡ {{ g.template_name }}</span>
+              {% endif %}
+              {# Alerts — shown only when triggered #}
+              {% if g.stability_locked %}
+              <span class="badge badge-error badge-sm animate-pulse" title="{{ g.stability_intervention_reason }}">🔒 Locked</span>
+              {% elif g.stability_in_backoff %}
+              <span class="badge badge-warning badge-sm" title="Exponential backoff in progress">⏸ Backoff</span>
+              {% endif %}
+              {% if g.budget_exceeded %}
+              <span class="badge badge-error badge-sm" title="Budget exceeded: {{ g.budget_exceeded_dimension }}">💸 Budget limit</span>
+              {% endif %}
+            </div>
+
+            {# Constraints — only if set #}
+            {% if g.constraints %}
+            <p class="text-xs text-base-content/45 mt-1.5 line-clamp-1">⚠ {{ g.constraints }}</p>
+            {% endif %}
+
+            {# Meta stats row #}
+            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-2 text-xs text-base-content/50">
+              {# Tasks completed vs total #}
+              <span class="tabular-nums">{{ g.total_tasks }} task{{ 's' if g.total_tasks != 1 }}</span>
+              {# Steps used vs budget #}
+              {% if g.step_count > 0 %}
+              <span class="text-base-content/30">·</span>
+              <span class="tabular-nums {% if step_pct >= 80 %}text-error font-medium{% elif step_pct >= 60 %}text-warning{% endif %}"
+                title="Steps used out of max budget">
+                {{ g.step_count }}/{{ g.max_steps }} steps
+              </span>
+              {% endif %}
+              {# Replans — only if any #}
+              {% if g.replan_count > 0 %}
+              <span class="text-base-content/30">·</span>
+              <span class="text-warning tabular-nums" title="Number of times the plan was revised">{{ g.replan_count }} replan{{ 's' if g.replan_count != 1 }}</span>
+              {% endif %}
+              {# Consecutive failures warning #}
+              {% if g.stability_consecutive_failures >= 2 %}
+              <span class="text-base-content/30">·</span>
+              <span class="text-warning">{{ g.stability_consecutive_failures }} consecutive failures</span>
+              {% endif %}
+              {# Created at #}
+              {% if g.created_at %}
+              <span class="text-base-content/30">·</span>
+              <span data-ts="{{ g.created_at }}Z" title="{{ g.created_at }}">{{ g.created_at }}</span>
+              {% endif %}
+              {# Runtime — ticking for active, static for completed #}
+              {% if g.state in ('active', 'planning') and g.started_at %}
+              <span class="text-base-content/30">·</span>
+              <span class="text-success runtime-counter tabular-nums" data-started="{{ g.started_at }}Z">{{ g.runtime_s }}s</span>
+              {% elif g.runtime_s > 0 %}
+              <span class="text-base-content/30">·</span>
+              <span>{{ g.runtime_s }}s total</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# Action buttons #}
+        <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+          {# Autonomy mode switcher — non-terminal only #}
+          {% if g.state not in ('completed', 'failed', 'cancelled') %}
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost btn-xs gap-1" title="Switch autonomy mode">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+              </svg>
+              Mode
+            </label>
+            <ul tabindex="0" class="dropdown-content z-50 menu p-1 shadow bg-base-200 rounded-box w-36 text-xs">
+              <li><a data-action="goals:setAutonomy" data-id="{{ g.id|e }}" data-mode="assist" class="{% if g.autonomy_mode == 'assist' %}font-bold text-error{% endif %}">ASSIST</a></li>
+              <li><a data-action="goals:setAutonomy" data-id="{{ g.id|e }}" data-mode="semi" class="{% if g.autonomy_mode == 'semi' %}font-bold text-warning{% endif %}">SEMI</a></li>
+              <li><a data-action="goals:setAutonomy" data-id="{{ g.id|e }}" data-mode="full" class="{% if g.autonomy_mode == 'full' %}font-bold text-success{% endif %}">FULL</a></li>
+            </ul>
+          </div>
+          {% endif %}
+
+          {% if g.state in ('active', 'planning') %}
+          <button data-action="goals:pauseGoal" data-id="{{ g.id|e }}" class="btn btn-warning btn-xs btn-outline">Pause</button>
+          {% elif g.state == 'paused' %}
+          <button data-action="goals:resumeGoal" data-id="{{ g.id|e }}" class="btn btn-success btn-xs btn-outline">Resume</button>
+          {% endif %}
+          {% if g.state not in ('completed', 'failed', 'cancelled') %}
+          <button data-action="goals:confirmCancelGoal" data-id="{{ g.id|e }}" class="btn btn-error btn-xs btn-outline">Cancel</button>
+          {% endif %}
+          <button data-action="goals:confirmDeleteGoal" data-id="{{ g.id|e }}" class="btn btn-error btn-xs" title="Delete permanently">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+          {% if g.state == 'completed' %}
+          <button data-action="goals:openSaveTemplate" data-id="{{ g.id|e }}" class="btn btn-ghost btn-xs" title="Save as template">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+            </svg>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── Progress bar (only when there are tasks) ── #}
+      {% if g.total_tasks > 0 %}
+      <div>
+        <div class="flex items-center justify-between text-xs text-base-content/50 mb-1">
+          <span class="goal-tasks-label tabular-nums">{{ g.completed_tasks }}/{{ g.total_tasks }} task{{ 's' if g.total_tasks != 1 }} completed</span>
+          <span class="goal-progress-pct tabular-nums font-medium">{{ g.progress | round(0) | int }}%</span>
+        </div>
+        <progress class="goal-progress-bar progress {% if g.state == 'completed' %}progress-success{% elif g.state == 'failed' %}progress-error{% else %}progress-success{% endif %} h-2 w-full"
+          value="{{ g.progress }}" max="100"></progress>
+      </div>
+      {% endif %}
+
+      {# ── Active task indicator ── #}
+      {% if g.current_task_desc and g.state == 'active' %}
+      <div class="flex items-center gap-2 text-xs text-base-content/55 goal-current-task bg-base-200/50 rounded-lg px-3 py-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 animate-spin text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="font-mono text-primary shrink-0">{{ g.current_skill }}</span>
+        <span class="text-base-content/40 shrink-0">—</span>
+        <span class="truncate">{{ g.current_task_desc }}</span>
+      </div>
+      {% endif %}
+
+      {# ── Error ── #}
+      {% if g.error %}
+      <div class="text-xs text-error bg-error/10 rounded-lg px-3 py-2 leading-relaxed">{{ g.error }}</div>
+      {% endif %}
+
+      {# ── Telemetry (only shown when non-zero events occurred) ── #}
+      {% set has_tel = g.telemetry_policy_blocks > 0 or g.telemetry_budget_exceeded_events > 0 or g.telemetry_stability_interventions > 0 %}
+      {% if has_tel %}
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/45 border-t border-base-300/60 pt-2">
+        {% if g.telemetry_policy_blocks > 0 %}
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-error/70 shrink-0"></span>
+          {{ g.telemetry_policy_blocks }} policy block{{ 's' if g.telemetry_policy_blocks != 1 }}
+        </span>
+        {% endif %}
+        {% if g.telemetry_budget_exceeded_events > 0 %}
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-warning/70 shrink-0"></span>
+          {{ g.telemetry_budget_exceeded_events }} budget exceeded
+        </span>
+        {% endif %}
+        {% if g.telemetry_stability_interventions > 0 %}
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-info/70 shrink-0"></span>
+          {{ g.telemetry_stability_interventions }} stability intervention{{ 's' if g.telemetry_stability_interventions != 1 }}
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# ── Task DAG (collapsible) ── #}
+      {% if g.nodes %}
+      <details class="group">
+        <summary class="flex items-center gap-1.5 text-xs text-base-content/50 cursor-pointer select-none hover:text-base-content/80 transition-colors list-none w-fit">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform group-open:rotate-90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          Task plan ({{ g.nodes|length }} task{{ 's' if g.nodes|length != 1 }})
+          <span class="ml-3 flex gap-0.5 dag-toggle-span">
+            <button id="dag-lb-{{ g.id }}" class="btn btn-ghost btn-xs px-1 py-0 min-h-0 h-5 text-[10px] btn-active" data-action="goals:dagList" data-id="{{ g.id|e }}" title="List view">≡</button>
+            <button id="dag-gb-{{ g.id }}" class="btn btn-ghost btn-xs px-1 py-0 min-h-0 h-5 text-[10px]" data-action="goals:dagGraph" data-id="{{ g.id|e }}" title="DAG graph">⬡</button>
+          </span>
+        </summary>
+
+        {# List view #}
+        <div id="dag-list-{{ g.id }}" class="mt-2 space-y-1.5">
+          {% for node in g.nodes %}
+          <div class="flex items-start gap-2 p-2 rounded-lg bg-base-200 text-xs">
+            <div class="shrink-0 mt-0.5">
+              {% if node.status == 'done' %}
+              <svg class="h-3.5 w-3.5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              {% elif node.status == 'running' %}
+              <svg class="h-3.5 w-3.5 text-info animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              {% elif node.status == 'failed' %}
+              <svg class="h-3.5 w-3.5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              {% elif node.status == 'blocked' %}
+              <svg class="h-3.5 w-3.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              {% else %}
+              <svg class="h-3.5 w-3.5 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="9" stroke-width="2"/>
+              </svg>
+              {% endif %}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-mono text-base-content/50 text-[10px]">{{ node.id }}</span>
+                <span class="font-medium">{{ node.description }}</span>
+                <span class="font-mono text-primary text-[10px] bg-primary/10 px-1 py-0.5 rounded">{{ node.skill_name }}</span>
+                {% if node.risk_level == 'critical' %}
+                <span class="text-error text-[10px] font-bold">CRITICAL</span>
+                {% elif node.risk_level == 'high' %}
+                <span class="text-error text-[10px] font-bold">HIGH</span>
+                {% elif node.risk_level == 'medium' %}
+                <span class="text-warning text-[10px]">medium</span>
+                {% endif %}
+                {% if node.retries > 0 %}
+                <span class="text-warning text-[10px]">retry {{ node.retries }}/{{ node.max_retries }}</span>
+                {% endif %}
+              </div>
+              {% if node.dependencies %}
+              <div class="text-[10px] text-base-content/40 mt-0.5">deps: {{ node.dependencies | join(', ') }}</div>
+              {% endif %}
+              {% if node.output_summary %}
+              <div class="text-base-content/50 mt-0.5 line-clamp-1">{{ node.output_summary }}</div>
+              {% elif node.error %}
+              <div class="text-error mt-0.5 line-clamp-1">{{ node.error }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        {# Graph view #}
+        <div id="dag-graph-{{ g.id }}" class="mt-2 hidden overflow-x-auto rounded-lg bg-base-200/30 p-2"></div>
+      </details>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Embed DAG data for graph view #}
+<script nonce="{{ request.state.csp_nonce }}">
+var DAG_DATA = {};
+{% for g in goals %}{% if g.nodes %}
+DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
+{% endif %}{% endfor %}
+</script>
+
+{% endif %}{# end goals #}
+
+{# ── Templates Modal ─────────────────────────────────────────────────────── #}
+{% if templates %}
+<dialog id="modal-templates" class="modal">
+  <div class="modal-box max-w-xl">
+    <h3 class="font-bold text-lg mb-4">Goal Templates</h3>
+    <div class="space-y-2 max-h-80 overflow-y-auto">
+      {% for t in templates %}
+      <div class="flex items-center justify-between p-3 rounded-lg bg-base-200 text-sm">
+        <div class="min-w-0 flex-1">
+          <div class="font-medium">{{ t.name }}</div>
+          {% if t.description %}
+          <div class="text-xs text-base-content/50 line-clamp-1">{{ t.description }}</div>
+          {% endif %}
+          <div class="text-[10px] text-base-content/40 mt-0.5">
+            {{ t.task_count }} tasks · {{ t.success_rate | int }}% success · used {{ t.use_count }}×
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 ml-3">
+          <button data-action="goals:useTemplate" data-id="{{ t.id|e }}" data-name="{{ t.name|e }}" class="btn btn-primary btn-xs">Use</button>
+          <button data-action="goals:confirmDeleteTemplate" data-id="{{ t.id|e }}" class="btn btn-ghost btn-xs text-error" title="Delete template">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="modal-action mt-4">
+      <button data-dialog-close="modal-templates" class="btn btn-ghost btn-sm">Close</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
+
+{# ── Save Template Modal ──────────────────────────────────────────────────── #}
+<dialog id="modal-save-template" class="modal">
+  <div class="modal-box max-w-sm">
+    <h3 class="font-bold text-lg mb-4">Save as Template</h3>
+    <input type="hidden" id="save-tpl-goal-id">
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Template Name</span></label>
+      <input type="text" id="save-tpl-name" class="input input-bordered input-sm w-full" placeholder="e.g. BTC Price Report">
+    </div>
+    <div class="modal-action mt-4">
+      <button data-dialog-close="modal-save-template" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-save-template" class="btn btn-primary btn-sm" data-action="goals:submitSaveTemplate">Save Template</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Cancel Goal Modal ────────────────────────────────────────────────────── #}
+<dialog id="modal-cancel-goal" class="modal">
+  <div class="modal-box max-w-sm">
+    <h3 class="font-bold text-lg text-warning mb-2">Cancel Goal</h3>
+    <p class="text-sm text-base-content/70">Cancel this goal? It will be stopped and cannot be resumed.</p>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-cancel-goal" class="btn btn-ghost btn-sm">Keep Running</button>
+      <button id="btn-exec-cancel-goal" class="btn btn-warning btn-sm" data-action="goals:execCancelGoal">Cancel Goal</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Delete Goal Modal ────────────────────────────────────────────────────── #}
+<dialog id="modal-delete-goal" class="modal">
+  <div class="modal-box max-w-sm">
+    <h3 class="font-bold text-lg text-error mb-2">Delete Goal</h3>
+    <p class="text-sm text-base-content/70">Permanently delete <strong id="delete-goal-title"></strong>? This cannot be undone.</p>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-delete-goal" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-exec-delete-goal" class="btn btn-error btn-sm" data-action="goals:execDeleteGoal">Delete</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Delete Template Modal ────────────────────────────────────────────────── #}
+<dialog id="modal-delete-template" class="modal">
+  <div class="modal-box max-w-sm">
+    <h3 class="font-bold text-lg text-error mb-2">Delete Template</h3>
+    <p class="text-sm text-base-content/70">Permanently delete this template?</p>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-delete-template" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-exec-delete-template" class="btn btn-error btn-sm" data-action="goals:execDeleteTemplate">Delete</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Create Goal Modal ────────────────────────────────────────────────────── #}
+{% if goal_engine_enabled %}
+<dialog id="modal-create" class="modal">
+  <div class="modal-box max-w-xl">
+    <h3 class="font-bold text-lg mb-4">New Autonomous Goal</h3>
+    <form class="space-y-4" id="create-goal-form">
+      <div class="form-control">
+        <label class="label"><span class="label-text font-medium">Objective</span></label>
+        <textarea id="goal-objective" rows="3" class="textarea textarea-bordered text-sm w-full"
+          placeholder="Search for the current Bitcoin price and send me a market analysis report" required></textarea>
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Constraints</span>
+          <span class="label-text-alt text-base-content/40">Optional</span>
+        </label>
+        <textarea id="goal-constraints" rows="2" class="textarea textarea-bordered text-sm w-full"
+          placeholder="Only use web_search and send_email. Do not modify files."></textarea>
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Success Criteria</span>
+          <span class="label-text-alt text-base-content/40">Optional</span>
+        </label>
+        <input type="text" id="goal-success" class="input input-bordered input-sm w-full"
+          placeholder="Report sent to Telegram with price and trend">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="form-control">
+          <label class="label"><span class="label-text font-medium">Max Steps</span></label>
+          <input type="number" id="goal-max-steps" class="input input-bordered input-sm w-full" value="50" min="5" max="200">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text font-medium">Max Runtime (s)</span></label>
+          <input type="number" id="goal-max-runtime" class="input input-bordered input-sm w-full" value="3600" min="60" max="86400">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">Autonomy Mode</span>
+            <span class="label-text-alt">
+              <span class="tooltip tooltip-left" data-tip="SEMI: auto LOW/MEDIUM, confirm HIGH+CRITICAL. FULL: auto all except CRITICAL. ASSIST: confirm every task.">?</span>
+            </span>
+          </label>
+          <select id="goal-autonomy" class="select select-bordered select-sm w-full">
+            <option value="semi" selected>SEMI (recommended)</option>
+            <option value="full">FULL (autonomous)</option>
+            <option value="assist">ASSIST (always confirm)</option>
+          </select>
+        </div>
+        {% if templates %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">From Template</span>
+            <span class="label-text-alt text-base-content/40">Optional</span>
+          </label>
+          <select id="goal-template" class="select select-bordered select-sm w-full">
+            <option value="">— Plan from scratch —</option>
+            {% for t in templates %}
+            <option value="{{ t.id }}">{{ t.name }} ({{ t.task_count }} tasks)</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      </div>
+    </form>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-create" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-create-goal" class="btn btn-primary btn-sm btn-glow" data-action="goals:submitCreate">Create & Plan</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+const CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+async function postJSON(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': CSRF,
+      'x-requested-with': 'xmlhttprequest',
+    },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 5)    return 'just now';
+  if (diff < 60)   return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function fmtRuntime(startedIso) {
+  if (!startedIso) return '';
+  const s = Math.floor((Date.now() - new Date(startedIso)) / 1000);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+}
+
+// ── Timestamps & runtime counters ────────────────────────────────────────────
+function renderTimestamps() {
+  document.querySelectorAll('[data-ts]').forEach(el => {
+    el.textContent = timeAgo(el.getAttribute('data-ts'));
+  });
+  document.querySelectorAll('.runtime-counter').forEach(el => {
+    const s = el.getAttribute('data-started');
+    if (s) el.textContent = fmtRuntime(s);
+  });
+}
+renderTimestamps();
+setInterval(renderTimestamps, 5000);
+
+// ── Auto-refresh (8s) ────────────────────────────────────────────────────────
+async function refreshNow() {
+  try {
+    const r = await fetch('/goals/api/status', {
+      headers: {'x-requested-with': 'xmlhttprequest'},
+    });
+    const d = await r.json();
+
+    // Stats bar
+    const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const setWrap = (wid, nid, v) => {
+      const w = document.getElementById(wid);
+      if (w) w.classList.toggle('hidden', v === 0);
+      setNum(nid, v);
+    };
+    setNum('stat-total', d.total);
+    setWrap('stat-active-wrap', 'stat-active', d.active);
+    setWrap('stat-completed-wrap', 'stat-completed', d.completed);
+    setWrap('stat-failed-wrap', 'stat-failed', d.failed);
+
+    // Update active/planning goal cards
+    for (const g of (d.goals || [])) {
+      if (['active', 'planning', 'paused'].includes(g.state)) updateGoalCard(g);
+    }
+  } catch (e) { console.warn('[goals] Background refresh failed:', e.message); }
+}
+setInterval(refreshNow, 8000);
+
+function updateGoalCard(g) {
+  const card = document.querySelector(`[data-goal-id="${g.id}"]`);
+  if (!card) return;
+
+  // Progress bar + percentage + tasks label
+  const bar = card.querySelector('.goal-progress-bar');
+  if (bar) bar.value = g.progress;
+  const pct = card.querySelector('.goal-progress-pct');
+  if (pct) pct.textContent = Math.round(g.progress) + '%';
+  const tl = card.querySelector('.goal-tasks-label');
+  if (tl && g.total_tasks > 0) {
+    tl.textContent = `${g.completed_tasks}/${g.total_tasks} task${g.total_tasks !== 1 ? 's' : ''} completed`;
+  }
+
+  // Current task
+  const ct = card.querySelector('.goal-current-task span:last-child');
+  if (ct && g.current_task_desc) {
+    ct.innerHTML = `Running: <span class="font-mono text-primary">${escHtml(g.current_skill)}</span> — ${escHtml(g.current_task_desc)}`;
+  }
+
+  // Runtime counter
+  const rc = card.querySelector('.runtime-counter');
+  if (rc && g.started_at) {
+    rc.setAttribute('data-started', g.started_at + 'Z');
+    rc.textContent = fmtRuntime(g.started_at + 'Z');
+  }
+}
+
+// ── DAG visualization ────────────────────────────────────────────────────────
+function dagList(goalId) {
+  document.getElementById('dag-list-' + goalId).classList.remove('hidden');
+  document.getElementById('dag-graph-' + goalId).classList.add('hidden');
+  document.getElementById('dag-lb-' + goalId).classList.add('btn-active');
+  document.getElementById('dag-gb-' + goalId).classList.remove('btn-active');
+}
+
+function dagGraph(goalId) {
+  document.getElementById('dag-list-' + goalId).classList.add('hidden');
+  const g = document.getElementById('dag-graph-' + goalId);
+  g.classList.remove('hidden');
+  document.getElementById('dag-lb-' + goalId).classList.remove('btn-active');
+  document.getElementById('dag-gb-' + goalId).classList.add('btn-active');
+  if (!g.querySelector('svg')) renderDagSvg(goalId, DAG_DATA[goalId] || []);
+}
+
+function escSvg(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escHtml(s) { return escSvg(s); }
+
+function renderDagSvg(goalId, nodes) {
+  const div = document.getElementById('dag-graph-' + goalId);
+  if (!nodes || !nodes.length) {
+    div.innerHTML = '<p class="text-xs text-base-content/40 italic p-2">No tasks to display.</p>';
+    return;
+  }
+  const map = {};
+  nodes.forEach(n => { map[n.id] = n; });
+  const lv = {}, seen = {};
+  function getLevel(id) {
+    if (lv[id] !== undefined) return lv[id];
+    if (seen[id]) return 0;
+    seen[id] = true;
+    const deps = (map[id] && map[id].dependencies) ? map[id].dependencies : [];
+    if (!deps.length) return (lv[id] = 0);
+    return (lv[id] = 1 + Math.max(...deps.map(getLevel)));
+  }
+  nodes.forEach(n => getLevel(n.id));
+  const byLv = {};
+  nodes.forEach(n => {
+    const l = lv[n.id] || 0;
+    if (!byLv[l]) byLv[l] = [];
+    byLv[l].push(n);
+  });
+  const maxLv = Math.max(...Object.keys(byLv).map(Number));
+  const maxPer = Math.max(...Object.values(byLv).map(a => a.length));
+  const nW = 158, nH = 40, gX = 52, gY = 10, pad = 12;
+  const svgW = pad * 2 + (maxLv + 1) * (nW + gX) - gX;
+  const svgH = pad * 2 + maxPer * (nH + gY) - gY;
+  const pos = {};
+  Object.keys(byLv).forEach(l => {
+    const col = parseInt(l);
+    const grp = byLv[l];
+    const gh = grp.length * (nH + gY) - gY;
+    const sy = pad + Math.max(0, (svgH - 2 * pad - gh) / 2);
+    grp.forEach((n, i) => { pos[n.id] = { x: pad + col * (nW + gX), y: sy + i * (nH + gY) }; });
+  });
+  const sc = { done: '#22c55e', running: '#3b82f6', failed: '#ef4444', blocked: '#f59e0b' };
+  const mid = goalId.replace(/[^a-z0-9]/gi, '').slice(-8);
+  const p = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" data-ds="1">`,
+    `<defs><marker id="ar${mid}" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8z" fill="currentColor" opacity="0.3"/></marker></defs>`,
+  ];
+  nodes.forEach(n => {
+    (n.dependencies || []).forEach(d => {
+      const f = pos[d], t = pos[n.id];
+      if (!f || !t) return;
+      const x1 = f.x + nW, y1 = f.y + nH / 2, x2 = t.x, y2 = t.y + nH / 2, cx = (x1 + x2) / 2;
+      p.push(`<path d="M${x1},${y1}C${cx},${y1} ${cx},${y2} ${x2},${y2}" stroke="currentColor" stroke-opacity="0.2" fill="none" stroke-width="1.5" marker-end="url(#ar${mid})"/>`);
+    });
+  });
+  nodes.forEach(n => {
+    const q = pos[n.id]; if (!q) return;
+    const c = sc[n.status] || '#9ca3af';
+    const desc = escSvg((n.description || n.id || '').slice(0, 22) + ((n.description || '').length > 22 ? '…' : ''));
+    const skill = escSvg((n.skill_name || '').slice(0, 16));
+    p.push(`<g transform="translate(${q.x},${q.y})">` +
+      `<rect width="${nW}" height="${nH}" rx="5" fill="currentColor" fill-opacity="0.04" stroke="${c}" stroke-width="1.5" stroke-opacity="0.7"/>` +
+      `<text x="8" y="15" font-size="10" fill="currentColor" opacity="0.75">${desc}</text>` +
+      `<text x="8" y="29" font-size="9" fill="${c}" font-family="monospace">${skill}</text>` +
+      (n.status === 'done' ? `<circle cx="${nW - 9}" cy="9" r="4" fill="${c}" opacity="0.8"/>` : '') +
+      (n.status === 'running' ? `<circle cx="${nW - 9}" cy="9" r="4" fill="none" stroke="${c}" stroke-width="1.5" opacity="0.8"/>` : '') +
+      '</g>');
+  });
+  p.push('</svg>');
+  div.innerHTML = p.join('');
+  if (window.applyDynStyles) applyDynStyles(div);
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+async function submitCreate() {
+  const objective = document.getElementById('goal-objective').value.trim();
+  const constraints = document.getElementById('goal-constraints').value.trim();
+  const success_criteria = document.getElementById('goal-success').value.trim();
+  const max_steps = parseInt(document.getElementById('goal-max-steps').value) || 50;
+  const max_runtime_seconds = parseInt(document.getElementById('goal-max-runtime').value) || 3600;
+  const autonomy_mode = document.getElementById('goal-autonomy')?.value || 'semi';
+  const template_id = document.getElementById('goal-template')?.value || '';
+
+  if (!objective) { showToast('Objective is required', 'error'); return; }
+
+  const btn = document.getElementById('btn-create-goal');
+  btn.disabled = true;
+  btn.textContent = template_id ? 'Loading template…' : 'Planning…';
+
+  const d = await postJSON('/goals/create', {
+    objective, constraints, success_criteria,
+    max_steps, max_runtime_seconds,
+    autonomy_mode, template_id: template_id || undefined,
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Create & Plan';
+
+  if (d.ok) {
+    const stateLabel = d.state === 'active' ? `Active — ${d.tasks} tasks` : d.state;
+    showToast(`Goal created (${stateLabel}, mode: ${d.autonomy_mode})`);
+    document.getElementById('modal-create').close();
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    showToast(d.error || 'Error creating goal', 'error');
+  }
+}
+
+// ── Pause / Resume ────────────────────────────────────────────────────────────
+async function pauseGoal(goal_id) {
+  const d = await postJSON('/goals/pause', {goal_id});
+  if (d.ok) { showToast('Goal paused'); setTimeout(() => location.reload(), 600); }
+  else showToast(d.message || d.error || 'Error', 'error');
+}
+
+async function resumeGoal(goal_id) {
+  const d = await postJSON('/goals/resume', {goal_id});
+  if (d.ok) { showToast('Goal resumed'); setTimeout(() => location.reload(), 600); }
+  else showToast(d.message || d.error || 'Error', 'error');
+}
+
+// ── Cancel ────────────────────────────────────────────────────────────────────
+let _pendingCancelGoalId = null;
+function confirmCancelGoal(id) {
+  _pendingCancelGoalId = id;
+  document.getElementById('modal-cancel-goal').showModal();
+}
+async function execCancelGoal() {
+  document.getElementById('modal-cancel-goal').close();
+  if (!_pendingCancelGoalId) return;
+  const goal_id = _pendingCancelGoalId; _pendingCancelGoalId = null;
+  const d = await postJSON('/goals/cancel', {goal_id});
+  if (d.ok) {
+    showToast('Goal cancelled');
+    document.querySelector(`[data-goal-id="${goal_id}"]`)?.remove();
+  } else {
+    showToast(d.message || d.error || 'Error', 'error');
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+let _pendingDeleteGoalId = null;
+function confirmDeleteGoal(id) {
+  _pendingDeleteGoalId = id;
+  const card = document.querySelector(`[data-goal-id="${id}"]`);
+  const title = card ? card.querySelector('h3')?.textContent?.trim() : id;
+  document.getElementById('delete-goal-title').textContent = title || id;
+  document.getElementById('modal-delete-goal').showModal();
+}
+async function execDeleteGoal() {
+  document.getElementById('modal-delete-goal').close();
+  if (!_pendingDeleteGoalId) return;
+  const goal_id = _pendingDeleteGoalId; _pendingDeleteGoalId = null;
+  const d = await postJSON('/goals/delete', {goal_id});
+  if (d.ok) {
+    showToast('Goal deleted');
+    document.querySelector(`[data-goal-id="${goal_id}"]`)?.remove();
+    const el = document.getElementById('stat-total');
+    if (el) el.textContent = Math.max(0, Number(el.textContent) - 1);
+  } else {
+    showToast(d.error || 'Error deleting goal', 'error');
+  }
+}
+
+// ── Autonomy ──────────────────────────────────────────────────────────────────
+async function setAutonomy(goal_id, mode) {
+  const d = await postJSON('/goals/set_autonomy', {goal_id, autonomy_mode: mode});
+  if (d.ok) { showToast(d.message || `Autonomy → ${mode}`); setTimeout(() => location.reload(), 600); }
+  else showToast(d.message || d.error || 'Error', 'error');
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+function openSaveTemplate(goal_id) {
+  document.getElementById('save-tpl-goal-id').value = goal_id;
+  document.getElementById('save-tpl-name').value = '';
+  document.getElementById('modal-save-template').showModal();
+}
+
+async function submitSaveTemplate() {
+  const goal_id = document.getElementById('save-tpl-goal-id').value;
+  const name = document.getElementById('save-tpl-name').value.trim();
+  if (!name) { showToast('Template name is required', 'error'); return; }
+  const d = await postJSON('/goals/save_template', {goal_id, name});
+  if (d.ok) {
+    showToast(`Template "${d.name}" saved`);
+    document.getElementById('modal-save-template').close();
+    setTimeout(() => location.reload(), 800);
+  } else {
+    showToast(d.error || 'Error saving template', 'error');
+  }
+}
+
+let _pendingDeleteTemplateId = null;
+function confirmDeleteTemplate(id) {
+  _pendingDeleteTemplateId = id;
+  document.getElementById('modal-delete-template').showModal();
+}
+async function execDeleteTemplate() {
+  document.getElementById('modal-delete-template').close();
+  if (!_pendingDeleteTemplateId) return;
+  const template_id = _pendingDeleteTemplateId; _pendingDeleteTemplateId = null;
+  const d = await postJSON('/goals/delete_template', {template_id});
+  if (d.ok) { showToast('Template deleted'); setTimeout(() => location.reload(), 600); }
+  else showToast(d.error || 'Error', 'error');
+}
+
+function useTemplate(template_id, name) {
+  document.getElementById('modal-templates').close();
+  const sel = document.getElementById('goal-template');
+  if (sel) sel.value = template_id;
+  document.getElementById('modal-create').showModal();
+  showToast(`Template "${name}" selected`);
+}
+
+// showToast alias
+function showToast(msg, type) { if (window.WaspToast) WaspToast.show(msg, type || 'success'); }
+
+registerWaspActions('goals', {
+  'setAutonomy':           function(el)    { setAutonomy(el.dataset.id, el.dataset.mode); },
+  'pauseGoal':             function(el)    { pauseGoal(el.dataset.id); },
+  'resumeGoal':            function(el)    { resumeGoal(el.dataset.id); },
+  'confirmCancelGoal':     function(el)    { confirmCancelGoal(el.dataset.id); },
+  'confirmDeleteGoal':     function(el)    { confirmDeleteGoal(el.dataset.id); },
+  'openSaveTemplate':      function(el)    { openSaveTemplate(el.dataset.id); },
+  'dagList':               function(el, e) { e.stopPropagation(); dagList(el.dataset.id); },
+  'dagGraph':              function(el, e) { e.stopPropagation(); dagGraph(el.dataset.id); },
+  'useTemplate':           function(el)    { useTemplate(el.dataset.id, el.dataset.name); },
+  'confirmDeleteTemplate': function(el)    { confirmDeleteTemplate(el.dataset.id); },
+  'refreshNow':            function()      { refreshNow(); },
+  'submitSaveTemplate':    function()      { submitSaveTemplate(); },
+  'execCancelGoal':        function()      { execCancelGoal(); },
+  'execDeleteGoal':        function()      { execDeleteGoal(); },
+  'execDeleteTemplate':    function()      { execDeleteTemplate(); },
+  'submitCreate':          function()      { submitCreate(); },
+});
+</script>
+{% endblock %}

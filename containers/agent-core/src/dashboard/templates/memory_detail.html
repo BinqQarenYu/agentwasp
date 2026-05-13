@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Memory Detail - Agent Wasp{% endblock %}
+{% block content %}
+<div class="mb-4">
+    <a href="/memory" class="btn btn-ghost btn-sm gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Memory
+    </a>
+</div>
+
+{% if entry %}
+<div class="card bg-base-100 shadow-lg mb-6 card-hover wasp-accent">
+    <div class="card-body">
+        <h2 class="card-title text-xl">
+            <span class="badge badge-primary">{{ entry.memory_type.value }}</span>
+            <span class="font-mono text-sm text-base-content/60">{{ entry.id[:12] }}...</span>
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="bg-base-200 rounded-xl p-4">
+                <div class="text-xs text-base-content/60 mb-1">Summary</div>
+                <div class="font-medium">{{ entry.summary }}</div>
+            </div>
+            <div class="bg-base-200 rounded-xl p-4">
+                <div class="text-xs text-base-content/60 mb-1">Tags</div>
+                <div class="flex flex-wrap gap-1">
+                    {% for tag in entry.tags %}
+                    <span class="badge badge-primary badge-outline badge-sm">{{ tag }}</span>
+                    {% endfor %}
+                    {% if not entry.tags %}
+                    <span class="text-base-content/50">No tags</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="bg-base-200 rounded-xl p-4">
+                <div class="text-xs text-base-content/60 mb-1">Created</div>
+                <div>{{ entry.created_at }}</div>
+            </div>
+            <div class="bg-base-200 rounded-xl p-4">
+                <div class="text-xs text-base-content/60 mb-1">Updated</div>
+                <div>{{ entry.updated_at }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card bg-base-100 shadow-lg wasp-accent">
+    <div class="card-body">
+        <h3 class="card-title text-lg">Content</h3>
+        <div class="bg-base-200 rounded-xl p-4 overflow-x-auto">
+            <pre class="text-sm whitespace-pre-wrap"><code>{{ entry.content | tojson(indent=2) }}</code></pre>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+    <span>Memory entry not found.</span>
+</div>
+{% endif %}
+{% endblock %}

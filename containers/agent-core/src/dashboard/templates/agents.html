@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+{% from "macros.html" import empty_state %}
+{% block title %}Agents - Agent Wasp{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight">Agents</h1>
+        <p class="text-sm text-base-content/50 mt-0.5">
+            Autonomous workers with isolated memory and cognitive budgets
+            {% if not ao_enabled %}
+            <span class="badge badge-error badge-sm ml-2">Orchestrator disabled</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="flex items-center gap-2">
+        {% if ao_enabled %}
+        <button data-dialog-open="modal-create" class="btn btn-primary btn-sm gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Agent
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats bar -->
+<div class="flex flex-wrap items-center gap-2 mb-6" id="stats-bar">
+
+    {# Total — always visible #}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <div>
+            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Agents</div>
+            <div class="text-lg font-bold tabular-nums leading-none" id="stat-total">{{ stats.total }}</div>
+        </div>
+    </div>
+
+    {# Running — hidden when 0 #}
+    <div id="stat-running-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.running == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-success animate-pulse shrink-0"></span>
+        <div>
+            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Running</div>
+            <div class="text-lg font-bold tabular-nums text-success leading-none" id="stat-running">{{ stats.running }}</div>
+        </div>
+    </div>
+
+    {# Paused — hidden when 0 #}
+    <div id="stat-paused-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.paused == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-warning shrink-0"></span>
+        <div>
+            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Paused</div>
+            <div class="text-lg font-bold tabular-nums text-warning leading-none" id="stat-paused">{{ stats.paused }}</div>
+        </div>
+    </div>
+
+    {# Idle — hidden when 0 #}
+    <div id="stat-idle-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.idle == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-base-content/25 shrink-0"></span>
+        <div>
+            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Idle</div>
+            <div class="text-lg font-bold tabular-nums text-base-content/50 leading-none" id="stat-idle">{{ stats.idle }}</div>
+        </div>
+    </div>
+
+    {# Archived — hidden when 0 #}
+    <div id="stat-archived-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.archived == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-base-300 shrink-0"></span>
+        <div>
+            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Archived</div>
+            <div class="text-lg font-bold tabular-nums text-base-content/30 leading-none" id="stat-archived">{{ stats.archived }}</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Agent grid -->
+{% if not agents %}
+{{ empty_state("No agents yet", "Create an agent to run goals with isolated memory, capability sandboxes, and per-agent cognitive budgets.", "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z") }}
+{% else %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="agents-grid">
+{% for a in agents %}
+<div class="card bg-base-100 shadow-sm wasp-accent agent-card" data-agent-id="{{ a.id }}">
+    <div class="card-body p-5">
+
+        <!-- Row 1: status dot + name + link -->
+        <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+                <div class="flex-shrink-0 mt-1.5 agent-dot-wrap">
+                    {% if a.status == 'running' %}
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse block" title="Running"></span>
+                    {% elif a.status == 'paused' %}
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-warning block" title="Paused"></span>
+                    {% elif a.status == 'archived' %}
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-base-300 block" title="Archived"></span>
+                    {% else %}
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-base-content/20 block" title="Idle"></span>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>
+                    {% if a.description %}
+                    <p class="text-xs text-base-content/50 mt-0.5 line-clamp-1">{{ a.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="/agents/{{ a.id }}" class="btn btn-ghost btn-xs flex-shrink-0 text-base-content/30 hover:text-primary" title="Detail">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+
+        <!-- Row 2: badges -->
+        <div class="flex flex-wrap items-center gap-1 mt-1.5 agent-badges">
+            {% if a.status == 'running' %}
+            <span class="pill pill-sm pill-success"><span class="pill-pulse"></span>running</span>
+            {% elif a.status == 'paused' %}
+            <span class="pill pill-sm pill-warning">paused</span>
+            {% elif a.status == 'archived' %}
+            <span class="pill pill-sm pill-neutral">archived</span>
+            {% else %}
+            <span class="pill pill-sm pill-ghost">idle</span>
+            {% endif %}
+
+            {% if a.autonomy_mode == 'full' %}
+            <span class="pill pill-sm pill-success">FULL</span>
+            {% elif a.autonomy_mode == 'semi' %}
+            <span class="pill pill-sm pill-warning">SEMI</span>
+            {% else %}
+            <span class="pill pill-sm pill-danger">ASSIST</span>
+            {% endif %}
+
+            {% if a.budget_exceeded %}
+            <span class="pill pill-sm pill-danger animate-pulse">BUDGET!</span>
+            {% endif %}
+
+            {% if a.model_provider %}
+            <span class="pill pill-sm pill-ghost">{{ a.model_provider }}</span>
+            {% endif %}
+            {% if a.model_name %}
+            <span class="pill pill-sm pill-neutral">{{ a.model_name[:28] }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Mission block -->
+        {% if a.intent_description %}
+        <div class="mt-2 px-2.5 py-2 bg-base-200 rounded-lg text-xs text-base-content/70">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-base-content/35">Mission</span>
+            <p class="mt-0.5 line-clamp-2">{{ a.intent_description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Budget bars (only when agent is doing work) -->
+        {% if a.budget_used_planning > 0 or a.budget_used_steps > 0 %}
+        <div class="mt-3 space-y-1.5 agent-budget">
+            {% if a.budget_used_planning > 0 %}
+            <div>
+                <div class="flex justify-between text-xs text-base-content/40 mb-0.5">
+                    <span>Planning tokens</span>
+                    <span>{{ a.budget_used_planning }}/{{ a.budget_max_planning }}</span>
+                </div>
+                <progress class="progress {% if a.budget_pct_planning >= 80 %}progress-error{% elif a.budget_pct_planning >= 60 %}progress-warning{% else %}progress-primary{% endif %} h-1.5 w-full"
+                    value="{{ a.budget_pct_planning }}" max="100"></progress>
+            </div>
+            {% endif %}
+            {% if a.budget_used_steps > 0 %}
+            <div>
+                <div class="flex justify-between text-xs text-base-content/40 mb-0.5">
+                    <span>Steps executed</span>
+                    <span {% if a.budget_pct_steps >= 80 %}class="text-error"{% elif a.budget_pct_steps >= 60 %}class="text-warning"{% endif %}>
+                        {{ a.budget_used_steps }}/{{ a.budget_max_steps }}
+                    </span>
+                </div>
+                <progress class="progress {% if a.budget_pct_steps >= 80 %}progress-error{% elif a.budget_pct_steps >= 60 %}progress-warning{% else %}progress-secondary{% endif %} h-1.5 w-full"
+                    value="{{ a.budget_pct_steps }}" max="100"></progress>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Footer: goals + capabilities + actions -->
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-base-200">
+            <div class="flex items-center gap-3 text-xs text-base-content/45">
+                <span class="agent-goals">
+                    {% if a.active_goal_count > 0 %}
+                    <span class="text-success font-medium">{{ a.active_goal_count }}</span> active goal{{ 's' if a.active_goal_count != 1 }}
+                    {% else %}
+                    no active goals
+                    {% endif %}
+                </span>
+                {% if a.allowed_capabilities %}
+                <span class="tooltip" data-tip="Allowed: {{ a.allowed_capabilities|join(', ') }}">
+                    <span class="pill pill-sm pill-primary cursor-default">{{ a.allowed_capabilities|length }} cap{{ 's' if a.allowed_capabilities|length != 1 }}</span>
+                </span>
+                {% else %}
+                <span class="pill pill-sm pill-ghost">unrestricted</span>
+                {% endif %}
+                <span class="text-base-content/30" title="{{ a.created_at }}">
+                    <span data-ts="{{ a.created_at }}">{{ a.created_at[:10] }}</span>
+                </span>
+            </div>
+            <div class="flex items-center gap-1">
+                {% if a.status != 'archived' %}
+                {% if a.status in ['paused', 'idle'] %}
+                <button class="btn btn-xs btn-ghost text-success" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="resume" title="Resume">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </button>
+                {% else %}
+                <button class="btn btn-xs btn-ghost text-warning" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="pause" title="Pause">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                </button>
+                {% endif %}
+                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-warning" data-action="agents:confirmArchive" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Archive">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                    </svg>
+                </button>
+                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-error" data-action="agents:confirmDeleteAgent" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Delete permanently">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+
+<!-- ── Create Agent Modal ── -->
+<dialog id="modal-create" class="modal">
+    <div class="modal-box w-11/12 max-w-lg">
+        <h3 class="font-bold text-lg mb-4">New Agent</h3>
+        <div class="space-y-3">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Name <span class="text-error">*</span></span></label>
+                <input type="text" id="new-name" class="input input-bordered input-sm" placeholder="e.g., Research Agent" />
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Description</span></label>
+                <textarea id="new-desc" class="textarea textarea-bordered textarea-sm" rows="2" placeholder="Optional description"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Model Provider</span></label>
+                    <input type="text" id="new-provider" class="input input-bordered input-sm" placeholder="e.g., anthropic" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Model Name</span></label>
+                    <input type="text" id="new-model" class="input input-bordered input-sm" placeholder="e.g., claude-opus-4-6" />
+                </div>
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Autonomy Mode</span></label>
+                <select id="new-autonomy" class="select select-bordered select-sm">
+                    <option value="semi" selected>Semi — auto LOW/MEDIUM, confirm HIGH</option>
+                    <option value="full">Full — auto up to HIGH, confirm CRITICAL</option>
+                    <option value="assist">Assist — confirm everything</option>
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Allowed Capabilities</span>
+                    <span class="label-text-alt text-base-content/40">Empty = unrestricted</span>
+                </label>
+                <div class="flex flex-wrap gap-3">
+                    {% for cap in ['safe', 'monitored', 'controlled', 'restricted', 'privileged'] %}
+                    <label class="cursor-pointer flex items-center gap-1.5">
+                        <input type="checkbox" class="checkbox checkbox-xs checkbox-primary cap-check" value="{{ cap }}" />
+                        <span class="text-xs">{{ cap }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Memory Namespace</span>
+                    <span class="label-text-alt text-base-content/40">Defaults to agent ID</span>
+                </label>
+                <input type="text" id="new-namespace" class="input input-bordered input-sm" placeholder="Optional custom namespace" />
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Identity Prompt</span></label>
+                <textarea id="new-identity" class="textarea textarea-bordered textarea-sm" rows="3" placeholder="Optional custom system prompt for this agent"></textarea>
+            </div>
+        </div>
+        <div class="modal-action">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-create">Cancel</button>
+            <button id="btn-create-agent" class="btn btn-primary btn-sm" data-action="agents:createAgent">Create Agent</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Archive Confirm Modal ── -->
+<dialog id="modal-archive" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base mb-2">Archive Agent</h3>
+        <p class="text-sm text-base-content/70">Archive <strong id="archive-agent-name"></strong>?</p>
+        <p class="text-xs text-base-content/45 mt-1">This will stop all active goals. The agent can be re-created but not restored.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-archive">Cancel</button>
+            <button id="btn-exec-archive" class="btn btn-warning btn-sm" data-action="agents:execArchiveAgent">Archive</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Delete Confirm Modal ── -->
+<dialog id="modal-delete" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base text-error mb-2">Delete Agent</h3>
+        <p class="text-sm text-base-content/70">Permanently delete <strong id="delete-agent-name"></strong>?</p>
+        <p class="text-xs text-base-content/45 mt-1">This removes the agent and all its goals. Cannot be undone.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-delete">Cancel</button>
+            <button id="btn-exec-delete-agent" class="btn btn-error btn-sm" data-action="agents:execDeleteAgent">Delete</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+    var _pendingDeleteId = null;
+    var _pendingArchiveId = null;
+
+    function getCsrf() {
+        return (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    }
+
+    async function apiCall(path, body) {
+        var r = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+            body: JSON.stringify(body || {}),
+        });
+        return r.json();
+    }
+
+    // ── Status dot helpers ──────────────────────────────────────────────────
+    function dotClasses(status) {
+        if (status === 'running') return 'agent-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse block';
+        if (status === 'paused')  return 'agent-dot w-2.5 h-2.5 rounded-full bg-warning block';
+        if (status === 'archived')return 'agent-dot w-2.5 h-2.5 rounded-full bg-base-300 block';
+        return 'agent-dot w-2.5 h-2.5 rounded-full bg-base-content/20 block';
+    }
+
+    function dotTitle(status) {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    // ── Auto-refresh ────────────────────────────────────────────────────────
+    function updateStatsBar(sc) {
+        var total = sc.total !== undefined ? sc.total : (sc.running + sc.paused + sc.idle + sc.archived);
+        var t = document.getElementById('stat-total');
+        if (t) t.textContent = total;
+
+        var keys = ['running', 'paused', 'idle', 'archived'];
+        keys.forEach(function(k) {
+            var wrap = document.getElementById('stat-' + k + '-wrap');
+            var num  = document.getElementById('stat-' + k);
+            var n = sc[k] || 0;
+            if (num)  num.textContent = n;
+            if (wrap) wrap.classList.toggle('hidden', n === 0);
+        });
+    }
+
+    function updateCards(agents) {
+        agents.forEach(function(a) {
+            var card = document.querySelector('.agent-card[data-agent-id="' + a.id + '"]');
+            if (!card) return;
+            // status dot
+            var dotWrap = card.querySelector('.agent-dot-wrap');
+            if (dotWrap) {
+                var dot = dotWrap.querySelector('.agent-dot');
+                if (dot) { dot.className = dotClasses(a.status); dot.title = dotTitle(a.status); }
+            }
+            // goal count
+            var gc = card.querySelector('.agent-goals');
+            if (gc) {
+                if (a.active_goal_count > 0) {
+                    gc.innerHTML = '<span class="text-success font-medium">' + a.active_goal_count + '</span> active goal' + (a.active_goal_count !== 1 ? 's' : '');
+                } else {
+                    gc.textContent = 'no active goals';
+                }
+            }
+        });
+    }
+
+    function refreshNow() {
+        fetch('/agents/api/status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                updateStatsBar(Object.assign({ total: data.total }, data.status_counts));
+                if (data.agents) updateCards(data.agents);
+                renderTimestamps();
+            })
+            .catch(function() {});
+    }
+
+    setInterval(refreshNow, 10000);
+
+    // ── Agent actions ────────────────────────────────────────────────────────
+    window.agentAction = async function(agentId, action) {
+        try {
+            var data = await apiCall('/agents/api/' + agentId + '/' + action);
+            if (data.ok) {
+                showToast('Agent ' + action + 'd', 'success');
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+
+    // ── Archive ──────────────────────────────────────────────────────────────
+    window.confirmArchive = function(agentId, name) {
+        _pendingArchiveId = agentId;
+        document.getElementById('archive-agent-name').textContent = name;
+        document.getElementById('modal-archive').showModal();
+    };
+
+    window.execArchiveAgent = function() {
+        document.getElementById('modal-archive').close();
+        if (_pendingArchiveId) agentAction(_pendingArchiveId, 'archive');
+    };
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+    window.confirmDeleteAgent = function(agentId, name) {
+        _pendingDeleteId = agentId;
+        document.getElementById('delete-agent-name').textContent = name;
+        document.getElementById('modal-delete').showModal();
+    };
+
+    window.execDeleteAgent = async function() {
+        document.getElementById('modal-delete').close();
+        if (!_pendingDeleteId) return;
+        try {
+            var data = await apiCall('/agents/api/' + _pendingDeleteId + '/delete');
+            if (data.ok) {
+                showToast('Agent deleted', 'success');
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+
+    // ── Create ───────────────────────────────────────────────────────────────
+    window.createAgent = async function() {
+        var name = document.getElementById('new-name').value.trim();
+        if (!name) { showToast('Name is required', 'error'); return; }
+
+        var caps = [];
+        document.querySelectorAll('.cap-check:checked').forEach(function(el) { caps.push(el.value); });
+
+        var body = {
+            name: name,
+            description: document.getElementById('new-desc').value.trim(),
+            model_provider: document.getElementById('new-provider').value.trim(),
+            model_name: document.getElementById('new-model').value.trim(),
+            autonomy_mode: document.getElementById('new-autonomy').value,
+            allowed_capabilities: caps,
+            memory_namespace: document.getElementById('new-namespace').value.trim(),
+            identity_prompt: document.getElementById('new-identity').value.trim(),
+        };
+
+        try {
+            var data = await apiCall('/agents/api/create', body);
+            if (data.ok) {
+                showToast('Agent "' + name + '" created', 'success');
+                document.getElementById('modal-create').close();
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+registerWaspActions('agents', {
+    'agentAction':        function(el) { agentAction(el.dataset.id, el.dataset.op); },
+    'confirmArchive':     function(el) { confirmArchive(el.dataset.id, el.dataset.name || ''); },
+    'confirmDeleteAgent': function(el) { confirmDeleteAgent(el.dataset.id, el.dataset.name || ''); },
+    'createAgent':        function()   { createAgent(); },
+    'execArchiveAgent':   function()   { execArchiveAgent(); },
+    'execDeleteAgent':    function()   { execDeleteAgent(); },
+});
+})();
+</script>
+{% endblock %}

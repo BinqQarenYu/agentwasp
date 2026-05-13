@@ -1,0 +1,725 @@
+{% extends "base.html" %}
+{% from "macros.html" import pill %}
+{% block title %}Integrations — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#10B981; }
+[data-ds="2"] { background:#10B981; }
+[data-ds="3"] { color:#EF4444; }
+[data-ds="4"] { outline:none;cursor:text;line-height:2rem;height:2rem;padding-top:0;padding-bottom:0; }
+[data-ds="5"] { background:rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.5);color:#818cf8; }
+[data-ds="6"] { border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.4); }
+[data-ds="7"] { background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2); }
+[data-ds="8"] { color:#FBBF24; }
+[data-ds="9"] { }
+[data-ds="10"] { }
+[data-ds="11"] { }
+[data-ds="12"] { }
+[data-ds="13"] { }
+[data-ds="14"] { }
+[data-ds="15"] { background:#10B981; }
+[data-ds="16"] { font-size:0.6rem; }
+[data-ds="17"] { background:rgba(239,68,68,0.15);color:#EF4444;font-size:0.6rem; }
+[data-ds="18"] { background:rgba(245,158,11,0.15);color:#F59E0B;font-size:0.6rem; }
+[data-ds="19"] { border-color:rgba(255,255,255,0.05); }
+[data-ds="20"] { }
+[data-ds="21"] { font-size:0.6rem; }
+[data-ds="22"] { background:#18181b;border:1px solid rgba(255,255,255,0.07); }
+[data-ds="23"] { background:#6366F1; }
+[data-ds="24"] { background:rgba(26,115,232,0.08);border:1px solid rgba(26,115,232,0.2); }
+[data-ds="25"] { color:#1a73e8; }
+[data-ds="26"] { background:#1a73e8;border-color:#1a73e8;color:#fff; }
+[data-ds="27"] { background:#18181b;border:1px solid rgba(255,255,255,0.07); }
+[data-ds="28"] { background:#1c1c1e;border:1px solid rgba(239,68,68,0.25); }
+[data-ds="29"] { background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3); }
+[data-ds="30"] { color:#EF4444; }
+[data-ds="31"] { background:#EF4444;border-color:#EF4444;color:#fff; }
+[data-ds="32"] { font-size:0.6rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Brand logos served locally — no external CDN dependency ────────────── #}
+{% set LOGOS = {
+  "slack":              {"url":"/static/logos/slack.svg",              "bg":"#4A154B18"},
+  "discord":            {"url":"/static/logos/discord.svg",             "bg":"#5865F218"},
+  "github":             {"url":"/static/logos/github.svg",              "bg":"rgba(255,255,255,0.07)"},
+  "gmail-connector":    {"url":"/static/logos/gmail.svg",               "bg":"#EA433518"},
+  "google-calendar":    {"url":"/static/logos/googlecalendar.svg",      "bg":"#4285F418"},
+  "telegram":           {"url":"/static/logos/telegram.svg",            "bg":"#26A5E418"},
+  "whatsapp":           {"url":"/static/logos/whatsapp.svg",             "bg":"#25D36618"},
+  "whatsapp-baileys":   {"url":"/static/logos/whatsapp-baileys.svg",     "bg":"#128C7E18"},
+  "spotify":            {"url":"/static/logos/spotify.svg",              "bg":"#1ED76018"},
+  "twitter":            {"url":"/static/logos/x.svg",                   "bg":"rgba(255,255,255,0.07)"},
+  "teams":              {"url":"/static/logos/microsoftteams.svg",       "bg":"#6264A718"},
+  "notion":             {"url":"/static/logos/notion.svg",               "bg":"rgba(255,255,255,0.07)"},
+  "trello":             {"url":"/static/logos/trello.svg",               "bg":"#0052CC18"},
+  "signal":             {"url":"/static/logos/signal.svg",               "bg":"#3B45FD18"},
+  "zapier":             {"url":"/static/logos/zapier.svg",               "bg":"#FF4F0018"},
+  "home-assistant":     {"url":"/static/logos/homeassistant.svg",        "bg":"#18BCF218"},
+  "webhook":            {"url":"/static/logos/webhook.svg",              "bg":"#6366F118"},
+  "weather":            {"url":"/static/logos/openweathermap.svg",       "bg":"#EB6E4B18"},
+  "matrix":             {"url":"/static/logos/matrix.svg",               "bg":"rgba(255,255,255,0.07)"},
+  "obsidian":           {"url":"/static/logos/obsidian.svg",             "bg":"#7C3AED18"},
+  "1password":          {"url":"/static/logos/1password.svg",            "bg":"#3B66BC18"},
+  "sonos":              {"url":"/static/logos/sonos.svg",                "bg":"rgba(255,255,255,0.07)"},
+  "shazam":             {"url":"/static/logos/shazam.svg",               "bg":"#0088FF18"},
+  "philips-hue":        {"url":"/static/logos/philipshue.svg",           "bg":"#0065D318"},
+  "eight-sleep":        {"url":"/static/logos/eightsleep.svg",           "bg":"rgba(255,255,255,0.07)"},
+  "nostr":              {"url":"/static/logos/nostr.svg",                "bg":"#8B5CF618"},
+  "zalo":               {"url":"/static/logos/zalo.svg",                 "bg":"#0068FF18"},
+  "nextcloud-talk":     {"url":"/static/logos/nextcloud.svg",            "bg":"#0082C918"},
+  "mcp":                {"url":"/static/logos/anthropic.svg",            "bg":"rgba(255,255,255,0.07)"},
+  "browser-controlled": {"url":"/static/logos/googlechrome.svg",         "bg":"#4285F418"},
+  "gif-search":         {"url":"/static/logos/giphy.svg",                "bg":"#FF666618"},
+  "image-gen":          {"url":"/static/logos/openai.svg",               "bg":"rgba(255,255,255,0.07)"},
+  "email-generic":      {"url":"/static/logos/email.svg",               "bg":"#64748B18"},
+  "platform-android":   {"url":"/static/logos/android.svg",             "bg":"#3DDC8418"},
+  "platform-windows":   {"url":"/static/logos/windows.svg",             "bg":"#0078D418"},
+  "platform-macos":     {"url":"/static/logos/macos.svg",               "bg":"rgba(255,255,255,0.07)"},
+  "platform-linux":     {"url":"/static/logos/linux.svg",               "bg":"#FCC62418"},
+  "platform-ios":       {"url":"/static/logos/ios.svg",                 "bg":"rgba(255,255,255,0.07)"},
+  "bluebubbles":        {"url":"/static/logos/imessage.svg",             "bg":"#34DA5018"},
+  "cron":               {"url":"/static/logos/clockify.svg",             "bg":"#03A9F418"},
+  "webchat":            {"url":"/static/logos/googlechat.svg",           "bg":"#34A85318"},
+} %}
+
+{% set CAT_META = {
+  "chat":         {"color":"#38BDF8","icon":"M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"},
+  "productivity": {"color":"#4ADE80","icon":"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"},
+  "media":        {"color":"#F472B6","icon":"M9 19V6l12-3v13M9 19c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2zm12-3c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2z"},
+  "social":       {"color":"#A78BFA","icon":"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
+  "smart_home":   {"color":"#FB923C","icon":"M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"},
+  "tools":        {"color":"#FBBF24","icon":"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"},
+  "security":     {"color":"#EF4444","icon":"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"},
+  "platform":     {"color":"#64748B","icon":"M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"},
+} %}
+{% set DEF_CAT = {"color":"#6366F1","icon":"M13 10V3L4 14h7v7l9-11h-7z"} %}
+{% set RISK_COLOR = {"low":"#10B981","medium":"#F59E0B","high":"#EF4444","critical":"#EF4444"} %}
+
+{% set enabled_count = integrations | selectattr('enabled') | list | length %}
+{% set total_count = integrations | length %}
+{% set cb_open_count = integrations | selectattr('circuit_breaker') | selectattr('circuit_breaker.state', 'equalto', 'open') | list | length %}
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            {% if enabled_count > 0 %}
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" data-ds="1"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+            {% else %}
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-base-content/20"></span>
+            {% endif %}
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Integrations</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5" id="intg-stats-line">
+                {% if registry_available %}
+                    <span id="intg-stats-active">{{ enabled_count }}</span> active · <span id="intg-stats-idle">{{ total_count - enabled_count }}</span> idle · <span id="intg-stats-total">{{ total_count }}</span> total
+                    {% if cb_open_count %} · <span data-ds="3">{{ cb_open_count }} CB open</span>{% endif %}
+                {% else %}
+                    registry unavailable
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% if registry_available and integrations %}
+    <div class="flex flex-wrap gap-2 items-center">
+        <div class="relative" id="intg-search-wrap">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-base-content/30 pointer-events-none z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="intg-search" placeholder="Search…" readonly
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                class="input input-bordered input-sm pl-8 w-40 text-xs" aria-label="Search integrations">
+        </div>
+        <div class="flex flex-wrap gap-1" id="cat-chips">
+            <button class="btn btn-xs cat-chip active" data-cat="all" data-action="integrations:setCat" data-ds="5">All</button>
+            {% set cats = integrations | map(attribute='category') | unique | list | sort %}
+            {% for cat in cats %}
+            {% set cm = CAT_META.get(cat, DEF_CAT) %}
+            <button class="btn btn-xs btn-outline cat-chip" data-cat="{{ cat }}" data-action="integrations:setCat" data-ds="6">{{ cat | replace('_',' ') | title }}</button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if not registry_available %}
+<div class="rounded-xl p-4 flex items-center gap-3" data-ds="7">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="8"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <span class="text-sm text-base-content/70">Integration registry not initialized. Check <code class="text-xs font-mono">main.py</code>.</span>
+</div>
+
+{% elif not integrations %}
+<div class="py-16 text-center text-base-content/30 text-sm">No integrations registered.</div>
+
+{% else %}
+
+{% set categories = integrations | map(attribute='category') | unique | list | sort %}
+{% for cat in categories %}
+{% set cat_integrations = integrations | selectattr('category', 'equalto', cat) | list %}
+{% set cm = CAT_META.get(cat, DEF_CAT) %}
+
+<div class="mb-6 cat-section" data-cat="{{ cat }}">
+    <!-- Category header -->
+    <div class="flex items-center gap-2 mb-3 px-1">
+        <div class="h-4 w-4 rounded flex items-center justify-center flex-shrink-0" data-ds="9" data-dv="background:{{ cm.color}}22">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="10" data-dv="color:{{ cm.color}}">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ cm.icon }}"/>
+            </svg>
+        </div>
+        <h2 class="text-xs font-bold tracking-widest uppercase" data-ds="11" data-dv="color:{{ cm.color}}80">{{ cat | replace('_', ' ') | title }}</h2>
+        <span class="text-xs font-mono text-base-content/20">{{ cat_integrations | length }}</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+    {% for intg in cat_integrations %}
+    {% set logo = LOGOS.get(intg.id, None) %}
+    {% set logo_color = logo.bg if logo else cm.color + '22' %}
+    {% set logo_svg = logo_svgs.get(intg.id, '') %}
+    {% set risk_color = RISK_COLOR.get(intg.risk_level, '#64748B') %}
+    {% set cb_state = intg.circuit_breaker.state if intg.circuit_breaker else 'closed' %}
+    {% set is_open = cb_state == 'open' %}
+    {% set is_half = cb_state == 'half_open' %}
+
+    <div class="intg-card-wrap">
+    <div class="card bg-base-100 shadow-sm wasp-accent intg-card" id="intg-{{ intg.id }}" data-id="{{ intg.id }}" data-cat="{{ intg.category }}" data-name="{{ intg.name | lower }}">
+        <div class="card-body p-3.5">
+            <div class="flex items-center gap-3">
+                <!-- Logo -->
+                <div class="relative flex-shrink-0">
+                    <div class="h-10 w-10 rounded-xl flex items-center justify-center overflow-hidden" data-ds="12" data-dv="background:{{ logo_color}}">
+                        {% if logo_svg %}
+                        <div class="h-6 w-6 flex items-center justify-center [&>svg]:h-full [&>svg]:w-full">{{ logo_svg | safe }}</div>
+                        {% else %}
+                        <span class="text-sm font-bold" data-ds="13" data-dv="color:{{ cm.color}}">{{ intg.name[0] | upper }}</span>
+                        {% endif %}
+                    </div>
+                    <!-- Enabled dot -->
+                    <div class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-base-100" data-ds="14" data-dv="background:{% if intg.enabled %}#10B981{% else %}#374151{% endif %}">
+                        {% if intg.enabled %}<span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" data-ds="15"></span>{% endif %}
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-semibold text-sm leading-tight">{{ intg.name }}</span>
+                        <!-- Risk badge -->
+                        <span class="text-xs font-mono px-1 py-0 rounded" data-ds="16" data-dv="background:{{ risk_color}}18; color:{{ risk_color }}">{{ intg.risk_level }}</span>
+                        <!-- CB badges -->
+                        {% if is_open %}
+                        <span class="text-xs font-bold px-1.5 py-0.5 rounded animate-pulse" data-ds="17">CB OPEN</span>
+                        {% elif is_half %}
+                        <span class="text-xs font-bold px-1.5 py-0.5 rounded" data-ds="18">CB HALF</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-base-content/40 truncate mt-0.5">{{ intg.description[:60] }}{% if intg.description|length > 60 %}…{% endif %}</p>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <input type="checkbox" class="toggle toggle-sm toggle-success"
+                        {% if intg.enabled %}checked{% endif %}
+                        data-action="integrations:toggleIntegration" data-id="{{ intg.id|e }}">
+                    <button class="h-7 w-7 rounded-lg flex items-center justify-center transition-colors hover:bg-base-300/60 text-base-content/40 hover:text-base-content/70"
+                            data-action="integrations:openDetails" data-id="{{ intg.id|e }}" title="Configure">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Metrics + footer row -->
+            <div class="flex items-center gap-3 mt-2.5 pt-2 border-t text-xs font-mono" data-ds="19">
+                <span class="text-base-content/30">{{ intg.metrics.total_calls }} calls</span>
+                {% if intg.metrics.error_rate is not none and intg.metrics.error_rate > 0 %}
+                <span data-ds="20" data-dv="color:{% if intg.metrics.error_rate > 0.1 %}#EF4444{% else %}#F59E0B{% endif %}">{{ (intg.metrics.error_rate * 100) | round(1) }}% err</span>
+                {% endif %}
+                {% if intg.metrics.latency_p50_ms %}
+                <span class="text-base-content/25">p50 {{ intg.metrics.latency_p50_ms | int }}ms</span>
+                {% endif %}
+                <!-- Spacer -->
+                <div class="flex-1"></div>
+                <!-- Actions count -->
+                <span class="text-base-content/20">{{ intg.actions|length }} action{{ 's' if intg.actions|length != 1 }}</span>
+                <!-- Failures button -->
+                <button class="opacity-30 hover:opacity-80 transition-opacity" data-action="integrations:openFailures" data-id="{{ intg.id|e }}" title="Failure log">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </button>
+                <!-- Health check button -->
+                <button class="opacity-30 hover:opacity-80 transition-opacity" data-action="integrations:checkHealth" data-id="{{ intg.id|e }}" id="health-btn-{{ intg.id }}" title="Health check">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" id="health-ico-{{ intg.id }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </button>
+                {% if is_open %}
+                <button class="text-red-400 opacity-60 hover:opacity-100 transition-opacity font-bold" data-action="integrations:resetCB" data-id="{{ intg.id|e }}" title="Reset circuit breaker" data-ds="21">RESET CB</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    </div>
+    {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ── Configure Modal ────────────────────────────────────────────────────── -->
+<dialog id="modal-details" class="modal">
+    <div class="modal-box w-11/12 max-w-2xl" data-ds="22">
+        <div class="flex items-center gap-3 mb-4">
+            <div id="modal-details-logo" class="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0" data-ds="23">
+                <span class="text-white font-bold text-sm" id="modal-details-initial">?</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-base" id="modal-details-title">Configure</h3>
+                <p class="text-xs text-base-content/40 mt-0.5 truncate" id="modal-details-desc">Loading…</p>
+            </div>
+            <button data-dialog-close="modal-details" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 flex-shrink-0">✕</button>
+        </div>
+
+        <!-- Secrets -->
+        <div class="mb-4">
+            <h4 class="text-xs font-semibold uppercase tracking-widest text-base-content/40 mb-2">Credentials</h4>
+            <div id="modal-secret-fields" class="space-y-2 mb-2"></div>
+            <details class="mt-2">
+                <summary class="text-xs cursor-pointer text-base-content/30 hover:text-base-content/60 select-none">+ Add custom key</summary>
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="secret-key-input" placeholder="key name" class="input input-bordered input-xs flex-1 font-mono">
+                    <input type="password" id="secret-value-input" placeholder="value" class="input input-bordered input-xs flex-1">
+                    <button class="btn btn-xs btn-primary" id="btn-save-custom-secret" data-action="integrations:saveCustomSecret">Save</button>
+                </div>
+            </details>
+            <p class="text-xs text-base-content/25 mt-2">Values are encrypted at rest and never shown.</p>
+        </div>
+
+        <!-- Google OAuth -->
+        <div id="modal-oauth-btn" class="hidden mb-4 p-3 rounded-xl flex items-start gap-3" data-ds="24">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" data-ds="25"><path fill="currentColor" d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 110-12.064c1.498 0 2.866.549 3.921 1.453l2.814-2.814A9.969 9.969 0 0012.545 2C7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z"/></svg>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs text-base-content/60 mb-2">Save <strong>client_id</strong>, <strong>client_secret</strong> and <strong>redirect_uri</strong> first, then authorize:</p>
+                <a href="/integrations/google_calendar/oauth_start" target="_blank" class="btn btn-xs gap-1.5" data-ds="26">
+                    Authorize with Google
+                </a>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div>
+            <h4 class="text-xs font-semibold uppercase tracking-widest text-base-content/40 mb-2">Actions</h4>
+            <div id="modal-actions-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+        </div>
+
+        <div class="modal-action mt-4">
+            <button class="btn btn-sm btn-ghost opacity-60" data-dialog-close="modal-details">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Failures Modal ─────────────────────────────────────────────────────── -->
+<dialog id="modal-failures" class="modal">
+    <div class="modal-box max-w-xl" data-ds="27">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="font-bold text-sm" id="failures-modal-title">Failure Log</h3>
+                <p class="text-xs text-base-content/40 mt-0.5" id="failures-modal-subtitle"></p>
+            </div>
+            <button data-dialog-close="modal-failures" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80">✕</button>
+        </div>
+        <div id="failures-modal-content" class="space-y-2 max-h-72 overflow-y-auto">
+            <div class="flex items-center gap-2 text-sm text-base-content/40">
+                <span class="loading loading-spinner loading-sm"></span> Loading…
+            </div>
+        </div>
+        <div class="modal-action mt-3">
+            <button data-dialog-close="modal-failures" class="btn btn-sm btn-ghost opacity-60">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Delete Secret Confirm Modal ───────────────────────────────────────── -->
+<dialog id="modal-delete-secret" class="modal">
+    <div class="modal-box max-w-sm" data-ds="28">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" data-ds="29">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="30"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-sm">Delete Secret</h3>
+                <p class="text-xs text-base-content/40 mt-0.5">Key: <span id="delete-secret-key-label" class="font-mono text-base-content/60"></span></p>
+            </div>
+        </div>
+        <p class="text-xs text-base-content/50 mb-4">This will permanently remove the secret from the vault. The integration may stop working until a new value is provided.</p>
+        <div class="flex gap-2 justify-end">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-delete-secret">Cancel</button>
+            <button class="btn btn-sm font-semibold" id="btn-confirm-delete-secret" data-action="integrations:doDeleteSecret" data-ds="31">Delete</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+var _currentIntgId  = null;
+var _configuredKeys = [];
+var _requiredSecrets = [];
+var _secretSpecs = [];
+var _activeCat      = 'all';
+var _pendingDeleteKey = '';
+
+/* Inline SVG + brand bg per integration id — same source as the cards. */
+var _INTG_LOGOS = {
+{%- for intg_id, svg in logo_svgs.items() %}
+  {{ intg_id | tojson }}: { svg: {{ svg | tojson }}, bg: {{ (LOGOS.get(intg_id, {"bg":""}).bg) | tojson }} }{% if not loop.last %},{% endif %}
+{%- endfor %}
+};
+
+/* ── Filter ──────────────────────────────────────────────────────────────── */
+function setCat(cat, btn) {
+    _activeCat = cat;
+    document.querySelectorAll('.cat-chip').forEach(function(b) {
+        var active = b.dataset.cat === cat;
+        if (active) {
+            b.style.background = 'rgba(99,102,241,0.2)';
+            b.style.borderColor = 'rgba(99,102,241,0.5)';
+            b.style.color = '#818cf8';
+        } else {
+            b.style.background = '';
+            b.style.borderColor = 'rgba(255,255,255,0.12)';
+            b.style.color = 'rgba(255,255,255,0.4)';
+        }
+    });
+    filterIntegrations();
+}
+
+var _searchValue = '';    /* updated only by user typing in the contenteditable search box */
+
+function filterIntegrations() {
+    var q = _searchValue.toLowerCase();
+    document.querySelectorAll('.intg-card').forEach(function(card) {
+        var id   = (card.dataset.id || '').toLowerCase();
+        var cat  = (card.dataset.cat || '');
+        var name = (card.dataset.name || '').toLowerCase();
+        var ok   = (_activeCat === 'all' || cat === _activeCat) && (!q || id.includes(q) || name.includes(q));
+        var wrap = card.closest('.intg-card-wrap');
+        if (wrap) wrap.style.display = ok ? '' : 'none';
+    });
+    document.querySelectorAll('.cat-section').forEach(function(sec) {
+        var visible = Array.from(sec.querySelectorAll('.intg-card-wrap')).some(function(w){ return w.style.display !== 'none'; });
+        sec.style.display = visible ? '' : 'none';
+    });
+}
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+function updateStats() {
+    var checkboxes = document.querySelectorAll('input[data-action="integrations:toggleIntegration"]');
+    var total = checkboxes.length;
+    var active = Array.from(checkboxes).filter(function(cb){ return cb.checked; }).length;
+    var idle = total - active;
+    var elActive = document.getElementById('intg-stats-active');
+    var elIdle   = document.getElementById('intg-stats-idle');
+    var elTotal  = document.getElementById('intg-stats-total');
+    if (elActive) elActive.textContent = active;
+    if (elIdle)   elIdle.textContent   = idle;
+    if (elTotal)  elTotal.textContent  = total;
+}
+
+/* ── Toggle ──────────────────────────────────────────────────────────────── */
+async function toggleIntegration(id, enabled) {
+    try {
+        var r = await fetch('/integrations/api/toggle', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+            body: JSON.stringify({integration_id: id, enabled: enabled}),
+        });
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show((enabled ? 'Enabled' : 'Disabled') + ' ' + id, 'success');
+            updateStats();
+        } else {
+            WaspToast.show(d.error || 'Error', 'error');
+            // Revert the checkbox since the API call failed
+            var cb = document.querySelector('input[data-action="integrations:toggleIntegration"][data-id="' + id + '"]');
+            if (cb) cb.checked = !enabled;
+        }
+    } catch(e) {
+        WaspToast.show('Network error', 'error');
+        var cb = document.querySelector('input[data-action="integrations:toggleIntegration"][data-id="' + id + '"]');
+        if (cb) cb.checked = !enabled;
+    }
+}
+
+/* ── Health check ────────────────────────────────────────────────────────── */
+async function checkHealth(id) {
+    var btn = document.getElementById('health-btn-' + id);
+    var ico = document.getElementById('health-ico-' + id);
+    if (btn) btn.disabled = true;
+    try {
+        var r = await fetch('/integrations/api/health/' + id, {credentials: 'same-origin'});
+        var d = await r.json();
+        if (d.healthy) {
+            WaspToast.show(id + ': healthy ✓', 'success');
+            if (btn) btn.style.color = '#10B981';
+        } else {
+            WaspToast.show(id + ': unreachable', 'error');
+            if (btn) btn.style.color = '#EF4444';
+        }
+    } catch(e) { WaspToast.show('Health check error', 'error'); }
+    finally {
+        if (btn) btn.disabled = false;
+        setTimeout(function() { if (btn) btn.style.color = ''; }, 4000);
+    }
+}
+
+/* ── Circuit Breaker reset ───────────────────────────────────────────────── */
+async function resetCB(id) {
+    try {
+        var r = await fetch('/integrations/api/reset_circuit_breaker', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+            body: JSON.stringify({integration_id: id}),
+        });
+        var d = await r.json();
+        if (d.ok) { WaspToast.show('Circuit breaker reset for ' + id, 'success'); setTimeout(function(){ location.reload(); }, 800); }
+        else { WaspToast.show(d.error || 'Error', 'error'); }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+}
+
+/* ── Open details modal ──────────────────────────────────────────────────── */
+async function openDetails(id) {
+    _currentIntgId = id;
+    var modal = document.getElementById('modal-details');
+    document.getElementById('modal-details-title').textContent = id;
+    document.getElementById('modal-details-desc').textContent = 'Loading…';
+
+    // Render brand logo (matches the card icon). Falls back to first letter.
+    var logoEl = document.getElementById('modal-details-logo');
+    var meta = _INTG_LOGOS[id];
+    if (meta && meta.svg) {
+        logoEl.innerHTML = '<div class="h-6 w-6 flex items-center justify-center [&>svg]:h-full [&>svg]:w-full">' + meta.svg + '</div>';
+        logoEl.style.background = meta.bg || '';
+    } else {
+        logoEl.innerHTML = '<span class="text-white font-bold text-sm" id="modal-details-initial">' + id[0].toUpperCase() + '</span>';
+        logoEl.style.background = '';
+    }
+
+    document.getElementById('modal-secret-fields').innerHTML = '<div class="text-xs text-base-content/30 py-2">Loading…</div>';
+    document.getElementById('modal-actions-list').innerHTML = '';
+    modal.showModal();
+
+    try {
+        var r = await fetch('/integrations/api/manifest/' + id, {credentials: 'same-origin'});
+        var d = await r.json();
+        if (!d.ok) { document.getElementById('modal-details-desc').textContent = d.error; return; }
+        var m = d.manifest;
+        document.getElementById('modal-details-title').textContent = m.name || id;
+        document.getElementById('modal-details-desc').textContent = m.description;
+
+        _requiredSecrets = m.required_secrets || [];
+        _secretSpecs = m.secret_specs || _requiredSecrets.map(function(k) {
+            return {key:k, label:k, help:'', placeholder:'', example:'', required:true};
+        });
+
+        // Load configured keys then render
+        var r2 = await fetch('/integrations/api/secrets/' + id, {credentials: 'same-origin'});
+        var d2 = await r2.json();
+        _configuredKeys = d2.ok ? d2.keys : [];
+        renderSecretFields(_configuredKeys);
+
+        // Actions
+        var al = document.getElementById('modal-actions-list');
+        var RISK_COLORS = {low:'#10B981', medium:'#F59E0B', high:'#EF4444', critical:'#EF4444'};
+        al.innerHTML = m.actions.map(function(a) {
+            var rc = RISK_COLORS[a.risk_level] || '#64748B';
+            var params = a.params.filter(function(p){ return p.required; }).map(function(p){ return p.name; }).join(', ');
+            return '<div class="flex items-start gap-2 py-1.5 border-b last:border-0 intg-log-row">' +
+                '<span class="text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 mt-0.5" data-ds="32" data-dv="background:' + rc + '18;color:' + rc + '">' + a.risk_level + '</span>' +
+                '<div class="min-w-0"><p class="text-xs font-mono font-medium">' + _esc(a.id) + '</p>' +
+                '<p class="text-xs text-base-content/40 mt-0.5">' + _esc(a.description) + '</p>' +
+                (params ? '<p class="text-xs text-base-content/25 mt-0.5 font-mono">req: ' + _esc(params) + '</p>' : '') +
+                '</div></div>';
+        }).join('');
+        if (window.applyDynStyles) applyDynStyles(al);
+
+        // Google OAuth button
+        document.getElementById('modal-oauth-btn').classList.toggle('hidden', id !== 'google-calendar');
+    } catch(e) {
+        document.getElementById('modal-details-desc').textContent = 'Failed to load manifest';
+    }
+}
+
+function renderSecretFields(configuredKeys) {
+    var container = document.getElementById('modal-secret-fields');
+    if (!_secretSpecs || !_secretSpecs.length) {
+        container.innerHTML = '<p class="text-xs text-base-content/30 italic">No required credentials for this integration.</p>';
+        return;
+    }
+    container.innerHTML = _secretSpecs.map(function(s) {
+        var k = s.key;
+        var isSet = configuredKeys && configuredKeys.includes(k);
+        var placeholder = isSet ? '(set — overwrite to change)' : (s.placeholder || 'enter value');
+        var optionalTag = s.required === false ? ' <span class="text-base-content/30 text-[0.55rem] uppercase">optional</span>' : '';
+        return '<div class="space-y-1 pb-2 border-b border-base-content/5 last:border-0">' +
+            '<div class="flex items-center gap-2">' +
+                '<label class="text-xs font-semibold shrink-0 w-40">' + _esc(s.label || k) +
+                (isSet ? ' <span class="text-green-400 text-[0.6rem]">✓ saved</span>' : ' <span class="text-base-content/30 text-[0.6rem]">not set</span>') +
+                optionalTag + '</label>' +
+                '<input type="password" class="input input-bordered input-xs flex-1 font-mono" id="sfield-' + _esc(k) + '" placeholder="' + _esc(placeholder) + '">' +
+                '<button class="btn btn-xs btn-primary" data-action="integrations:saveSecretField" data-key="' + _esc(k) + '">Save</button>' +
+                (isSet ? '<button class="btn btn-xs btn-ghost text-error opacity-60 hover:opacity-100" data-action="integrations:openDeleteSecret" data-key="' + _esc(k) + '">✕</button>' : '') +
+            '</div>' +
+            (s.help ? '<p class="text-[0.65rem] text-base-content/50 leading-snug pl-[10.5rem]">' + _esc(s.help) + '</p>' : '') +
+            (s.example ? '<p class="text-[0.6rem] text-base-content/30 font-mono pl-[10.5rem]">e.g. ' + _esc(s.example) + '</p>' : '') +
+            '</div>';
+    }).join('');
+}
+
+async function saveSecretField(key) {
+    var input = document.getElementById('sfield-' + key);
+    if (!input) return;
+    var val = input.value;
+    if (!val) { WaspToast.show('Enter a value for ' + key, 'warning'); return; }
+    try {
+        var r = await fetch('/integrations/api/set_secret', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+            body: JSON.stringify({integration_id: _currentIntgId, key: key, value: val}),
+        });
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show(key + ' saved', 'success');
+            input.value = '';
+            input.placeholder = '(set — overwrite to change)';
+            if (!_configuredKeys.includes(key)) _configuredKeys.push(key);
+            renderSecretFields(_configuredKeys);
+        } else { WaspToast.show('Error: ' + (d.error || 'Unknown'), 'error'); }
+    } catch(e) { WaspToast.show('Request failed', 'error'); }
+}
+
+async function saveCustomSecret() {
+    var key = (document.getElementById('secret-key-input').value || '').trim();
+    var val = document.getElementById('secret-value-input').value;
+    if (!key || !val) { WaspToast.show('Key and value are required', 'warning'); return; }
+    try {
+        var r = await fetch('/integrations/api/set_secret', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+            body: JSON.stringify({integration_id: _currentIntgId, key: key, value: val}),
+        });
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show('"' + key + '" saved', 'success');
+            document.getElementById('secret-key-input').value = '';
+            document.getElementById('secret-value-input').value = '';
+            if (!_configuredKeys.includes(key)) _configuredKeys.push(key);
+            renderSecretFields(_configuredKeys);
+        } else { WaspToast.show(d.error || 'Error', 'error'); }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+}
+
+/* ── Delete secret (modal, no browser confirm) ───────────────────────────── */
+function openDeleteSecret(key) {
+    _pendingDeleteKey = key;
+    document.getElementById('delete-secret-key-label').textContent = key;
+    document.getElementById('modal-delete-secret').showModal();
+}
+
+async function doDeleteSecret() {
+    document.getElementById('modal-delete-secret').close();
+    var key = _pendingDeleteKey;
+    try {
+        var r = await fetch('/integrations/api/delete_secret', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+            body: JSON.stringify({integration_id: _currentIntgId, key: key}),
+        });
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show('Secret deleted', 'success');
+            _configuredKeys = _configuredKeys.filter(function(k){ return k !== key; });
+            renderSecretFields(_configuredKeys);
+        } else { WaspToast.show(d.error || 'Error', 'error'); }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+}
+
+/* ── Failures modal ──────────────────────────────────────────────────────── */
+async function openFailures(id) {
+    document.getElementById('failures-modal-title').textContent = 'Failures: ' + id;
+    document.getElementById('failures-modal-subtitle').textContent = '';
+    document.getElementById('failures-modal-content').innerHTML =
+        '<div class="flex items-center gap-2 text-sm text-base-content/40"><span class="loading loading-spinner loading-sm"></span> Loading…</div>';
+    document.getElementById('modal-failures').showModal();
+    try {
+        var r = await fetch('/integrations/api/failures/' + id, {credentials: 'same-origin'});
+        var d = await r.json();
+        if (!d.ok) {
+            document.getElementById('failures-modal-content').innerHTML = '<p class="text-error text-sm">' + _esc(d.error || 'Error') + '</p>';
+            return;
+        }
+        document.getElementById('failures-modal-subtitle').textContent =
+            d.failures.length + ' failure' + (d.failures.length !== 1 ? 's' : '') + ' in the last 30 days';
+        if (!d.failures.length) {
+            document.getElementById('failures-modal-content').innerHTML =
+                '<div class="py-8 text-center"><p class="text-base-content/30 text-sm">No failures recorded</p><p class="text-base-content/20 text-xs mt-1">This integration is healthy ✓</p></div>';
+            return;
+        }
+        var _fmc = document.getElementById('failures-modal-content');
+        _fmc.innerHTML = d.failures.map(function(f) {
+            var ts = (f.timestamp || '').slice(0,19).replace('T',' ');
+            var lat = f.latency_ms ? '<span class="ml-auto font-mono">' + f.latency_ms + 'ms</span>' : '';
+            return '<div class="rounded-lg p-2.5 intg-err-box">' +
+                '<div class="flex items-center gap-2 mb-1 font-mono intg-err-hdr">' +
+                '<span>' + _esc(ts) + '</span><span>' + _esc(f.event_type) + '</span>' + lat + '</div>' +
+                '<p class="text-xs intg-err-txt">' + _esc(f.error || '') + '</p>' +
+                '</div>';
+        }).join('');
+        if (window.applyDynStyles) applyDynStyles(_fmc);
+    } catch(e) {
+        document.getElementById('failures-modal-content').innerHTML = '<p class="text-error text-sm">Network error</p>';
+    }
+}
+
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+registerWaspActions('integrations', {
+    'setCat':             function(el)    { setCat(el.dataset.cat, el); },
+    'openDetails':        function(el)    { openDetails(el.dataset.id); },
+    'openFailures':       function(el)    { openFailures(el.dataset.id); },
+    'checkHealth':        function(el)    { checkHealth(el.dataset.id); },
+    'resetCB':            function(el)    { resetCB(el.dataset.id); },
+    'saveSecretField':    function(el)    { saveSecretField(el.dataset.key); },
+    'openDeleteSecret':   function(el)    { openDeleteSecret(el.dataset.key); },
+    'toggleIntegration':  function(el)    { toggleIntegration(el.dataset.id, el.checked); },
+    'saveCustomSecret':   function()      { saveCustomSecret(); },
+    'doDeleteSecret':     function()      { doDeleteSecret(); },
+});
+
+/* ── Init (SPA-safe: run immediately; guard binding to prevent duplicate listeners on re-entry) ── */
+(function initIntegrations() {
+    var s = document.getElementById('intg-search');
+    if (s && s.dataset.intgBound !== '1') {
+        s.dataset.intgBound = '1';
+        // readonly keeps Chrome from autofilling on page load.
+        // Remove it on first focus so the user can type normally.
+        s.addEventListener('focus', function onFirstFocus() {
+            s.removeAttribute('readonly');
+            s.value = '';
+            s.removeEventListener('focus', onFirstFocus);
+        }, {once: true});
+        s.addEventListener('input', function() {
+            _searchValue = s.value;
+            filterIntegrations();
+        });
+    }
+    filterIntegrations();
+})();
+
+})();
+</script>
+{% endblock %}

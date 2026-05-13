@@ -1,0 +1,996 @@
+{% extends "base.html" %}
+{% from "macros.html" import pill %}
+
+{% block title %}Chat - Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { display:flex;align-items:center;gap:0.6rem; }
+[data-ds="2"] { opacity:0.6;font-size:0.72rem; }
+[data-ds="3"] { display:none;flex-wrap:wrap;gap:0.5rem; }
+[data-ds="4"] { height:54px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+
+<!-- Lightbox -->
+<div id="lightbox"><img id="lightbox-img" src="" alt=""></div>
+
+<!-- Page header -->
+<div class="chat-page-header">
+    <div>
+        <div class="chat-page-title">Agent Chat</div>
+        <div class="chat-page-sub">Full autonomous pipeline — multi-layer memory, live execution trace &amp; sovereign mode</div>
+    </div>
+    <div data-ds="1">
+        <div class="live-chip">
+            <div class="live-dot"></div>
+            LIVE AGENT
+        </div>
+        <button id="btn-clear-chat" class="btn btn-ghost btn-xs" title="Clear chat history"
+                data-ds="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Clear
+        </button>
+    </div>
+</div>
+
+<!-- Main chat card -->
+<div class="chat-card wasp-accent" id="chat-card-main">
+
+    <!-- Messages area -->
+    <div id="chat-messages" class="chat-messages-area">
+
+        <!-- Welcome message -->
+        <div class="chat chat-start" id="welcome-msg">
+            <div class="chat-image">
+                <div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30 bg-base-200 flex items-center justify-center">
+                    <img src="/static/favicon.png" alt="Wasp" class="w-6 h-6 object-contain">
+                </div>
+            </div>
+            <div class="welcome-bubble">
+                <div class="welcome-header">
+                    <div class="welcome-avatar">🐝</div>
+                    <span class="welcome-title">Agent Wasp</span>
+                    <span class="welcome-badge">Autonomous</span>
+                    <span class="welcome-badge-sov">⚡ Sovereign</span>
+                </div>
+                <p class="welcome-sub">Full-access autonomous agent. Reasons, plans, and executes real actions — with persistent memory, behavioral learning, and self-improvement.</p>
+
+                <div class="welcome-caps">
+                    <div class="cap-item"><span class="cap-icon">🌐</span><span class="cap-label">Web, search &amp; browse</span></div>
+                    <div class="cap-item"><span class="cap-icon">🐚</span><span class="cap-label">Shell &amp; automation</span></div>
+                    <div class="cap-item"><span class="cap-icon">🐍</span><span class="cap-label">Python execution</span></div>
+                    <div class="cap-item"><span class="cap-icon">👁️</span><span class="cap-label">Vision &amp; screenshots</span></div>
+                    <div class="cap-item"><span class="cap-icon">🧠</span><span class="cap-label">Memory <span class="cap-sub">· 18 layers</span></span></div>
+                    <div class="cap-item"><span class="cap-icon">🕸️</span><span class="cap-label">Knowledge graph</span></div>
+                    <div class="cap-item"><span class="cap-icon">⏰</span><span class="cap-label">Goals &amp; scheduling</span></div>
+                    <div class="cap-item"><span class="cap-icon">🔧</span><span class="cap-label">Self-improvement</span></div>
+                    <div class="cap-item"><span class="cap-icon">📧</span><span class="cap-label">Email &amp; Telegram</span></div>
+                    <div class="cap-item"><span class="cap-icon">📁</span><span class="cap-label">Files &amp; data</span></div>
+                </div>
+
+                <div class="welcome-stats">
+                    <div class="wstat"><span class="wstat-val">18</span> memory layers</div>
+                    <div class="wstat"><span class="wstat-val">20+</span> scheduler jobs</div>
+                    <div class="wstat"><span class="wstat-val">30+</span> skills</div>
+                    <div class="wstat"><span class="wstat-val">⚡</span> Sovereign mode</div>
+                </div>
+
+                <p class="welcome-hint">📎 Attach files &nbsp;·&nbsp; 📋 <strong>Ctrl+V</strong> to paste image from clipboard &nbsp;·&nbsp; drag files into chat</p>
+            </div>
+            <div class="chat-footer opacity-40 text-xs mt-1">Agent Wasp · ready</div>
+        </div>
+
+    </div><!-- /chat-messages -->
+
+    <!-- Attachment preview strip -->
+    <div id="attachment-strip" class="hidden px-3 pt-2" data-ds="3"></div>
+
+    <!-- Paste flash feedback -->
+    <div id="paste-flash" class="hidden px-3 pt-1">
+        <span class="text-xs opacity-60">📋 Image pasted — type a message and send</span>
+    </div>
+
+    <!-- Input area -->
+    <div class="chat-input-area">
+        <!-- Attach button -->
+        <label class="btn btn-ghost btn-sm btn-square flex-shrink-0 cursor-pointer" data-ds="4" title="Attach file">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+            </svg>
+            <input type="file" id="file-input" class="hidden" multiple
+                accept="image/*,audio/*,video/*,.pdf,.txt,.md,.csv,.json,.xml,.yaml,.yml,.docx,.doc">
+        </label>
+
+        <textarea
+            id="chat-input"
+            class="textarea textarea-bordered chat-textarea"
+            placeholder="Type a message… (Enter to send · Ctrl+V to paste image)"
+            rows="2"
+            maxlength="4000"
+        ></textarea>
+
+        <button
+            id="btn-send"
+            class="btn-send-custom"
+            title="Send (Enter)"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+        </button>
+    </div>
+
+</div><!-- /chat-card -->
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function () {
+    var messages = document.getElementById('chat-messages');
+    var input = document.getElementById('chat-input');
+    var sendBtn = document.getElementById('btn-send');
+    // Reference to chat card — used for wasp-active streaming glow
+    var _chatCard = messages ? messages.closest('.chat-card') : null;
+    var strip = document.getElementById('attachment-strip');
+    var fileInput = document.getElementById('file-input');
+
+    // ── Pending attachments ───────────────────────────────────────────────
+    var pendingAttachments = []; // [{name, type, data (base64 or dataURL), preview}]
+
+    // ── Escape helper ─────────────────────────────────────────────────────
+    function _esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── HTML sanitizer (DOM-based, no external dependency) ────────────────
+    // Parses rendered HTML into a template element (scripts never execute
+    // inside <template>), walks the tree and strips dangerous nodes and
+    // attributes, then re-serializes. Defense-in-depth on top of html:false.
+    var _ALLOWED_TAGS = new Set([
+        'p','br','hr','b','strong','i','em','u','s','del','ins','mark','small','sub','sup',
+        'h1','h2','h3','h4','h5','h6',
+        'ul','ol','li','dl','dt','dd',
+        'blockquote','pre','code','kbd','samp',
+        'table','thead','tbody','tfoot','tr','th','td',
+        'a','img','video','audio','source',
+        'div','span','details','summary','figure','figcaption'
+    ]);
+    // Dangerous tags: removed with their children
+    var _STRIP_TAGS = new Set([
+        'script','style','iframe','frame','frameset','object','embed','applet',
+        'base','link','meta','form','input','button','textarea','select',
+        'noscript','template','slot','svg','math'
+    ]);
+    var _SAFE_ATTRS = new Set([
+        'href','src','alt','title','class','id','width','height','controls',
+        'target','rel','colspan','rowspan','scope','data-action','type',
+        'start','reversed','loading'
+    ]);
+
+    function _walkSanitize(node) {
+        var children = Array.from(node.childNodes);
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            if (child.nodeType !== 1) continue;
+            var tag = child.tagName.toLowerCase();
+            if (_STRIP_TAGS.has(tag)) { child.remove(); continue; }
+            if (!_ALLOWED_TAGS.has(tag)) {
+                // Unknown tag: unwrap (keep text content, drop the tag itself)
+                var parent = child.parentNode;
+                while (child.firstChild) parent.insertBefore(child.firstChild, child);
+                child.remove();
+                continue;
+            }
+            var attrs = Array.from(child.attributes);
+            for (var j = 0; j < attrs.length; j++) {
+                var attr = attrs[j];
+                var name = attr.name.toLowerCase();
+                var val  = attr.value;
+                // Strip event handlers
+                if (name.startsWith('on')) { child.removeAttribute(attr.name); continue; }
+                // Strip attributes not in allowlist (except data-* which are safe)
+                if (!_SAFE_ATTRS.has(name) && !name.startsWith('data-')) {
+                    child.removeAttribute(attr.name); continue;
+                }
+                // Block javascript: and data: in navigable attributes
+                if ((name === 'href' || name === 'src' || name === 'action') &&
+                    /^\s*(?:javascript|data|vbscript):/i.test(val)) {
+                    child.removeAttribute(attr.name); continue;
+                }
+            }
+            _walkSanitize(child);
+        }
+    }
+
+    function _sanitize(html) {
+        var t = document.createElement('template');
+        t.innerHTML = html;
+        _walkSanitize(t.content);
+        var wrap = document.createElement('div');
+        wrap.appendChild(t.content.cloneNode(true));
+        return wrap.innerHTML;
+    }
+
+    // ── Marked config ─────────────────────────────────────────────────────
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            html: false,  // disable raw HTML passthrough — agent text is markdown, not HTML
+        });
+        // Custom renderer: wrap audio/video URLs as HTML elements, images as clickable
+        var renderer = new marked.Renderer();
+        renderer.image = function(href, title, text) {
+            // href may be string or object in newer marked versions
+            var src = typeof href === 'object' ? (href.href || '') : (href || '');
+            var alt = text || title || '';
+            // Rewrite /data/... paths to /chat/media/... (agent often outputs raw paths)
+            // Server-side _rewrite_paths() handles signing; this fallback covers missed paths.
+            // Unsigned access requires media_signing_debug=True (transition mode).
+            var dataMatch = src.match(/^\/data\/(?:chat-uploads|shared|screenshots?)\/(.+)/);
+            if (dataMatch) src = '/chat/media/' + dataMatch[1];
+            var lc = src.toLowerCase();
+            if (lc.match(/\.(mp4|webm|mov|avi|mkv)(\?|$)/)) {
+                return '<video controls><source src="' + _esc(src) + '"><a href="' + _esc(src) + '">' + _esc(alt || src) + '</a></video>';
+            }
+            if (lc.match(/\.(mp3|ogg|wav|m4a|aac|flac)(\?|$)/)) {
+                return '<audio controls><source src="' + _esc(src) + '"></audio>';
+            }
+            return '<img src="' + _esc(src) + '" alt="' + _esc(alt) + '" data-action="chat:openLightbox" title="Click to enlarge" class="chat-img-lightbox">';
+        };
+        renderer.link = function(href, title, text) {
+            var url = typeof href === 'object' ? (href.href || '') : (href || '');
+            var lbl = text || url;
+            var lc = url.toLowerCase();
+            if (lc.match(/\.(mp4|webm|mov)(\?|$)/)) {
+                return '<video controls class="chat-video-embed"><source src="' + _esc(url) + '"><a href="' + _esc(url) + '">' + _esc(lbl) + '</a></video>';
+            }
+            if (lc.match(/\.(mp3|ogg|wav|m4a|aac)(\?|$)/)) {
+                return '<audio controls class="chat-audio-embed"><source src="' + _esc(url) + '"></audio>';
+            }
+            return '<a href="' + _esc(url) + '" target="_blank" rel="noopener">' + lbl + '</a>';
+        };
+        marked.use({ renderer: renderer });
+    }
+
+    function renderMarkdown(text) {
+        if (typeof marked === 'undefined') return _esc(text).replace(/\n/g, '<br>');
+        try { return _sanitize(marked.parse(text)); } catch(e) { return _esc(text).replace(/\n/g, '<br>'); }
+    }
+
+    // ── Lightbox ──────────────────────────────────────────────────────────
+    window.openLightbox = function(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').classList.add('open');
+    };
+    window.closeLightbox = function() {
+        document.getElementById('lightbox').classList.remove('open');
+    };
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
+
+    // ── sessionStorage history ────────────────────────────────────────────
+    var HISTORY_KEY = 'wasp_chat_v2';
+    var MAX_HISTORY = 30;
+
+    function loadHistory() {
+        try {
+            var stored = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+            stored.forEach(function(item) {
+                var div = addMessage(item.role, item.text, false, item.attachments || []);
+                if (item.role === 'agent' && item.context && Object.keys(item.context).length) {
+                    addContextTrace(div, item.context);
+                }
+            });
+        } catch(e) {}
+    }
+
+    function saveToHistory(role, text, context, attachments) {
+        try {
+            var history = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+            // Don't store full base64 in history — just names/types
+            var attMeta = (attachments || []).map(function(a) {
+                return {name: a.name, type: a.type, preview: a.preview || null};
+            });
+            history.push({role: role, text: text, context: context || null, attachments: attMeta});
+            if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+            sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        } catch(e) {}
+    }
+
+    // ── File handling ─────────────────────────────────────────────────────
+    window.handleFiles = function(files) {
+        Array.from(files).forEach(function(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var att = {
+                    name: file.name,
+                    type: file.type,
+                    data: e.target.result, // full data URL
+                    preview: file.type.startsWith('image/') ? e.target.result : null,
+                };
+                pendingAttachments.push(att);
+                renderStrip();
+            };
+            reader.readAsDataURL(file);
+        });
+        fileInput.value = '';
+    };
+
+    function renderStrip() {
+        strip.innerHTML = '';
+        if (!pendingAttachments.length) { strip.style.display = 'none'; strip.classList.add('hidden'); return; }
+        strip.style.display = 'flex';
+        strip.classList.remove('hidden');
+        pendingAttachments.forEach(function(att, idx) {
+            var chip = document.createElement('div');
+            chip.className = 'attach-chip';
+            var icon = att.preview
+                ? '<img src="' + att.preview + '" class="attach-preview-img">'
+                : (att.type.startsWith('audio/') ? '🎵' : att.type.startsWith('video/') ? '🎬' : '📎');
+            chip.innerHTML = (typeof icon === 'string' && icon.startsWith('<img') ? icon : '<span class="shrink-0">' + icon + '</span>') +
+                '<span title="' + _esc(att.name) + '">' + _esc(att.name) + '</span>' +
+                '<button data-action="chat:removeAttachment" data-idx="' + idx + '" title="Remove">✕</button>';
+            strip.appendChild(chip);
+        });
+    }
+
+    window.removeAttachment = function(idx) {
+        pendingAttachments.splice(idx, 1);
+        renderStrip();
+    };
+
+    // ── Clipboard paste (Ctrl+V image) ────────────────────────────────────
+    function _addImageFile(file) {
+        var ext = (file.type || 'image/png').split('/')[1] || 'png';
+        var named = new File([file], 'clipboard_' + Date.now() + '.' + ext, {type: file.type || 'image/png'});
+        handleFiles([named]);
+        var flash = document.getElementById('paste-flash');
+        if (flash) {
+            flash.classList.remove('hidden');
+            setTimeout(function() { flash.classList.add('hidden'); }, 2500);
+        }
+        input.focus();
+    }
+
+    document.addEventListener('paste', function(e) {
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                var file = items[i].getAsFile();
+                if (file) { _addImageFile(file); }
+                // Don't prevent default for text — let textarea still get text pastes
+            }
+        }
+    });
+
+    // ── Drag & drop images onto the chat card ─────────────────────────────
+    var chatCard = document.querySelector('.chat-card');
+    if (chatCard) {
+        chatCard.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            chatCard.classList.add('drag-over');
+        });
+        chatCard.addEventListener('dragleave', function() {
+            chatCard.classList.remove('drag-over');
+        });
+        chatCard.addEventListener('drop', function(e) {
+            e.preventDefault();
+            chatCard.classList.remove('drag-over');
+            var files = e.dataTransfer && e.dataTransfer.files;
+            if (files && files.length) handleFiles(files);
+        });
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function getCsrf() {
+        var m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.content : '';
+    }
+
+    function scrollToBottom() {
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    // ── Render user attachment grid ───────────────────────────────────────
+    function buildUserAttachments(attachments) {
+        if (!attachments || !attachments.length) return '';
+        var html = '<div class="user-attachments">';
+        attachments.forEach(function(att) {
+            if (att.preview) {
+                html += '<img src="' + _esc(att.preview) + '" alt="' + _esc(att.name) + '" data-action="chat:openLightbox" class="chat-img-lightbox">';
+            } else if (att.type && att.type.startsWith('audio/')) {
+                html += '<div class="media-chip">🎵 ' + _esc(att.name) + '</div>';
+            } else if (att.type && att.type.startsWith('video/')) {
+                html += '<div class="media-chip">🎬 ' + _esc(att.name) + '</div>';
+            } else {
+                html += '<div class="media-chip">📎 ' + _esc(att.name) + '</div>';
+            }
+        });
+        html += '</div>';
+        return html;
+    }
+
+    // ── Render a chat bubble ──────────────────────────────────────────────
+    function addMessage(role, text, _unused, attachments) {
+        var isUser = role === 'user';
+        var div = document.createElement('div');
+        div.className = 'chat ' + (isUser ? 'chat-end' : 'chat-start');
+
+        var avatarHtml = '';
+        if (!isUser) {
+            avatarHtml = '<div class="chat-image"><div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30 bg-base-200 flex items-center justify-center"><img src="/static/favicon.png" alt="Wasp" class="w-6 h-6 object-contain"></div></div>';
+        }
+
+        var bubbleContent;
+        var bubbleHtml;
+        if (isUser) {
+            var attHtml = buildUserAttachments(attachments || []);
+            bubbleContent = attHtml + _esc(text).replace(/\n/g, '<br>');
+            bubbleHtml = '<div class="chat-bubble chat-bubble-neutral text-sm max-w-[85%] break-words">' + bubbleContent + '</div>';
+        } else {
+            bubbleContent = '<div class="md-body">' + renderMarkdown(text) + '</div>';
+            bubbleHtml = '<div class="agent-bubble">' + bubbleContent + '</div>';
+        }
+
+        var footer = isUser ? '' : '<div class="chat-footer opacity-50 text-xs mt-0.5">Agent Wasp</div>';
+
+        div.innerHTML = avatarHtml + bubbleHtml + footer;
+
+        messages.appendChild(div);
+        scrollToBottom();
+        return div;
+    }
+
+    // ── Context trace (collapsed metadata) ───────────────────────────────
+    function addContextTrace(agentDiv, ctx) {
+        var parts = [];
+        if (ctx.model) parts.push(ctx.model);
+        if (ctx.provider) parts.push(ctx.provider);
+        if (ctx.rounds) parts.push(ctx.rounds + ' round' + (ctx.rounds !== 1 ? 's' : ''));
+        if (!parts.length) return;
+
+        var skills = Array.isArray(ctx.skills_called) ? ctx.skills_called : [];
+        var sysBadges = '';
+        if (ctx.kg_active) sysBadges += '<span class="badge badge-xs badge-primary badge-outline opacity-70">KG</span>';
+        if (ctx.epistemic_active) sysBadges += '<span class="badge badge-xs badge-info badge-outline opacity-70">epistemic</span>';
+        if (ctx.temporal_active) sysBadges += '<span class="badge badge-xs badge-secondary badge-outline opacity-70">temporal</span>';
+        if (ctx.procedures_checked > 0) sysBadges += '<span class="badge badge-xs badge-accent badge-outline opacity-70">' + ctx.procedures_checked + ' proc' + (ctx.procedures_checked !== 1 ? 's' : '') + '</span>';
+
+        var skillBadges = skills.map(function(s) {
+            return '<span class="badge badge-xs badge-ghost font-mono opacity-80">' + _esc(s) + '</span>';
+        }).join('');
+
+        var panel = document.createElement('div');
+        panel.className = 'ml-12 mt-0.5 mb-1';
+        var hasExpand = skillBadges || sysBadges;
+
+        if (hasExpand) {
+            panel.innerHTML =
+                '<details class="group">' +
+                '<summary class="text-[10px] text-base-content/30 list-none flex items-center gap-1 cursor-pointer hover:text-base-content/50">' +
+                '<svg class="h-2 w-2 flex-shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 6 10" fill="currentColor"><path d="M0 0l6 5-6 5z"/></svg>' +
+                '<span>' + _esc(parts.join(' · ')) + '</span>' +
+                '</summary>' +
+                '<div class="mt-1 flex flex-wrap gap-1">' + skillBadges + sysBadges + '</div>' +
+                '</details>';
+        } else {
+            panel.innerHTML = '<p class="text-[10px] text-base-content/30">' + _esc(parts.join(' · ')) + '</p>';
+        }
+
+        agentDiv.after ? agentDiv.after(panel) : agentDiv.parentNode.insertBefore(panel, agentDiv.nextSibling);
+        scrollToBottom();
+        return panel;
+    }
+
+    // ── Grounding validation block (async, fail-hidden) ───────────────────
+    function fetchAndAddGrounding(agentDiv, afterEl, reqId) {
+        var url = '/chat/api/last-grounding' + (reqId ? '?request_id=' + encodeURIComponent(reqId) : '');
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok || !data.grounding) return;
+                var g = data.grounding;
+                if (g.passed === undefined && g.valid === undefined) return; // no useful data
+                var passed = g.passed !== false && g.valid !== false;
+                var reason = g.reason || g.message || '';
+                var evidenceType = g.evidence_type || g.method || g.type || '';
+                var latency = data.latency_ms ? Math.round(data.latency_ms) + 'ms' : '';
+                var colorCls = passed ? 'text-success/50 hover:text-success/80' : 'text-error/60 hover:text-error/80';
+                var panel = document.createElement('div');
+                panel.className = 'ml-12 mt-0.5 mb-1';
+                panel.innerHTML =
+                    '<details class="group">' +
+                    '<summary class="text-[10px] list-none flex items-center gap-1.5 cursor-pointer ' + colorCls + '">' +
+                    '<svg class="h-2 w-2 flex-shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 6 10" fill="currentColor"><path d="M0 0l6 5-6 5z"/></svg>' +
+                    '<span class="font-semibold">' + (passed ? '✓ Grounding PASS' : '✗ Grounding FAIL') + '</span>' +
+                    (latency ? ' <span class="opacity-40">· ' + _esc(latency) + '</span>' : '') +
+                    '</summary>' +
+                    '<div class="mt-1 pl-2 space-y-0.5">' +
+                    (reason ? '<p class="text-[10px] text-base-content/50">' + _esc(reason) + '</p>' : '') +
+                    (evidenceType ? '<p class="text-[10px] text-base-content/30">evidence: ' + _esc(evidenceType) + '</p>' : '') +
+                    '</div></details>';
+                var ref = afterEl || agentDiv;
+                ref.after ? ref.after(panel) : ref.parentNode.insertBefore(panel, ref.nextSibling);
+                scrollToBottom();
+            })
+            .catch(function() {});
+    }
+
+    // ── URL display helper ────────────────────────────────────────────────
+    function _fmtUrl(url) {
+        if (!url) return '';
+        try {
+            var u = new URL(url);
+            var display = u.hostname + (u.pathname !== '/' ? u.pathname : '');
+            if (display.length > 55) display = display.substring(0, 52) + '…';
+            return display;
+        } catch(e) { return url.length > 55 ? url.substring(0, 52) + '…' : url; }
+    }
+
+    // ── Skill metadata ────────────────────────────────────────────────────
+    var SKILL_META = {
+        web_search:     { icon: '🔍', label: 'Web Search',       desc: 'Querying DuckDuckGo' },
+        browser:        { icon: '🌐', label: 'Browser',          desc: 'Opening web browser' },
+        capture:        { icon: '📸', label: 'Capture',          desc: 'Screenshot web page' },
+        fetch_url:      { icon: '📡', label: 'Fetch URL',        desc: 'Fetching web content' },
+        scrape:         { icon: '🕷️',  label: 'Web Scrape',      desc: 'Extracting page data' },
+        screenshot:     { icon: '📸', label: 'Screenshot',       desc: 'Capturing screen' },
+        shell:          { icon: '🐚', label: 'Shell',            desc: 'Running shell command' },
+        python_exec:    { icon: '🐍', label: 'Python',           desc: 'Executing Python code' },
+        read_file:      { icon: '📂', label: 'Read File',        desc: 'Reading from disk' },
+        write_file:     { icon: '💾', label: 'Write File',       desc: 'Writing to disk' },
+        http_request:   { icon: '🔗', label: 'HTTP Request',     desc: 'Making API call' },
+        send_email:     { icon: '📧', label: 'Send Email',       desc: 'Sending message' },
+        send_telegram:  { icon: '📨', label: 'Telegram',         desc: 'Sending notification' },
+        remember:       { icon: '🧠', label: 'Memory',           desc: 'Storing to memory' },
+        recall:         { icon: '💭', label: 'Recall',           desc: 'Retrieving memories' },
+        schedule:       { icon: '⏰', label: 'Scheduler',        desc: 'Creating scheduled task' },
+        subscribe:      { icon: '🔔', label: 'Subscribe',        desc: 'Setting up alert' },
+        calculate:      { icon: '🔢', label: 'Calculate',        desc: 'Running computation' },
+        create_task:    { icon: '📋', label: 'Create Task',      desc: 'Adding task to queue' },
+        self_improve:   { icon: '⚙️',  label: 'Self-improve',    desc: 'Modifying own behavior' },
+        skill_manager:  { icon: '🔧', label: 'Skill Manager',    desc: 'Managing capabilities' },
+    };
+
+    function _skillMeta(name) {
+        return SKILL_META[name] || { icon: '⚡', label: name.replace(/_/g, ' '), desc: 'Executing' };
+    }
+
+    function _ts() {
+        var now = new Date();
+        return now.toTimeString().slice(0,8);
+    }
+
+    // ── Per-request trace accumulators ───────────────────────────────────
+    // Keyed by request_id so concurrent/rapid messages never cross-contaminate.
+    var _traces = {};          // { [request_id]: { rounds, planned, skills } }
+    var _currentReqId = null;  // fallback when server event lacks request_id
+    // Legacy single-instance accumulator (fallback if request_id never arrives)
+    var _traceAccum = { rounds: 0, planned: [], skills: [] };
+
+    // ── Unified Execution Trace ───────────────────────────────────────────
+    function _inferStrategy(skills) {
+        if (!skills || !skills.length) return '';
+        var names = skills.map(function(s) { return s.name || ''; });
+        if (names.some(function(n) { return n === 'browser' || n === 'web_search' || n === 'fetch_url' || n === 'scrape'; })) return 'web_lookup';
+        if (names.some(function(n) { return n === 'shell' || n === 'python_exec'; })) return 'compute';
+        if (names.some(function(n) { return n === 'send_email' || n === 'send_telegram'; })) return 'communication';
+        if (names.some(function(n) { return n === 'read_file' || n === 'write_file'; })) return 'file_ops';
+        if (names.some(function(n) { return n === 'remember' || n === 'recall'; })) return 'memory_access';
+        if (names.some(function(n) { return n === 'schedule' || n === 'create_task'; })) return 'task_creation';
+        if (names.some(function(n) { return n === 'self_improve' || n === 'skill_manager'; })) return 'self_modification';
+        if (names.length > 1) return 'multi_skill';
+        return names[0].replace(/_/g, ' ');
+    }
+
+    function addExecutionTrace(agentDiv, afterEl, trace, userText, ctx, reqId) {
+        try {
+            var rounds = trace.rounds || ctx.rounds || 0;
+            var tracedSkills = trace.skills || [];
+            var planned = trace.planned || [];
+            var strategy = ctx.strategy || (ctx.skills_called && ctx.skills_called.length ? _inferStrategy(tracedSkills) : '');
+            var intentText = userText ? (userText.length > 58 ? userText.slice(0, 55) + '…' : userText) : '';
+            var hasContent = rounds > 0 || tracedSkills.length > 0 || planned.length > 0;
+            if (!hasContent && !intentText) return null;
+
+            var systems = [];
+            if (ctx.kg_active) systems.push('KG');
+            if (ctx.epistemic_active) systems.push('Epistemic');
+            if (ctx.temporal_active) systems.push('Temporal');
+            if (ctx.behavioral_active) systems.push('Behavioral');
+            if (ctx.procedures_checked > 0) systems.push(ctx.procedures_checked + (ctx.procedures_checked !== 1 ? ' procs' : ' proc'));
+
+            var anyFail = tracedSkills.some(function(s) { return !s.success; });
+            var allFail = tracedSkills.length > 0 && tracedSkills.every(function(s) { return !s.success; });
+            var statusColor = allFail ? 'text-error/60' : anyFail ? 'text-warning/60' : 'text-base-content/30';
+
+            var lines = [];
+            function row(label, valHtml) {
+                return '<div class="grid grid-cols-[72px_1fr] gap-1"><span class="text-base-content/30 shrink-0">' + label + '</span><span>' + valHtml + '</span></div>';
+            }
+
+            if (intentText) lines.push(row('Intent', '<span class="text-base-content/60">' + _esc(intentText) + '</span>'));
+            if (strategy)   lines.push(row('Strategy', '<span class="text-info/60">' + _esc(strategy) + '</span>'));
+            if (rounds > 0) lines.push(row('Rounds', '<span class="text-base-content/50">' + rounds + '</span>'));
+
+            // Plan row — unique skill names from planned or fallback to executed
+            var planNames = planned.length ? planned : tracedSkills.map(function(s) { return s.name; });
+            // deduplicate
+            var seen = {}; planNames = planNames.filter(function(n) { if (seen[n]) return false; seen[n]=1; return true; });
+            if (planNames.length) {
+                var planHtml = planNames.slice(0, 6).map(function(n) {
+                    return '<span class="badge badge-xs badge-ghost font-mono opacity-70">' + _esc(n.replace(/_/g,' ')) + '</span>';
+                }).join(' ');
+                lines.push(row('Plan', '<span class="flex flex-wrap gap-0.5">' + planHtml + '</span>'));
+            }
+
+            // Skills with per-skill timing
+            if (tracedSkills.length) {
+                var skillLines = tracedSkills.slice(0, 7).map(function(s) {
+                    var m = _skillMeta(s.name);
+                    var dur = s.ms != null ? (s.ms >= 1000 ? (s.ms/1000).toFixed(1) + 's' : s.ms + 'ms') : '';
+                    var icon = s.success ? '<span class="text-success">✔</span>' : '<span class="text-error">✖</span>';
+                    return icon + '&thinsp;<span class="' + (s.success ? 'text-base-content/55' : 'text-error/65') + '">' + _esc(m.label) + '</span>' +
+                           (dur ? '&thinsp;<span class="text-base-content/25">(' + _esc(dur) + ')</span>' : '');
+                }).join('&emsp;');
+                lines.push(row('Skills', skillLines));
+            }
+
+            if (systems.length) lines.push(row('Active', '<span class="text-primary/50">' + _esc(systems.join(' · ')) + '</span>'));
+            if (ctx.model)      lines.push(row('Model', '<span class="text-base-content/35">' + _esc(ctx.model + (ctx.provider ? ' / ' + ctx.provider : '')) + '</span>'));
+            // request_id (last 12 chars, very muted — only if available)
+            if (reqId)          lines.push(row('req', '<span class="text-base-content/18 select-all">' + _esc(reqId.slice(-12)) + '</span>'));
+
+            var panel = document.createElement('div');
+            panel.className = 'ml-12 mt-0.5 mb-1';
+            panel.innerHTML =
+                '<details class="group">' +
+                '<summary class="list-none flex items-center gap-1 cursor-pointer ' + statusColor + ' hover:text-base-content/50 text-[10px]">' +
+                '<svg class="h-2 w-2 flex-shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 6 10" fill="currentColor"><path d="M0 0l6 5-6 5z"/></svg>' +
+                '<span>Execution Trace</span>' +
+                (anyFail ? '<span class="text-[9px] text-error/50 ml-1">· partial failure</span>' : '') +
+                '</summary>' +
+                '<div class="mt-1.5 pl-2 font-mono text-[10px] leading-relaxed space-y-0.5">' +
+                lines.join('') +
+                '</div></details>';
+
+            var ref = afterEl || agentDiv;
+            ref.after ? ref.after(panel) : ref.parentNode.insertBefore(panel, ref.nextSibling);
+            scrollToBottom();
+            return panel;
+        } catch(e) { return null; }
+    }
+
+    // ── Execution Trace Panel ─────────────────────────────────────────────
+    var _execPanel = null;   // outer chat div
+    var _execPhaseEl = null; // header phase text
+    var _execLogEl = null;   // log rows container
+    var _elapsedTicker = null;  // interval to show elapsed time
+    var _elapsedStart = 0;
+
+    function _startElapsedTicker() {
+        _elapsedStart = Date.now();
+        if (_elapsedTicker) clearInterval(_elapsedTicker);
+        _elapsedTicker = setInterval(function() {
+            if (!_execPhaseEl) return;
+            var sec = Math.round((Date.now() - _elapsedStart) / 1000);
+            var el = document.getElementById('exec-elapsed');
+            if (el) el.textContent = ' · ' + sec + 's';
+        }, 1000);
+    }
+    function _stopElapsedTicker() {
+        if (_elapsedTicker) { clearInterval(_elapsedTicker); _elapsedTicker = null; }
+    }
+
+    function createExecPanel() {
+        var wrap = document.createElement('div');
+        wrap.id = 'exec-panel-wrap';
+        wrap.className = 'chat chat-start';
+        wrap.innerHTML =
+            '<div class="chat-image"><div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30 bg-base-200 flex items-center justify-center"><img src="/static/favicon.png" alt="Wasp" class="w-6 h-6 object-contain"></div></div>' +
+            '<div class="exec-panel">' +
+              '<div class="exec-header">' +
+                '<span class="exec-spinner"></span>' +
+                '<span class="exec-phase" id="exec-phase">Initializing…</span>' +
+                '<span id="exec-elapsed" class="exec-elapsed"></span>' +
+                '<span class="exec-model" id="exec-model"></span>' +
+              '</div>' +
+              '<div class="exec-log" id="exec-log"></div>' +
+            '</div>';
+        messages.appendChild(wrap);
+        _execPanel = wrap;
+        _execPhaseEl = document.getElementById('exec-phase');
+        _execLogEl = document.getElementById('exec-log');
+        scrollToBottom();
+        _startElapsedTicker();
+    }
+
+    function _setPhase(text) {
+        if (_execPhaseEl) _execPhaseEl.textContent = text;
+    }
+
+    function _addRow(phase, icon, html) {
+        if (!_execLogEl) return;
+        var row = document.createElement('div');
+        // Phase 4 — flash skill rows on result
+        var flashCls = phase === 'ok' ? ' wasp-flash-ok' : phase === 'fail' ? ' wasp-flash-fail' : '';
+        row.className = 'exec-row phase-' + phase + flashCls;
+        row.innerHTML =
+            '<span class="exec-time">' + _ts() + '</span>' +
+            '<span class="exec-icon">' + icon + '</span>' +
+            '<span class="exec-desc">' + html + '</span>';
+        _execLogEl.appendChild(row);
+        while (_execLogEl.children.length > 18) _execLogEl.removeChild(_execLogEl.firstChild);
+        _execLogEl.scrollTop = _execLogEl.scrollHeight;
+        scrollToBottom();
+    }
+
+    function removeExecPanel() {
+        _stopElapsedTicker();
+        if (_execPanel) { _execPanel.remove(); _execPanel = null; }
+        _execPhaseEl = null; _execLogEl = null;
+    }
+
+    // ── SSE event handler ─────────────────────────────────────────────────
+    function handleStreamEvent(ev, progressLines, userText, userAttachments) {
+        if (ev.type === 'thinking') {
+            var r = ev.round || 1;
+            var _acc = (ev.request_id && _traces[ev.request_id]) ? _traces[ev.request_id] : _traceAccum;
+            _acc.rounds = Math.max(_acc.rounds || 0, r);  // accumulate
+            _setPhase('Round ' + r + ' — Reasoning');
+            _addRow('think', '🧠',
+                '<span class="hi">Round ' + r + '</span> — Analyzing request and planning next actions');
+            progressLines.push('thinking:' + r);
+
+        } else if (ev.type === 'skills_planned') {
+            var skills = ev.skills || [];
+            // accumulate planned skill names (dedup) into the right per-request bucket
+            var _pacc = (ev.request_id && _traces[ev.request_id]) ? _traces[ev.request_id] : _traceAccum;
+            skills.forEach(function(s) { if (_pacc.planned.indexOf(s) < 0) _pacc.planned.push(s); });
+            var skillInfos = ev.skill_infos || [];
+            var round = ev.round || '';
+            var count = skills.length;
+            var formatted = skills.map(function(s, i) {
+                var info = skillInfos[i] || {};
+                var m = _skillMeta(s);
+                var label = '<span class="hi">' + _esc(m.label) + '</span>';
+                // Show action and URL for browser/capture
+                if (info.action) label += ' <em>→ ' + _esc(info.action) + '</em>';
+                if (info.url) label += ' <em class="exec-url">' + _esc(_fmtUrl(info.url)) + '</em>';
+                if (info.query) label += ' <em>"' + _esc(info.query) + '"</em>';
+                return label;
+            }).join(', ');
+            _setPhase('Planned ' + count + ' action' + (count !== 1 ? 's' : ''));
+            _addRow('plan', '📋',
+                'Will execute ' + count + ' action' + (count !== 1 ? 's' : '') +
+                ': ' + formatted + (round ? ' <em>· round ' + round + '</em>' : ''));
+            progressLines.push('skills:' + skills.join(', '));
+
+        } else if (ev.type === 'skill_start') {
+            var m = _skillMeta(ev.skill);
+            var phase = ev.phase === 'pre' ? 'pre-execution' : 'executing';
+            var urlPart = ev.url ? ' <em class="exec-url">→ ' + _esc(_fmtUrl(ev.url)) + '</em>' : '';
+            var actPart = ev.action ? ' <em>· ' + _esc(ev.action) + '</em>' : '';
+            _setPhase(m.label + (ev.url ? ' → ' + _fmtUrl(ev.url) : '') + ' — ' + phase);
+            _addRow('run', m.icon,
+                '<span class="hi">' + _esc(m.label) + '</span>' + actPart + urlPart +
+                ' <em>· ' + phase + '</em>');
+
+        } else if (ev.type === 'skill_done') {
+            // Phase 4.1 — advance state from thinking to executing on first skill result
+            if (window._setWaspState && window.__waspState && window.__waspState.mode !== 'executing') {
+                window._setWaspState('executing');
+            }
+            var m = _skillMeta(ev.skill);
+            var dur = ev.ms != null
+                ? (ev.ms >= 1000 ? (ev.ms/1000).toFixed(1) + 's' : ev.ms + 'ms')
+                : '';
+            // Build contextual description
+            var ctxDesc = m.desc;
+            var ctxExtra = '';
+            if (ev.action) {
+                if (ev.action === 'capture') ctxDesc = 'Navigate + screenshot';
+                else if (ev.action === 'navigate') ctxDesc = 'Navigating to page';
+                else if (ev.action === 'screenshot') ctxDesc = 'Capturing screenshot';
+                else if (ev.action === 'click') ctxDesc = 'Clicking element';
+                else ctxDesc = ev.action;
+            }
+            if (ev.url) {
+                ctxExtra = ' <em class="exec-url">· ' + _esc(_fmtUrl(ev.url)) + '</em>';
+            }
+            if (ev.query) ctxExtra = ' <em>· "' + _esc(ev.query) + '"</em>';
+            if (ev.success) {
+                _setPhase(m.label + (ev.action ? ' ' + ev.action : '') + ' completed' + (dur ? ' · ' + dur : ''));
+                _addRow('ok', m.icon,
+                    '<span class="ok">✓</span> <span class="hi">' + _esc(m.label) + '</span> — ' +
+                    ctxDesc + ctxExtra + (dur ? ' <em>· ' + dur + '</em>' : ''));
+            } else {
+                _setPhase(m.label + ' failed');
+                _addRow('fail', m.icon,
+                    '<span class="fail">✗</span> <span class="hi">' + _esc(m.label) + '</span> — ' +
+                    ctxDesc + ctxExtra + ' failed' + (dur ? ' <em>· ' + dur + '</em>' : ''));
+            }
+            progressLines.push((ev.success ? 'done' : 'fail') + ':' + ev.skill);
+            // accumulate per-skill result into correct per-request bucket
+            var _sacc = (ev.request_id && _traces[ev.request_id]) ? _traces[ev.request_id] : _traceAccum;
+            _sacc.skills.push({ name: ev.skill, success: !!ev.success, ms: ev.ms != null ? ev.ms : null });
+
+        } else if (ev.type === 'done') {
+            removeExecPanel();
+            // Phase 4 — deactivate streaming glow + return to idle
+            if (_chatCard) _chatCard.classList.remove('wasp-active');
+            if (window._waspSetStreaming) window._waspSetStreaming(false);
+            if (window._setWaspState) window._setWaspState('idle');
+            var agentDiv = addMessage('agent', ev.response || '');
+            var ctx = ev.context || {};
+            // Resolve the correct per-request accumulator
+            var _reqId = ev.request_id || _currentReqId || null;
+            var _acc = (_reqId && _traces[_reqId]) ? _traces[_reqId] : _traceAccum;
+            if (progressLines.length) {
+                var skills = [], rounds = 0;
+                progressLines.forEach(function(l) {
+                    if (l.startsWith('skills:')) skills = skills.concat(l.slice(7).split(', '));
+                    if (l.startsWith('thinking:')) rounds++;
+                });
+                if (skills.length && !ctx.skills_called) ctx.skills_called = skills;
+                if (rounds && !ctx.rounds) ctx.rounds = rounds;
+            }
+            // merge accumulator rounds into ctx if needed
+            if (_acc.rounds > (ctx.rounds || 0)) ctx.rounds = _acc.rounds;
+            var ctxPanel = null;
+            if (Object.keys(ctx).length) ctxPanel = addContextTrace(agentDiv, ctx);
+            // execution trace (sync, built from per-request accumulator)
+            var tracePanel = addExecutionTrace(agentDiv, ctxPanel, _acc, userText, ctx, _reqId);
+            // grounding (async, exact correlation via request_id, anchors after trace)
+            fetchAndAddGrounding(agentDiv, tracePanel || ctxPanel, _reqId);
+            // cleanup per-request accumulator
+            if (_reqId && _traces[_reqId]) delete _traces[_reqId];
+            saveToHistory('user', userText, null, userAttachments);
+            saveToHistory('agent', ev.response || '', ctx, []);
+
+        } else if (ev.type === 'error') {
+            removeExecPanel();
+            if (_chatCard) _chatCard.classList.remove('wasp-active');
+            if (window._waspSetStreaming) window._waspSetStreaming(false);
+            if (window._setWaspState) window._setWaspState('error');
+            addMessage('agent', '⚠️ Error: ' + (ev.error || 'Unknown error'));
+        }
+    }
+
+    // ── Main send function (streaming) ────────────────────────────────────
+    window.sendMessage = function () {
+        var text = input.value.trim();
+        var atts = pendingAttachments.slice();
+        if (!text && !atts.length) return;
+
+        input.disabled = true;
+        sendBtn.disabled = true;
+        input.value = '';
+        pendingAttachments = [];
+        renderStrip();
+
+        addMessage('user', text, false, atts);
+        // Phase 4 — activate streaming glow + set global state
+        if (_chatCard) _chatCard.classList.add('wasp-active');
+        if (window._waspSetStreaming) window._waspSetStreaming(true);
+        if (window._setWaspState) window._setWaspState('thinking');
+        createExecPanel();
+
+        // Build attachments payload (strip data URI prefix, keep base64 only)
+        var attPayload = atts.map(function(a) {
+            var data = a.data || '';
+            if (data.indexOf(',') !== -1) data = data.split(',', 2)[1];
+            return {name: a.name, type: a.type, data: data};
+        });
+
+        // Generate unique request_id for this turn — propagated to backend + SSE events
+        var _reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        _currentReqId = _reqId;
+        _traces[_reqId] = { rounds: 0, planned: [], skills: [] };
+        // Reset fallback accumulator as well (used when request_id is absent)
+        _traceAccum = { rounds: 0, planned: [], skills: [] };
+        var progressLines = [];
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, 180000);
+
+        fetch('/chat/stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrf(),
+            },
+            body: JSON.stringify({text: text, attachments: attPayload, request_id: _reqId}),
+            signal: controller.signal,
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(d) {
+                    throw new Error(d.error || 'HTTP ' + response.status);
+                });
+            }
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function read() {
+                return reader.read().then(function(result) {
+                    if (result.done) return;
+                    buffer += decoder.decode(result.value, {stream: true});
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    parts.forEach(function(part) {
+                        part = part.trim();
+                        if (!part.startsWith('data: ')) return;
+                        var raw = part.slice(6).trim();
+                        if (!raw || raw[0] !== '{') return;
+                        try {
+                            var ev = JSON.parse(raw);
+                            handleStreamEvent(ev, progressLines, text, atts);
+                        } catch(e) {}
+                    });
+                    return read();
+                });
+            }
+            return read();
+        })
+        .catch(function(err) {
+            clearTimeout(timer);
+            // Phase 4 — ensure glow removed on network error
+            if (_chatCard) _chatCard.classList.remove('wasp-active');
+            if (window._waspSetStreaming) window._waspSetStreaming(false);
+            if (window._setWaspState) window._setWaspState('error');
+            if (err && err.name === 'AbortError') {
+                addMessage('agent', '⏱️ Timeout (3 min). The agent may still be processing.');
+            } else {
+                addMessage('agent', '⚠️ Error: ' + (err.message || 'Network error'));
+            }
+        })
+        .finally(function() {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus();
+        });
+    };
+
+    window.handleKey = function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+
+    window.clearChat = function () {
+        sessionStorage.removeItem(HISTORY_KEY);
+        var kids = Array.from(messages.children);
+        kids.forEach(function (k) {
+            if (k.id !== 'welcome-msg') k.remove();
+        });
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    loadHistory();
+    input.focus();
+    // Bind controls (no inline event handlers)
+    var _clearBtn = document.getElementById('btn-clear-chat');
+    var _sendBtn = document.getElementById('btn-send');
+    var _lightbox = document.getElementById('lightbox');
+    if (_clearBtn) _clearBtn.addEventListener('click', clearChat);
+    if (_sendBtn) _sendBtn.addEventListener('click', sendMessage);
+    if (fileInput) fileInput.addEventListener('change', function() { handleFiles(this.files); });
+    if (input) input.addEventListener('keydown', handleKey);
+    if (_lightbox) _lightbox.addEventListener('click', closeLightbox);
+    registerWaspActions('chat', {
+      'openLightbox':     function(el) { openLightbox(el.src); },
+      'removeAttachment': function(el) { removeAttachment(parseInt(el.getAttribute('data-idx'), 10)); },
+    });
+})();
+</script>
+{% endblock %}

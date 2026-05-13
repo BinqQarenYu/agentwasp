@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+{% block title %}Skill Evolution — Agent Dashboard{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { }
+[data-ds="2"] { width:${pct}%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">Skill Evolution Engine</h1>
+      <p class="text-sm text-base-content/45 mt-0.5">Detects recurring skill workflows and synthesises new composite skills automatically</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="refresh-indicator" class="text-xs text-base-content/30 hidden">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse mr-1"></span>live
+      </span>
+      <button id="btn-se-refresh" class="btn btn-sm btn-ghost gap-1.5 text-base-content/50 hover:text-base-content" data-action="evolution:seRefresh">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+      <button id="run-btn" class="btn btn-sm btn-primary gap-1.5" data-action="evolution:seRunCycle">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Run Cycle
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats bar ──────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-2">
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Patterns</div>
+        <div id="stat-total" class="text-base font-bold tabular-nums leading-tight text-accent">{{ stats.total }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Synthesized</div>
+        <div id="stat-synthesized" class="text-base font-bold tabular-nums leading-tight text-success">{{ stats.synthesized }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Pending</div>
+        <div id="stat-pending" class="text-base font-bold tabular-nums leading-tight text-warning">{{ stats.pending }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Threshold</div>
+        <div class="text-base font-bold tabular-nums leading-tight text-info">{{ stats.threshold }}×</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-base-content/35" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Job Interval</div>
+        <div class="text-base font-bold leading-tight text-base-content/50">6 h</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <div class="w-2 h-2 rounded-full {% if stats.enabled %}bg-success animate-pulse{% else %}bg-error{% endif %}"></div>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Engine</div>
+        <div class="text-base font-bold leading-tight {% if stats.enabled %}text-success{% else %}text-error{% endif %}">{% if stats.enabled %}Active{% else %}Disabled{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if not stats.enabled %}
+  <!-- ── Engine disabled banner ───────────────────────────────────────── -->
+  <div class="flex items-start gap-3 bg-warning/8 border border-warning/25 rounded-xl px-4 py-3">
+    <svg class="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <div>
+      <p class="text-sm font-semibold text-warning">Skill Evolution Engine is disabled</p>
+      <p class="text-xs text-base-content/50 mt-0.5">Set <code>SKILL_EVOLUTION_ENABLED=true</code> in your environment to enable automatic pattern detection and skill synthesis. The engine runs every 6 hours.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Cycle result banner ────────────────────────────────────────────── -->
+  <div id="cycle-banner" class="hidden rounded-xl px-4 py-3 flex items-center gap-3">
+    <span id="cycle-banner-text" class="text-sm"></span>
+  </div>
+
+  <!-- ── Tab bar ────────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-1 border-b border-base-200">
+    <button class="tab-btn tab-active px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-patterns" data-tab="patterns">
+      Patterns
+      {% if stats.total > 0 %}<span class="pill pill-xs pill-accent ml-1">{{ stats.total }}</span>{% endif %}
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-synthesized" data-tab="synthesized">
+      Synthesized Skills
+      {% if stats.synthesized > 0 %}<span class="pill pill-xs pill-success ml-1">{{ stats.synthesized }}</span>{% endif %}
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-how" data-tab="how">
+      How It Works
+    </button>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: PATTERNS                                                      -->
+  <!-- ================================================================ -->
+  <div id="pane-patterns" class="space-y-3">
+    <p class="text-xs text-base-content/35 -mt-1">Recurring multi-skill workflows detected in the last 7 days. Patterns reaching the threshold ({{ stats.threshold }}×) are queued for synthesis.</p>
+    <div id="patterns-list" class="space-y-3">
+      {% if stats.patterns %}
+        {% for p in stats.patterns %}
+        {% set pct = [[p.occurrence_count / stats.threshold * 100, 100]|min, 0]|max %}
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body p-4 gap-3">
+            <!-- Header -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                {% for skill in p.skill_sequence %}
+                <span class="pill pill-xs pill-ghost font-mono">{{ skill }}</span>
+                {% if not loop.last %}
+                <svg class="w-3 h-3 text-base-content/25 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                {% endif %}
+                {% endfor %}
+              </div>
+              {% if p.synthesized %}
+              <span class="pill pill-xs pill-success shrink-0">synthesized</span>
+              {% elif p.occurrence_count >= stats.threshold %}
+              <span class="pill pill-xs pill-warning shrink-0">ready</span>
+              {% else %}
+              <span class="pill pill-xs pill-ghost shrink-0">learning</span>
+              {% endif %}
+            </div>
+            <!-- Progress toward threshold -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-base-content/40">Usage frequency</span>
+                <span class="text-xs font-semibold tabular-nums {% if p.occurrence_count >= stats.threshold %}text-success{% else %}text-base-content/60{% endif %}">{{ p.occurrence_count }} / {{ stats.threshold }}</span>
+              </div>
+              <div class="w-full bg-base-200 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full transition-all duration-700 {% if p.synthesized %}bg-success{% elif p.occurrence_count >= stats.threshold %}bg-warning{% else %}bg-accent/60{% endif %}"
+                     data-ds="1" data-dv="width:{{ pct|round|int}}%"></div>
+              </div>
+            </div>
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-1">
+              <div>
+                {% if p.synthesized and p.composite_skill_name %}
+                <span class="text-xs text-base-content/50">Composite: <span class="font-mono text-accent">{{ p.composite_skill_name }}</span></span>
+                {% else %}
+                <span class="font-mono text-[10px] text-base-content/25 truncate max-w-xs">{{ p.pattern_key }}</span>
+                {% endif %}
+              </div>
+              <span class="text-[10px] text-base-content/30" data-ts="{{ p.last_seen_at }}">{{ p.last_seen_at[:16]|replace("T"," ") if p.last_seen_at else "—" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body items-center py-14 text-center">
+          <svg class="w-10 h-10 text-base-content/15 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+          <p class="text-base-content/40 font-medium">No patterns detected yet</p>
+          <p class="text-xs text-base-content/30 mt-1 max-w-sm">Patterns emerge when the same sequence of skills is used {{ stats.threshold }} or more times within a 5-minute window. Keep using the agent and patterns will appear here.</p>
+          <button id="btn-se-run-now" class="btn btn-sm btn-ghost mt-4 text-accent" data-action="evolution:seRunCycle">
+            Run detection now
+          </button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: SYNTHESIZED SKILLS                                            -->
+  <!-- ================================================================ -->
+  <div id="pane-synthesized" class="hidden space-y-3">
+    <p class="text-xs text-base-content/35 -mt-1">Composite skills automatically generated from high-frequency patterns. Available immediately as regular skills.</p>
+    <div id="synthesized-list" class="space-y-3">
+      {% set synth_patterns = stats.patterns | selectattr("synthesized") | list %}
+      {% if synth_patterns %}
+        {% for p in synth_patterns %}
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <svg class="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  <span class="font-semibold font-mono text-sm text-accent">{{ p.composite_skill_name or "composite" }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1 mt-1">
+                  {% for skill in p.skill_sequence %}
+                  <span class="pill pill-xs pill-ghost font-mono text-[10px]">{{ skill }}</span>
+                  {% if not loop.last %}<span class="text-base-content/20 text-xs">→</span>{% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+              <span class="pill pill-xs pill-success shrink-0">active</span>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-base-200/60">
+              <span class="text-xs text-base-content/40">Triggered <span class="font-semibold text-base-content/60">{{ p.occurrence_count }}×</span> before synthesis</span>
+              <span class="text-[10px] text-base-content/30" data-ts="{{ p.last_seen_at }}">{{ p.last_seen_at[:16]|replace("T"," ") if p.last_seen_at else "—" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body items-center py-14 text-center">
+          <svg class="w-10 h-10 text-base-content/15 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          <p class="text-base-content/40 font-medium">No composite skills yet</p>
+          <p class="text-xs text-base-content/30 mt-1 max-w-sm">Once a pattern reaches {{ stats.threshold }} occurrences and the engine runs, a composite skill will be automatically generated and appear here.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: HOW IT WORKS                                                  -->
+  <!-- ================================================================ -->
+  <div id="pane-how" class="hidden">
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body p-6 space-y-5">
+        <div class="space-y-1">
+          <h3 class="font-semibold">Overview</h3>
+          <p class="text-sm text-base-content/65 leading-relaxed">The Skill Evolution Engine monitors the audit log for recurring multi-skill workflows. When the same sequence of skills is used together <strong>{{ stats.threshold }} or more times</strong> within a 5-minute window, it becomes a pattern candidate. The engine then uses an LLM to generate a new composite Python skill that encapsulates the full workflow into a single reusable action.</p>
+        </div>
+        <!-- Pipeline steps -->
+        <div class="space-y-2">
+          <h3 class="font-semibold text-sm">Pipeline</h3>
+          {% set steps = [
+            ("1", "Pattern Detection", "Scans audit_log for skill_execution events in the last 7 days. Groups executions from the same conversation within 5-minute windows into sequences."),
+            ("2", "Threshold Check", "Counts how many times each unique sequence has appeared. Only patterns reaching " ~ stats.threshold ~ " occurrences are promoted."),
+            ("3", "LLM Code Generation", "An LLM generates a new Python SkillBase class that encapsulates the full workflow. The code is validated for safety before use."),
+            ("4", "Registration", "The composite skill is saved to /data/skills/<name>/skill.py and becomes immediately available to the agent."),
+          ] %}
+          {% for num, title, desc in steps %}
+          <div class="flex items-start gap-3 p-3 bg-base-200/50 rounded-xl">
+            <div class="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{{ num }}</div>
+            <div>
+              <p class="text-sm font-semibold">{{ title }}</p>
+              <p class="text-xs text-base-content/55 mt-0.5 leading-relaxed">{{ desc }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <!-- Safety rules -->
+        <div class="space-y-2">
+          <h3 class="font-semibold text-sm">Safety Rules</h3>
+          <ul class="space-y-1">
+            {% for rule in [
+              "Generated code is parsed with Python AST — dangerous imports (subprocess, os, eval, exec) are blocked",
+              "Each pattern can only be synthesised once",
+              "The engine NEVER modifies existing skills — only creates new ones",
+              "Skill names are sanitised to prevent path traversal",
+            ] %}
+            <li class="flex items-start gap-2 text-xs text-base-content/60">
+              <svg class="w-3.5 h-3.5 text-success shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              {{ rule }}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script nonce="{{ request.state.csp_nonce }}">
+// ── SSR data ──────────────────────────────────────────────────────────────
+const PATTERNS_SSR = {{ stats.patterns | tojson }};
+const THRESHOLD    = {{ stats.threshold }};
+
+// ── Tab system ────────────────────────────────────────────────────────────
+const TABS = ['patterns', 'synthesized', 'how'];
+let _activeTab = 'patterns';
+
+function switchTab(name) {
+  _activeTab = name;
+  TABS.forEach(t => {
+    document.getElementById('pane-' + t).classList.toggle('hidden', t !== name);
+    document.getElementById('tab-' + t).classList.toggle('tab-active', t === name);
+  });
+}
+
+// ── CSRF helper ───────────────────────────────────────────────────────────
+function csrfHeaders() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? { 'X-CSRF-Token': meta.content, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+}
+
+// ── Run evolution cycle ───────────────────────────────────────────────────
+async function runCycle(btn) {
+  const banner = document.getElementById('cycle-banner');
+  const bannerText = document.getElementById('cycle-banner-text');
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Running...`;
+  banner.classList.add('hidden');
+
+  try {
+    const r = await fetch('/skill-evolution/api/run', { method: 'POST', headers: csrfHeaders() });
+    const d = await r.json();
+    if (d.ok) {
+      banner.className = 'rounded-xl px-4 py-3 flex items-center gap-3 bg-success/10 border border-success/25';
+      bannerText.className = 'text-sm text-success';
+      bannerText.textContent = `Cycle complete — ${d.patterns_detected} pattern${d.patterns_detected !== 1 ? 's' : ''} detected, ${d.skills_synthesised} skill${d.skills_synthesised !== 1 ? 's' : ''} synthesised (${d.latency_ms}ms)`;
+      showToast(`${d.skills_synthesised} skills synthesised`, 'success');
+      refreshStats();
+      loadPatterns();
+    } else {
+      banner.className = 'rounded-xl px-4 py-3 flex items-center gap-3 bg-error/8 border border-error/25';
+      bannerText.className = 'text-sm text-error';
+      bannerText.textContent = d.error || 'Cycle failed';
+      showToast(d.error || 'Cycle failed', 'error');
+    }
+    banner.classList.remove('hidden');
+  } catch (err) {
+    banner.className = 'rounded-xl px-4 py-3 flex items-center gap-3 bg-error/8 border border-error/25';
+    bannerText.className = 'text-sm text-error';
+    bannerText.textContent = err.message;
+    banner.classList.remove('hidden');
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Run Cycle`;
+  }
+}
+
+// ── Pattern card HTML ─────────────────────────────────────────────────────
+function patternCardHTML(p) {
+  const pct   = Math.min(100, Math.round(p.occurrence_count / THRESHOLD * 100));
+  const ready = p.occurrence_count >= THRESHOLD;
+  const barCls = p.synthesized ? 'bg-success' : ready ? 'bg-warning' : 'bg-accent/60';
+  const statusPill = p.synthesized
+    ? `<span class="pill pill-xs pill-success">synthesized</span>`
+    : ready
+      ? `<span class="pill pill-xs pill-warning">ready</span>`
+      : `<span class="pill pill-xs pill-ghost">learning</span>`;
+
+  const flowHtml = p.skill_sequence.map((s, i) => {
+    const arrow = i < p.skill_sequence.length - 1
+      ? `<svg class="w-3 h-3 text-base-content/25 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`
+      : '';
+    return `<span class="pill pill-xs pill-ghost font-mono">${s}</span>${arrow}`;
+  }).join('');
+
+  const footer = p.synthesized && p.composite_skill_name
+    ? `<span class="text-xs text-base-content/50">Composite: <span class="font-mono text-accent">${p.composite_skill_name}</span></span>`
+    : `<span class="font-mono text-[10px] text-base-content/25 truncate max-w-xs">${p.pattern_key}</span>`;
+
+  const ts = p.last_seen_at ? timeAgo(p.last_seen_at) : '—';
+
+  return `
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body p-4 gap-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-1.5 min-w-0">${flowHtml}</div>
+          ${statusPill}
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-base-content/40">Usage frequency</span>
+            <span class="text-xs font-semibold tabular-nums ${ready ? 'text-success' : 'text-base-content/60'}">${p.occurrence_count} / ${THRESHOLD}</span>
+          </div>
+          <div class="w-full bg-base-200 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full transition-all duration-700 ${barCls}" data-ds="2"></div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          ${footer}
+          <span class="text-[10px] text-base-content/30">${ts}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Load patterns from API ────────────────────────────────────────────────
+async function loadPatterns() {
+  try {
+    const r = await fetch('/skill-evolution/api/patterns');
+    const d = await r.json();
+    if (!d.ok) return;
+
+    const patterns = d.patterns || [];
+    const patList  = document.getElementById('patterns-list');
+    const synList  = document.getElementById('synthesized-list');
+
+    if (!patterns.length) {
+      patList.innerHTML = `
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body items-center py-14 text-center">
+            <p class="text-base-content/40 font-medium">No patterns detected yet</p>
+            <p class="text-xs text-base-content/30 mt-1 max-w-sm">Patterns emerge when the same skill sequence is used ${THRESHOLD} or more times within 5 minutes.</p>
+          </div>
+        </div>`;
+      synList.innerHTML = '';
+    } else {
+      patList.innerHTML = patterns.map(patternCardHTML).join('');
+      if (window.applyDynStyles) applyDynStyles(patList);
+      const synth = patterns.filter(p => p.synthesized);
+      if (synth.length) {
+        synList.innerHTML = synth.map(p => {
+          const flow = p.skill_sequence.map((s, i) =>
+            `<span class="pill pill-xs pill-ghost font-mono text-[10px]">${s}</span>${i < p.skill_sequence.length - 1 ? '<span class="text-base-content/20 text-xs">→</span>' : ''}`
+          ).join('');
+          return `
+            <div class="card bg-base-100 shadow-sm wasp-accent">
+              <div class="card-body p-4 gap-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <svg class="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      <span class="font-semibold font-mono text-sm text-accent">${p.composite_skill_name || 'composite'}</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1 mt-1">${flow}</div>
+                  </div>
+                  <span class="pill pill-xs pill-success shrink-0">active</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-base-200/60">
+                  <span class="text-xs text-base-content/40">Triggered <span class="font-semibold text-base-content/60">${p.occurrence_count}×</span> before synthesis</span>
+                  <span class="text-[10px] text-base-content/30">${timeAgo(p.last_seen_at)}</span>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
+
+    // Update badges
+    updateBadge('tab-patterns', patterns.length);
+    updateBadge('tab-synthesized', patterns.filter(p => p.synthesized).length, 'pill-success');
+  } catch (e) { console.warn('[skill-evolution] loadPatterns failed:', e.message); }
+}
+
+function updateBadge(tabId, count, cls = 'pill-accent') {
+  const tab = document.getElementById(tabId);
+  if (!tab) return;
+  const existing = tab.querySelector('.pill');
+  if (count > 0) {
+    const html = `<span class="pill pill-xs ${cls} ml-1">${count}</span>`;
+    if (existing) existing.outerHTML = html;
+    else tab.insertAdjacentHTML('beforeend', html);
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
+// ── Refresh stats bar ─────────────────────────────────────────────────────
+async function refreshStats() {
+  try {
+    const r = await fetch('/skill-evolution/api/stats');
+    const d = await r.json();
+    if (!d.ok) return;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('stat-total',      d.total);
+    set('stat-synthesized', d.synthesized);
+    set('stat-pending',    d.pending);
+  } catch (e) { console.warn('[skill-evolution] refreshStats failed:', e.message); }
+}
+
+// ── Trigger full refresh ──────────────────────────────────────────────────
+function triggerRefresh() {
+  refreshStats();
+  if (_activeTab === 'patterns' || _activeTab === 'synthesized') loadPatterns();
+  const ind = document.getElementById('refresh-indicator');
+  ind.classList.remove('hidden');
+  setTimeout(() => ind.classList.add('hidden'), 2000);
+}
+
+// ── Time-ago ──────────────────────────────────────────────────────────────
+function timeAgo(isoStr) {
+  if (!isoStr) return '—';
+  const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+document.querySelectorAll('[data-ts]').forEach(el => {
+  const ts = el.getAttribute('data-ts');
+  if (ts) el.textContent = timeAgo(ts);
+});
+
+// ── Auto-refresh every 60s ────────────────────────────────────────────────
+setInterval(() => {
+  refreshStats();
+  if (_activeTab !== 'how') loadPatterns();
+}, 60000);
+
+// ── Init ──────────────────────────────────────────────────────────────────
+const ind = document.getElementById('refresh-indicator');
+ind.classList.remove('hidden');
+setTimeout(() => ind.classList.add('hidden'), 2500);
+// data-tab delegation (kept separate — per-page tab switching)
+document.addEventListener('click', function(e) {
+  var tb = e.target.closest('[data-tab]');
+  if (tb) { switchTab(tb.getAttribute('data-tab')); }
+});
+registerWaspActions('evolution', {
+  'seRefresh':  function()   { triggerRefresh(); },
+  'seRunCycle': function(el) { runCycle(el.id === 'run-btn' ? el : document.getElementById('run-btn')); },
+});
+</script>
+{% endblock %}

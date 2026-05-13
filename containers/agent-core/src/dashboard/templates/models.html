@@ -1,0 +1,995 @@
+{% extends "base.html" %}
+{% block title %}Models — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { }
+[data-ds="2"] { }
+[data-ds="3"] { }
+[data-ds="4"] { }
+[data-ds="5"] { animation:logo-heartbeat 2.8s ease-in-out infinite; }
+[data-ds="6"] { display:none; letter-spacing:-.5px; animation:logo-heartbeat 2.8s ease-in-out infinite; }
+[data-ds="7"] { display:none; }
+[data-ds="8"] { letter-spacing:-.5px; animation:logo-heartbeat 2.8s ease-in-out infinite; }
+[data-ds="9"] { background:#10B981; }
+[data-ds="10"] { }
+[data-ds="11"] { background:#F59E0B20;color:#F59E0B; }
+[data-ds="12"] { }
+[data-ds="13"] { }
+[data-ds="14"] { }
+[data-ds="15"] { display:none; font-size:7px; font-weight:900; }
+[data-ds="16"] { font-size:7px; font-weight:900; }
+[data-ds="17"] { color:#F59E0B; }
+[data-ds="18"] { color:#10B981; }
+[data-ds="19"] { }
+[data-ds="20"] { }
+[data-ds="21"] { display:none; font-size:7px; font-weight:900; }
+[data-ds="22"] { background:#10B98118;color:#10B981; }
+[data-ds="23"] { background:#EF444418;color:#EF4444; }
+[data-ds="24"] { }
+[data-ds="25"] { background:var(--b2,#1d232a);color:var(--bc,#a6adbb);opacity:0.7;border:1px solid rgba(255,255,255,0.07); }
+[data-ds="26"] { min-width:10rem; }
+[data-ds="27"] { color:#10B981; }
+[data-ds="28"] { }
+[data-ds="29"] { }
+[data-ds="30"] { background:#10B98118;color:#10B981; }
+[data-ds="31"] { }
+[data-ds="32"] { }
+[data-ds="33"] { }
+[data-ds="34"] { display:none; font-size:9px; font-weight:900; letter-spacing:-.3px; }
+[data-ds="35"] { font-size:9px; font-weight:900; letter-spacing:-.3px; }
+[data-ds="36"] { background:#10B98118;color:#10B981; }
+[data-ds="37"] { background:#EF444418;color:#EF4444; }
+[data-ds="38"] { opacity:.85; }
+[data-ds="39"] { }
+[data-ds="40"] { }
+[data-ds="41"] { overflow:visible; }
+[data-ds="42"] { background:var(--prov-sel-bg,#10a37f18);border:1px solid var(--prov-sel-border,#10a37f30); }
+[data-ds="43"] { display:none;font-size:7px;font-weight:900;color:var(--prov-sel-color,#10a37f); }
+[data-ds="44"] { display:none;max-height:240px; }
+[data-ds="45"] { }
+[data-ds="46"] { display:none; font-size:7px; font-weight:900; }
+[data-ds="47"] { font-size:7px; font-weight:900; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Provider brand registry ──────────────────────────────────────────────── #}
+{% set PROV = {
+  "openai":      {"color":"#10a37f","label":"OAI","desc":"GPT-5.4 · o3 · GPT-4o",      "icon":"dark/openai"},
+  "anthropic":   {"color":"#D4581A","label":"ANT","desc":"Claude 4 · Claude 3.5",       "icon":"light/claude-color"},
+  "google":      {"color":"#4285F4","label":"GGL","desc":"Gemini 3 · 2.5 · 2.0",        "icon":"light/gemini-color"},
+  "xai":         {"color":"#BBBBBB","label":"xAI","desc":"Grok 4 · Grok 2",             "icon":"dark/grok"},
+  "mistral":     {"color":"#FF7000","label":"MST","desc":"Mistral · Magistral · Code",   "icon":"light/mistral-color"},
+  "deepseek":    {"color":"#5B6CF6","label":"DSK","desc":"DeepSeek R1 · V3",             "icon":"light/deepseek-color"},
+  "openrouter":  {"color":"#9B59B6","label":"OR", "desc":"100+ models",                  "icon":"dark/openrouter"},
+  "perplexity":  {"color":"#20B2AA","label":"PPX","desc":"Sonar Pro · Reasoning",        "icon":"light/perplexity-color"},
+  "huggingface": {"color":"#FFD21E","label":"HF", "desc":"Open source models",           "icon":"light/huggingface-color"},
+  "lmstudio":    {"color":"#8B5CF6","label":"LMS","desc":"Local (LM Studio)",             "icon":""},
+  "ollama":      {"color":"#6EE7B7","label":"OLM","desc":"Local inference",               "icon":"dark/ollama"},
+  "moonshot":    {"color":"#6366F1","label":"KIM","desc":"Kimi K2 · Moonshot",            "icon":"dark/moonshot"},
+} %}
+
+{# ── Lobe icons base ──────────────────────────────────────────────────────── #}
+{% set ICON_BASE = "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/" %}
+
+{# ── Active provider meta ─────────────────────────────────────────────────── #}
+{% set ap = PROV.get(status.active_provider, {"color":"#6B7280","label":"?","desc":"Unknown","icon":""}) %}
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" data-ds="1" data-dv="background:{{ ap.color}}"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2" data-dv="background:{{ ap.color}}"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Models & Providers</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">{{ installed|length }} models · {{ status.providers|length }} active provider{{ 's' if status.providers|length != 1 }}</p>
+        </div>
+    </div>
+    <div class="flex gap-2">
+        <button class="btn btn-sm btn-outline gap-1.5" id="btn-models-refresh" data-action="models:refreshProviderHealth">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+        </button>
+        <button class="btn btn-sm btn-primary gap-1.5" id="btn-add-provider" data-action="models:openAddModal">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Provider
+        </button>
+    </div>
+</div>
+
+<!-- ── Active Model Hero ───────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent wasp-breathing mb-5" data-ds="3" data-dv="border-left:3px solid {{ ap.color}}60">
+    <div class="card-body p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <!-- Logo -->
+            <div class="relative shrink-0">
+                <div id="hero-logo-wrap" class="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden"
+                     data-ds="4" data-dv="background:{{ ap.color}}18; border:2px solid {{ ap.color }}50; box-shadow:0 0 28px {{ ap.color }}25">
+                    {% if ap.icon %}
+                    <img id="hero-logo-img" src="{{ ICON_BASE }}{{ ap.icon }}.png" alt="{{ status.active_provider }}"
+                         class="w-10 h-10 object-contain"
+                         data-ds="5"
+                         data-fallback-id="hero-logo-fallback">
+                    <span id="hero-logo-fallback" class="w-full h-full items-center justify-center font-black text-xs" data-ds="6" data-dv="color:{{ ap.color}}">{{ ap.label }}</span>
+                    {% else %}
+                    <img id="hero-logo-img" data-ds="7">
+                    <span id="hero-logo-fallback" class="font-black text-xs" data-ds="8" data-dv="color:{{ ap.color}}">{{ ap.label }}</span>
+                    {% endif %}
+                </div>
+                <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-base-100 flex items-center justify-center" data-ds="9">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                </span>
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span id="hero-model-name" class="text-xl font-bold font-mono tracking-tight" data-ds="10" data-dv="color:{{ ap.color}}">{{ status.active_model or "No model active" }}</span>
+                    {% if status.active_model == default_model %}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-mono" data-ds="11">★ default</span>
+                    {% endif %}
+                </div>
+                <div id="hero-provider-desc" class="text-sm text-base-content/50 mt-0.5">{{ status.active_provider or "—" }} · {{ ap.desc }}</div>
+                {% if status.fallback_order|length > 1 %}
+                <div class="flex items-center gap-1 mt-2.5 flex-wrap">
+                    <span class="text-xs text-base-content/25 font-mono">fallback:</span>
+                    {% for fb in status.fallback_order %}
+                    {% set fbc = PROV.get(fb, {"color":"#6B7280","label":fb,"icon":""}) %}
+                    <div class="flex items-center gap-1">
+                        {% if fbc.icon %}
+                        <img src="{{ ICON_BASE }}{{ fbc.icon }}.png" alt="{{ fb }}" class="w-3.5 h-3.5 object-contain opacity-70"
+                             data-hide-on-error>
+                        {% endif %}
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded-md" data-ds="12" data-dv="background:{{ fbc.color}}18; color:{{ fbc.color }}">{{ fb }}</span>
+                    </div>
+                    {% if not loop.last %}<span class="text-base-content/20 text-xs">›</span>{% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <!-- Stats -->
+            <div class="shrink-0 flex sm:flex-col gap-4 sm:gap-1 sm:text-right">
+                <div>
+                    <div class="text-lg font-bold font-mono" data-ds="13" data-dv="color:{{ ap.color}}">{{ installed|length }}</div>
+                    <div class="text-xs text-base-content/30">models</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold font-mono text-base-content/60">{{ status.providers|length }}</div>
+                    <div class="text-xs text-base-content/30">providers</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Installed Models ────────────────────────────────────────────────────── -->
+{% if installed %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-5">
+    <div class="card-body p-5">
+        <h2 class="font-semibold text-sm flex items-center gap-2 mb-3">
+            <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            Installed Models
+            <span class="text-xs px-1.5 py-0.5 rounded-full font-mono bg-primary/10 text-primary">{{ installed|length }}</span>
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="table table-xs table-dense">
+                <thead>
+                    <tr class="bg-base-200/30">
+                        <th class="text-xs">Model</th>
+                        <th class="text-xs hidden sm:table-cell">Provider</th>
+                        <th class="text-xs">Size</th>
+                        <th class="text-xs">Status</th>
+                        <th class="text-xs text-center">Active</th>
+                        <th class="text-xs text-center">Default</th>
+                        <th class="text-xs text-center">Uninstall</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in installed %}
+                    {% set mp = PROV.get(m.provider, {"color":"#6B7280","label":(m.provider[:3].upper() if m.provider else "?"),"icon":""}) %}
+                    <tr class="hover:bg-base-200/30 transition-colors" id="model-row-{{ loop.index }}">
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+                                     data-ds="14" data-dv="background:{{ mp.color}}15; border:1px solid {{ mp.color }}25">
+                                    {% if mp.icon %}
+                                    <img src="{{ ICON_BASE }}{{ mp.icon }}.png" alt="{{ m.provider }}" class="w-4 h-4 object-contain"
+                                         data-hide-on-error>
+                                    <span data-ds="15" data-dv="color:{{ mp.color}}">{{ mp.label }}</span>
+                                    {% else %}
+                                    <span data-ds="16" data-dv="color:{{ mp.color}}">{{ mp.label }}</span>
+                                    {% endif %}
+                                </div>
+                                <span class="font-mono text-xs">{{ m.name }}</span>
+                                {% if m.is_default %}<span class="text-xs" data-ds="17" title="Persisted default">★</span>{% endif %}
+                            </div>
+                        </td>
+                        <td class="hidden sm:table-cell">
+                            <div class="flex items-center gap-1.5">
+                                {% if mp.icon %}
+                                <img src="{{ ICON_BASE }}{{ mp.icon }}.png" alt="{{ m.provider }}" class="w-3.5 h-3.5 object-contain opacity-70"
+                                     data-hide-on-error>
+                                {% endif %}
+                                <span class="text-xs font-mono text-base-content/50">{{ m.provider }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if m.size %}
+                            <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-base-200/50 text-base-content/70">{{ m.size }}</span>
+                            {% else %}
+                            <span class="text-xs text-base-content/20 font-mono" title="API-hosted — no local disk usage">cloud</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span id="model-status-{{ loop.index }}">
+                                {% if m.active %}
+                                <span class="flex items-center gap-1 text-xs font-medium" data-ds="18">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>Active
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-base-content/25">Idle</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <input type="checkbox" class="toggle toggle-primary toggle-xs model-toggle"
+                                   data-model="{{ m.name }}" data-idx="{{ loop.index }}" data-provider="{{ m.provider }}"
+                                   {% if m.active %}checked{% endif %}
+                                   data-action="models:handleModelToggle">
+                        </td>
+                        <td class="text-center">
+                            <button id="default-btn-{{ loop.index }}"
+                                    class="btn btn-xs {% if m.is_default %}btn-warning{% else %}btn-ghost opacity-25 hover:opacity-100{% endif %}"
+                                    title="{% if m.is_default %}Default model (persists on restart){% else %}Set as default{% endif %}"
+                                    data-action="models:setDefaultModel" data-name="{{ m.name|e }}" data-idx="{{ loop.index }}">★</button>
+                        </td>
+                        {% if m.provider == "ollama" %}
+                        <td class="text-center">
+                            <button class="btn btn-xs btn-ghost text-error opacity-40 hover:opacity-100"
+                                    title="Uninstall — frees disk space"
+                                    data-action="models:ollamaDelete" data-name="{{ m.name|e }}" data-idx="{{ loop.index }}">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Ollama Local Models ─────────────────────────────────────────────────── -->
+{% if ollama_available %}
+{% set olm = PROV.get("ollama") %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-5" data-ds="19" data-dv="border-left:3px solid {{ olm.color}}50">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-sm flex items-center gap-2 flex-wrap">
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden" data-ds="20" data-dv="background:{{ olm.color}}18; border:1px solid {{ olm.color }}30">
+                    <img src="{{ ICON_BASE }}{{ olm.icon }}.png" alt="ollama" class="w-4 h-4 object-contain"
+                         data-hide-on-error>
+                    <span data-ds="21" data-dv="color:{{ olm.color}}">OLM</span>
+                </div>
+                Ollama — Local Models
+                {% if ollama_healthy %}
+                <span class="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full" data-ds="22">
+                    <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>running
+                </span>
+                {% else %}
+                <span class="text-xs px-1.5 py-0.5 rounded-full" data-ds="23">offline</span>
+                {% endif %}
+                <span class="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-mono font-semibold" data-ds="24" data-dv="background:{{ olm.color}}15; color:{{ olm.color }}; border:1px solid {{ olm.color }}30">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    installed {{ ollama_installed|length if ollama_installed else 0 }}{% if ollama_total_size %} · {{ ollama_total_size }}{% endif %}
+                </span>
+                <span class="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-mono" data-ds="25">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    available {{ catalog|length }}
+                </span>
+            </h2>
+            {% if ollama_healthy %}
+            <button id="ollama-catalog-btn" data-action="models:toggleOllamaCatalog"
+                    class="btn btn-sm gap-2 font-semibold transition-all duration-200"
+                    data-ds="26" data-dv="background:{{ olm.color}}22; color:{{ olm.color }}; border:1px solid {{ olm.color }}50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span id="ollama-btn-label">Install Models</span>
+                <svg id="ollama-chevron" class="h-4 w-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            {% endif %}
+        </div>
+
+        {% if not ollama_healthy %}
+        <div class="rounded-lg p-4 mb-3" data-ds="22">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 mt-0.5 flex-shrink-0 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="text-xs space-y-1.5 flex-1">
+                    <p class="font-semibold text-sm">Ollama service is not running</p>
+                    <p class="text-base-content/60">
+                        Local models let the agent run inference on this machine without sending data to a cloud API.
+                        Disk usage: ~4–8&nbsp;GB per model; RAM: ≥8&nbsp;GB recommended.
+                    </p>
+                    <p class="text-base-content/60">To enable, run on the host:</p>
+                    <pre class="font-mono text-[0.7rem] bg-base-300/40 px-2 py-1.5 rounded select-all">echo 'COMPOSE_PROFILES=local-llm' &gt;&gt; /opt/wasp/.env &amp;&amp; cd /opt/wasp &amp;&amp; docker compose up -d agent-ollama</pre>
+                    <p class="text-base-content/40 italic">After Ollama starts, refresh this page — the "Install Models" button will appear.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if ollama_installed %}
+        <div class="overflow-x-auto mb-3">
+            <table class="table table-xs table-dense">
+                <thead>
+                    <tr class="bg-base-200/30">
+                        <th class="text-xs">Model</th>
+                        <th class="text-xs">Size</th>
+                        <th class="text-xs">Status</th>
+                        <th class="text-xs text-center">Active</th>
+                        <th class="text-xs text-center">Uninstall</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in ollama_installed %}
+                    <tr class="hover:bg-base-200/30 transition-colors" id="ollama-row-{{ loop.index }}">
+                        <td class="font-mono text-xs">{{ m.name }}</td>
+                        <td>
+                            {% if m.size %}
+                            <span class="text-xs font-mono px-1.5 py-0.5 rounded font-semibold" data-ds="29" data-dv="background:{{ olm.color}}15; color:{{ olm.color }}">{{ m.size }}</span>
+                            {% else %}
+                            <span class="text-xs text-base-content/30 font-mono">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span id="ollama-status-{{ loop.index }}">
+                                {% if m.active %}
+                                <span class="flex items-center gap-1 text-xs" data-ds="27">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>Active
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-base-content/25">Idle</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <input type="checkbox" class="toggle toggle-xs model-toggle"
+                                   data-ds="28" data-dv="color:{{ olm.color}}" data-model="{{ m.name }}"
+                                   data-idx="ollama-{{ loop.index }}" data-provider="ollama"
+                                   {% if m.active %}checked{% endif %}
+                                   data-action="models:handleModelToggle">
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-xs btn-ghost text-error opacity-40 hover:opacity-100"
+                                    title="Uninstall and free disk space"
+                                    id="ollama-del-{{ loop.index }}"
+                                    data-action="models:ollamaDelete" data-name="{{ m.name|e }}" data-idx="{{ loop.index }}">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-base-content/30 mb-3">No models installed yet. Use the catalog below to download one.</p>
+        {% endif %}
+
+        <!-- Catalog (collapsed by default) -->
+        <div id="ollama-catalog" class="hidden">
+            <div class="divider text-xs text-base-content/30 my-2">Available to install</div>
+            {% set cats = catalog|map(attribute='cat')|unique|list %}
+            {% for cat in cats %}
+            <div class="mb-3">
+                <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest mb-1.5">{{ cat }}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {% for entry in catalog if entry.cat == cat %}
+                    <div class="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-base-200/50 transition-colors"
+                         id="catalog-row-{{ entry.name | replace(':', '-') | replace('.', '-') }}">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-mono text-xs font-semibold">{{ entry.name }}</span>
+                                <span class="inline-flex items-center gap-1 text-xs font-mono font-bold px-1.5 py-0.5 rounded" data-ds="29" data-dv="background:{{ olm.color}}22; color:{{ olm.color }}; border:1px solid {{ olm.color }}40" title="Download size">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                    {{ entry.size }}
+                                </span>
+                                {% if entry.installed %}
+                                <span class="text-xs px-1.5 py-0.5 rounded-full" data-ds="30">installed</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-base-content/40 mt-0.5">{{ entry.desc }}</div>
+                        </div>
+                        {% if not entry.installed %}
+                        <button class="btn btn-xs btn-ghost shrink-0 opacity-60 hover:opacity-100"
+                                data-ds="31" data-dv="color:{{ olm.color}}"
+                                id="install-btn-{{ entry.name | replace(':', '-') | replace('.', '-') }}"
+                                data-action="models:ollamaPull" data-name="{{ entry.name|e }}">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Install
+                        </button>
+                        {% else %}
+                        <button class="btn btn-xs btn-ghost text-error opacity-40 hover:opacity-100 shrink-0"
+                                data-action="models:ollamaDelete" data-name="{{ entry.name|e }}" data-idx="">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Provider Cards ──────────────────────────────────────────────────────── -->
+<div class="mb-2 flex items-center justify-between px-1">
+    <span class="text-xs font-semibold text-base-content/40 uppercase tracking-widest">All Providers</span>
+    <span class="text-xs text-base-content/25 font-mono" id="health-ts"></span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-5">
+    {% for p in provider_info %}
+    {% set meta = PROV.get(p.name, {"color":"#6B7280","label":p.name[:3].upper(),"desc":"Provider","icon":""}) %}
+    <div class="card bg-base-100 shadow-sm wasp-event-enter" id="pcard-{{ p.name }}"
+         data-ds="32" data-dv="animation-delay:{{ loop.index0*25}}ms; border-left:3px solid {{ meta.color }}{% if p.configured %}55{% else %}18{% endif %}">
+        <div class="card-body p-4">
+            <div class="flex items-start gap-3">
+                <!-- Logo -->
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                     data-ds="33" data-dv="background:{{ meta.color }}{% if p.configured %}18{% else %}0a{% endif %};border:1.5px solid {{ meta.color }}{% if p.configured %}40{% else %}18{% endif %};{% if not p.configured %}opacity:.45;{% endif %}">
+                    {% if meta.icon %}
+                    <img src="{{ ICON_BASE }}{{ meta.icon }}.png" alt="{{ p.name }}" class="w-6 h-6 object-contain"
+                         data-hide-on-error>
+                    <span data-ds="34" data-dv="color:{{ meta.color}}">{{ meta.label }}</span>
+                    {% else %}
+                    <span data-ds="35" data-dv="color:{{ meta.color}}">{{ meta.label }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-semibold text-sm {% if not p.configured %}text-base-content/35{% endif %}">{{ p.name }}</span>
+                        <span id="pstatus-{{ p.name }}">
+                            {% if not p.configured %}
+                            <span class="text-xs px-1.5 py-0.5 rounded-full bg-base-300 text-base-content/25 font-mono">not set</span>
+                            {% elif p.healthy %}
+                            <span class="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full" data-ds="36">
+                                <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>ok
+                            </span>
+                            {% else %}
+                            <span class="text-xs px-1.5 py-0.5 rounded-full" data-ds="37">unreachable</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="text-xs text-base-content/35 mt-0.5 font-mono truncate">
+                        {% if p.configured and p.masked_key %}{{ p.masked_key }}{% else %}{{ meta.desc }}{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if p.models %}
+            <div class="mt-2.5 max-h-32 overflow-y-auto pr-0.5 custom-scroll">
+                <div class="flex flex-wrap gap-1">
+                    {% for m in p.models %}
+                    <span class="text-xs px-1.5 py-0.5 rounded-md font-mono whitespace-nowrap"
+                          data-ds="38" data-dv="background:{{ meta.color}}10; color:{{ meta.color }}; border:1px solid {{ meta.color }}20">{{ m }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-1 mt-2.5 pt-2.5 border-t border-base-200/50">
+                {% if p.configured %}
+                <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100"
+                        data-ds="39" data-dv="color:{{ meta.color}}"
+                        data-action="models:editProvider" data-name="{{ p.name|e }}">Edit</button>
+                <button class="btn btn-xs btn-ghost text-error opacity-50 hover:opacity-100"
+                        data-action="models:removeProvider" data-name="{{ p.name|e }}">Remove</button>
+                {% else %}
+                <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100"
+                        data-ds="40" data-dv="color:{{ meta.color}}"
+                        data-action="models:editProvider" data-name="{{ p.name|e }}">Configure →</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ── Add / Edit Provider Modal ───────────────────────────────────────────── -->
+<dialog id="modal-add-provider" class="modal">
+    <div class="modal-box max-w-sm" data-ds="41">
+        <h3 class="font-bold text-lg mb-4" id="modal-prov-title">Add Provider</h3>
+
+        <!-- Custom provider selector with logos -->
+        <div class="form-control mb-3">
+            <label class="label py-1"><span class="label-text text-xs">Provider</span></label>
+            <div class="relative" id="prov-selector">
+                <!-- Trigger button -->
+                <button type="button" id="prov-sel-btn" data-action="models:toggleProvDropdown"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-base-300 bg-base-100 hover:border-base-content/30 transition-colors text-sm">
+                    <div class="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0" id="prov-sel-logo-wrap"
+                         data-ds="42">
+                        <img id="prov-sel-img" src="{{ ICON_BASE }}dark/openai.png" alt="openai"
+                             class="w-4 h-4 object-contain"
+                             data-fallback-id="prov-sel-fallback">
+                        <span id="prov-sel-fallback" data-fallback-display="inline" data-ds="43">OAI</span>
+                    </div>
+                    <span id="prov-sel-name" class="flex-1 text-left font-mono text-sm">openai</span>
+                    <svg class="h-4 w-4 text-base-content/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <!-- Dropdown list -->
+                <div id="prov-dropdown"
+                     class="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-xl shadow-xl overflow-y-auto"
+                     data-ds="44">
+                    {% for n in all_provider_names %}
+                    {% set nm = PROV.get(n, {"color":"#6B7280","label":n[:3].upper(),"icon":""}) %}
+                    <button type="button"
+                            class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-base-200 transition-colors text-sm prov-option"
+                            data-value="{{ n }}" data-color="{{ nm.color }}" data-label="{{ nm.label }}"
+                            data-icon="{{ ICON_BASE }}{{ nm.icon }}.png" data-has-icon="{{ '1' if nm.icon else '0' }}"
+                            data-action="models:selectProvider">
+                        <div class="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0"
+                             data-ds="45" data-dv="background:{{ nm.color}}15; border:1px solid {{ nm.color }}30">
+                            {% if nm.icon %}
+                            <img src="{{ ICON_BASE }}{{ nm.icon }}.png" alt="{{ n }}" class="w-4 h-4 object-contain"
+                                 data-hide-on-error>
+                            <span data-ds="46" data-dv="color:{{ nm.color}}">{{ nm.label }}</span>
+                            {% else %}
+                            <span data-ds="47" data-dv="color:{{ nm.color}}">{{ nm.label }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="font-mono">{{ n }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                <!-- Hidden real input -->
+                <input type="hidden" id="add-prov-name" value="openai">
+            </div>
+        </div>
+
+        <div class="form-control mb-1">
+            <label class="label py-1"><span class="label-text text-xs">API Key <span class="text-base-content/40" id="key-label-extra">(or base URL for lmstudio)</span></span></label>
+            <input type="password" id="add-prov-key" class="input input-bordered input-sm font-mono" placeholder="sk-…" autocomplete="off">
+        </div>
+        <p id="prov-hint" class="text-xs text-base-content/35 mb-4 font-mono mt-1 truncate"></p>
+
+        <div class="modal-action gap-2">
+            <button class="btn btn-sm btn-ghost" data-dialog-close="modal-add-provider">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="btn-add-provider-save" data-action="models:addProvider">Save & Connect</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Reusable confirm modal ──────────────────────────────────────────────── -->
+<dialog id="modal-confirm" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base mb-1" id="modal-confirm-title"></h3>
+        <p class="text-sm text-base-content/60" id="modal-confirm-body"></p>
+        <div class="modal-action gap-2 mt-5">
+            <button class="btn btn-sm btn-ghost" id="modal-confirm-cancel">Cancel</button>
+            <button class="btn btn-sm btn-error" id="modal-confirm-ok">Confirm</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+// ── Confirm modal helper ────────────────────────────────────────────────────
+function _showConfirm(title, body, confirmLabel) {
+    return new Promise(function(resolve) {
+        var dlg    = document.getElementById('modal-confirm');
+        var titleEl = document.getElementById('modal-confirm-title');
+        var bodyEl  = document.getElementById('modal-confirm-body');
+        var okBtn   = document.getElementById('modal-confirm-ok');
+        var cancelBtn = document.getElementById('modal-confirm-cancel');
+        titleEl.textContent = title;
+        bodyEl.textContent  = body || '';
+        okBtn.textContent   = confirmLabel || 'Confirm';
+        function cleanup(val) {
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            dlg.removeEventListener('close', onClose);
+            resolve(val);
+        }
+        function onOk()     { dlg.close(); cleanup(true);  }
+        function onCancel() { dlg.close(); cleanup(false); }
+        function onClose()  { cleanup(false); }
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        dlg.addEventListener('close', onClose, {once: true});
+        dlg.showModal();
+    });
+}
+
+var PROV_META = {
+    openai:     {color:'#10a37f', label:'OAI', hint:'platform.openai.com/api-keys'},
+    anthropic:  {color:'#D4581A', label:'ANT', hint:'console.anthropic.com/settings/keys'},
+    google:     {color:'#4285F4', label:'GGL', hint:'aistudio.google.com/app/apikey'},
+    xai:        {color:'#BBBBBB', label:'xAI', hint:'console.x.ai'},
+    mistral:    {color:'#FF7000', label:'MST', hint:'console.mistral.ai/api-keys'},
+    deepseek:   {color:'#5B6CF6', label:'DSK', hint:'platform.deepseek.com/api_keys'},
+    openrouter: {color:'#9B59B6', label:'OR',  hint:'openrouter.ai/keys'},
+    perplexity: {color:'#20B2AA', label:'PPX', hint:'www.perplexity.ai/settings/api'},
+    huggingface:{color:'#FFD21E', label:'HF',  hint:'huggingface.co/settings/tokens'},
+    lmstudio:   {color:'#8B5CF6', label:'LMS', hint:'Enter server URL (e.g. http://localhost:1234)'},
+    ollama:     {color:'#6EE7B7', label:'OLM', hint:'Local — no key needed, use http://localhost:11434'},
+    moonshot:   {color:'#6366F1', label:'KIM', hint:'platform.moonshot.cn/console/api-keys'},
+};
+
+// ── Ollama catalog toggle ──────────────────────────────────────────────────
+window.toggleOllamaCatalog = function(btn) {
+    var catalog = document.getElementById('ollama-catalog');
+    var label   = document.getElementById('ollama-btn-label');
+    var chevron = document.getElementById('ollama-chevron');
+    var open = catalog.classList.toggle('hidden');  // open=true means was hidden, now shown
+    var showing = !catalog.classList.contains('hidden');
+    if (showing) {
+        label.textContent = 'Hide Install Models';
+        chevron.style.transform = 'rotate(180deg)';
+        btn.style.background = 'oklch(var(--p)/0.18)';
+        btn.style.color      = 'oklch(var(--p))';
+        btn.style.border     = '1px solid oklch(var(--p)/0.5)';
+    } else {
+        label.textContent = 'Install Models';
+        chevron.style.transform = 'rotate(0deg)';
+        // restore olm color — inline style already set on element, just reset override
+        btn.removeAttribute('style');
+        btn.setAttribute('style', btn.getAttribute('data-orig-style') || '');
+    }
+};
+// Stash original catalog button style (SPA-safe: run immediately — element is in DOM at this point)
+(function() {
+    var catalogBtn = document.getElementById('ollama-catalog-btn');
+    if (catalogBtn) catalogBtn.dataset.origStyle = catalogBtn.getAttribute('data-style') || '';
+})();
+
+// ── Custom provider dropdown ───────────────────────────────────────────────
+window.toggleProvDropdown = function() {
+    var dd = document.getElementById('prov-dropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+};
+
+window.selectProvider = function(btn) {
+    var name   = btn.getAttribute('data-value');
+    var color  = btn.getAttribute('data-color');
+    var label  = btn.getAttribute('data-label');
+    var icon   = btn.getAttribute('data-icon');
+    var hasIcon= btn.getAttribute('data-has-icon') === '1';
+
+    document.getElementById('add-prov-name').value = name;
+    document.getElementById('prov-sel-name').textContent = name;
+
+    var imgEl = document.getElementById('prov-sel-img');
+    var fbEl  = document.getElementById('prov-sel-fallback');
+    var wrap  = document.getElementById('prov-sel-logo-wrap');
+
+    wrap.style.setProperty('--prov-sel-bg',     color + '18');
+    wrap.style.setProperty('--prov-sel-border',  color + '30');
+    wrap.style.setProperty('--prov-sel-color',   color);
+    wrap.style.background = color + '18';
+    wrap.style.borderColor = color + '30';
+
+    if (hasIcon) {
+        imgEl.src = icon;
+        imgEl.style.display = '';
+        fbEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        fbEl.style.display = 'inline';
+        fbEl.textContent = label;
+        fbEl.style.color = color;
+    }
+
+    var meta = PROV_META[name] || {};
+    var hint = document.getElementById('prov-hint');
+    if (hint) hint.textContent = meta.hint || '';
+
+    document.getElementById('prov-dropdown').style.display = 'none';
+};
+
+registerWaspActions('models', {
+    'selectProvider':       function(el) { selectProvider(el); },
+    'editProvider':         function(el) { editProvider(el.dataset.name); },
+    'removeProvider':       function(el) { removeProvider(el.dataset.name); },
+    'setDefaultModel':      function(el) { setDefaultModel(el.dataset.name, el.dataset.idx); },
+    'ollamaDelete':         function(el) { ollamaDelete(el.dataset.name, el.dataset.idx || null); },
+    'ollamaPull':           function(el) { ollamaPull(el.dataset.name, el); },
+    'handleModelToggle':    function(el) { handleModelToggle(el); },
+    'refreshProviderHealth': function()  { refreshProviderHealth(); },
+    'openAddModal':         function()   { openAddModal(); },
+    'toggleProvDropdown':   function()   { toggleProvDropdown(); },
+    'addProvider':          function()   { addProvider(); },
+    'toggleOllamaCatalog':  function(el) {
+        // stash orig style on first click if not already stashed
+        if (!el.dataset.origStyle) el.dataset.origStyle = el.getAttribute('data-style') || '';
+        toggleOllamaCatalog(el);
+    },
+});
+
+// Close provider dropdown on outside click
+document.addEventListener('click', function(e) {
+    var sel = document.getElementById('prov-selector');
+    if (sel && !sel.contains(e.target)) {
+        var dd = document.getElementById('prov-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+// ── Open modal helpers ─────────────────────────────────────────────────────
+window.openAddModal = function(preselect) {
+    document.getElementById('modal-prov-title').textContent = 'Add Provider';
+    document.getElementById('add-prov-key').value = '';
+    if (preselect) _preselectProvider(preselect);
+    document.getElementById('modal-add-provider').showModal();
+};
+
+window.editProvider = function(name) {
+    document.getElementById('modal-prov-title').textContent = 'Update Provider';
+    document.getElementById('add-prov-key').value = '';
+    _preselectProvider(name);
+    document.getElementById('modal-add-provider').showModal();
+};
+
+function _preselectProvider(name) {
+    var opt = document.querySelector('.prov-option[data-value="' + name + '"]');
+    if (opt) selectProvider(opt);
+}
+
+// ── Add / update provider ─────────────────────────────────────────────────
+window.addProvider = async function() {
+    var name = document.getElementById('add-prov-name').value;
+    var key  = document.getElementById('add-prov-key').value.trim();
+    if (!key) { WaspToast.show('API key required', 'error'); return; }
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    try {
+        var r = await fetch('/models/providers/add', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token': csrfMeta ? csrfMeta.content : ''},
+            body: JSON.stringify({name: name, api_key: key}),
+            credentials: 'same-origin',
+        });
+        var d = await r.json();
+        document.getElementById('modal-add-provider').close();
+        if (d.success) {
+            WaspToast.show(name + (d.healthy ? ': connected ✓' : ': added (unreachable)'), d.healthy ? 'success' : 'warning');
+            setTimeout(function() { location.reload(); }, 1200);
+        } else {
+            WaspToast.show(d.error || 'Error', 'error');
+        }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+};
+
+// ── Remove provider ────────────────────────────────────────────────────────
+window.removeProvider = async function(name) {
+    if (!await _showConfirm('Remove provider', 'Remove "' + name + '"? This will delete your API key for this provider.', 'Remove')) return;
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    try {
+        var r = await fetch('/models/providers/remove', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token': csrfMeta ? csrfMeta.content : ''},
+            body: JSON.stringify({name: name}),
+            credentials: 'same-origin',
+        });
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show(name + ' removed', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else { WaspToast.show(d.error || 'Error', 'error'); }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+};
+
+// ── Refresh health ─────────────────────────────────────────────────────────
+window.refreshProviderHealth = async function(evt) {
+    var force = evt && evt.shiftKey;
+    var url = '/models/providers/health' + (force ? '?force=true' : '');
+    WaspToast.show(force ? 'Force-checking providers…' : 'Checking providers…', 'info');
+    try {
+        var r = await fetch(url, {credentials: 'same-origin'});
+        var d = await r.json();
+        if (!d.ok) { WaspToast.show('Error fetching health', 'error'); return; }
+        d.providers.forEach(function(p) {
+            var el = document.getElementById('pstatus-' + p.name);
+            if (!el) return;
+            if (!p.configured) {
+                el.innerHTML = '<span class="text-xs px-1.5 py-0.5 rounded-full bg-base-300 text-base-content/25 font-mono">not set</span>';
+            } else if (p.healthy) {
+                el.innerHTML = '<span class="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full badge-ok"><span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>ok</span>';
+            } else {
+                el.innerHTML = '<span class="text-xs px-1.5 py-0.5 rounded-full badge-error">unreachable</span>';
+            }
+        });
+        var ts = document.getElementById('health-ts');
+        if (ts) {
+            var now = new Date();
+            ts.textContent = 'updated ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        }
+        WaspToast.show('Health refreshed', 'success');
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+};
+
+// ── Set default model ──────────────────────────────────────────────────────
+window.setDefaultModel = async function(model, idx) {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var headers = {'Content-Type':'application/json','Accept':'application/json'};
+    if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;
+    try {
+        var r = await fetch('/models/set-default', {method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'});
+        var d = await r.json();
+        if (d.ok) {
+            document.querySelectorAll('[id^="default-btn-"]').forEach(function(b){b.className='btn btn-xs btn-ghost opacity-25 hover:opacity-100';b.title='Set as default';});
+            var btn=document.getElementById('default-btn-'+idx);
+            if(btn){btn.className='btn btn-xs btn-warning';btn.title='Default model (persists on restart)';}
+            WaspToast.show('Default: '+model,'success');
+        } else { WaspToast.show(d.message||'Error','error'); }
+    } catch(e){ WaspToast.show('Network error','error'); }
+};
+
+// ── Ollama: delete (uninstall from disk) ──────────────────────────────────
+window.ollamaDelete = async function(model, idx) {
+    if (!await _showConfirm('Uninstall model', 'Uninstall "' + model + '"? This will delete it from disk and free up space.', 'Uninstall')) return;
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var headers = {'Content-Type':'application/json','Accept':'application/json'};
+    if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;
+    try {
+        var r = await fetch('/models/ollama/delete', {method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'});
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show(model + ' uninstalled', 'success');
+            setTimeout(function(){ location.reload(); }, 1000);
+        } else {
+            WaspToast.show(d.error || 'Error uninstalling', 'error');
+        }
+    } catch(e) { WaspToast.show('Network error', 'error'); }
+};
+
+// ── Ollama: pull (install from catalog) ───────────────────────────────────
+window.ollamaPull = async function(model, btn) {
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+    }
+    WaspToast.show('Downloading ' + model + '… this may take a while', 'info');
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var headers = {'Content-Type':'application/json','Accept':'application/json'};
+    if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;
+    try {
+        var r = await fetch('/models/ollama/pull', {method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'});
+        var d = await r.json();
+        if (d.ok) {
+            WaspToast.show(model + ' installed ✓', 'success');
+            setTimeout(function(){ location.reload(); }, 1000);
+        } else {
+            WaspToast.show(d.error || 'Install failed', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Install'; }
+        }
+    } catch(e) {
+        WaspToast.show('Network error', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Install'; }
+    }
+};
+
+// ── Update hero card instantly ─────────────────────────────────────────────
+var ICON_BASE = 'https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/';
+function updateHero(model, provider) {
+    var meta = PROV_META[provider] || {color:'#6B7280', label:(provider||'?').slice(0,3).toUpperCase(), hint:''};
+    var icons = {
+        openai:'dark/openai', anthropic:'light/claude-color', google:'light/gemini-color',
+        xai:'dark/grok', mistral:'light/mistral-color', deepseek:'light/deepseek-color',
+        openrouter:'dark/openrouter', perplexity:'light/perplexity-color',
+        huggingface:'light/huggingface-color', ollama:'dark/ollama', moonshot:'dark/moonshot'
+    };
+    var descs = {
+        openai:'GPT-4o · o1 · o3', anthropic:'Claude 3.5 · Claude 4', google:'Gemini 2.0 · Pro',
+        xai:'Grok 3 · Beta', mistral:'Mistral · Codestral', deepseek:'DeepSeek R1 · V3',
+        openrouter:'100+ models', perplexity:'Sonar · Pro', huggingface:'Open source models',
+        lmstudio:'Local (LM Studio)', ollama:'Local inference', moonshot:'Kimi 128k'
+    };
+    var color = meta.color;
+    var label = meta.label;
+    var iconPath = icons[provider];
+
+    // Update model name color + text
+    var nameEl = document.getElementById('hero-model-name');
+    if (nameEl) { nameEl.textContent = model; nameEl.style.color = color; }
+
+    // Update provider desc
+    var descEl = document.getElementById('hero-provider-desc');
+    if (descEl) descEl.textContent = (provider || '—') + ' · ' + (descs[provider] || '');
+
+    // Update logo wrap border/bg/shadow
+    var wrap = document.getElementById('hero-logo-wrap');
+    if (wrap) {
+        wrap.style.background = color + '18';
+        wrap.style.borderColor = color + '50';
+        wrap.style.boxShadow = '0 0 28px ' + color + '25';
+
+        // Rebuild logo HTML from scratch — avoids all cached-failure / display-state issues
+        // Rebuild logo HTML from scratch — avoids all cached-failure / display-state issues
+        if (iconPath) {
+            var esc = label.replace(/'/g, "\\'");
+            wrap.innerHTML =
+                '<img id="hero-logo-img" src="' + ICON_BASE + iconPath + '.png" ' +
+                'class="w-10 h-10 object-contain hero-logo-anim" ' +
+                'data-fallback-id="hero-logo-fallback">'+
+                '<span id="hero-logo-fallback" class="w-full h-full items-center justify-center font-black text-xs hero-logo-anim hidden">' + label + '</span>';
+        } else {
+            wrap.innerHTML =
+                '<img id="hero-logo-img" class="hidden">' +
+                '<span id="hero-logo-fallback" class="w-full h-full items-center justify-center font-black text-xs hero-logo-anim flex">' + label + '</span>';
+        }
+        // Apply dynamic color (JS-driven — not subject to style-src CSP)
+        var _fb = wrap.querySelector('#hero-logo-fallback');
+        if (_fb) _fb.style.color = color;
+    }
+
+    // Update card border
+    var card = wrap && wrap.closest('.card');
+    if (card) card.style.borderLeftColor = color + '60';
+
+    // Update header pulse dot
+    var dot = document.querySelector('.animate-ping');
+    var dotSolid = dot && dot.nextElementSibling;
+    if (dot) { dot.style.background = color; }
+    if (dotSolid) { dotSolid.style.background = color; }
+}
+
+// ── Switch active model ────────────────────────────────────────────────────
+window.handleModelToggle = function(checkbox) {
+    var model    = checkbox.getAttribute('data-model');
+    var idx      = checkbox.getAttribute('data-idx');
+    var provider = checkbox.getAttribute('data-provider') || '';
+    if (!checkbox.checked) { checkbox.checked = true; return; }
+    document.querySelectorAll('.model-toggle').forEach(function(t) {
+        if (t !== checkbox) {
+            t.checked = false;
+            var se = document.getElementById('model-status-' + t.getAttribute('data-idx'));
+            if (se) se.innerHTML = '<span class="text-xs text-base-content/25">Idle</span>';
+        }
+    });
+    var myStatus = document.getElementById('model-status-' + idx);
+    if (myStatus) myStatus.innerHTML = '<span class="text-xs text-base-content/40">Switching…</span>';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var headers = {'Content-Type':'application/json','Accept':'application/json'};
+    if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;
+    fetch('/models/switch',{method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'})
+    .then(function(r){
+        if(r.ok){
+            if(myStatus) myStatus.innerHTML='<span class="flex items-center gap-1 text-xs font-medium badge-active"><span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>Active</span>';
+            updateHero(model, provider);
+            WaspToast.show('Active: '+model,'success');
+        } else {
+            checkbox.checked=false;
+            if(myStatus) myStatus.innerHTML='<span class="text-xs text-base-content/25">Idle</span>';
+            WaspToast.show('Error switching model','error');
+        }
+    }).catch(function(){
+        checkbox.checked=false;
+        if(myStatus) myStatus.innerHTML='<span class="text-xs text-base-content/25">Idle</span>';
+        WaspToast.show('Connection error','error');
+    });
+};
+
+// Init hint for first option
+(function(){
+    var meta = PROV_META['openai'];
+    if(meta){ var h=document.getElementById('prov-hint'); if(h) h.textContent=meta.hint||''; }
+}());
+
+}());
+</script>
+{% endblock %}

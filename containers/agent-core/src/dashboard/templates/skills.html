@@ -1,0 +1,845 @@
+{% extends "base.html" %}
+{% block title %}Skills — Agent Wasp{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#10B981; }
+[data-ds="2"] { background:#10B981; }
+[data-ds="3"] { }
+[data-ds="4"] { }
+[data-ds="5"] { }
+[data-ds="6"] { background:#6366F118;color:#818CF8; }
+[data-ds="7"] { }
+[data-ds="8"] { }
+[data-ds="9"] { }
+[data-ds="10"] { }
+[data-ds="11"] { }
+[data-ds="12"] { width:16%; }
+[data-ds="13"] { width:44%; }
+[data-ds="14"] { width:14%; }
+[data-ds="15"] { width:7%; }
+[data-ds="16"] { width:5%; }
+[data-ds="17"] { width:14%; }
+[data-ds="18"] { width:16%; }
+[data-ds="19"] { width:44%; }
+[data-ds="20"] { width:14%; }
+[data-ds="21"] { background:rgba(var(--bc)/0.06);color:rgba(var(--bc)/0.45); }
+[data-ds="22"] { }
+[data-ds="23"] { }
+[data-ds="24"] { background:#F59E0B18;color:#F59E0B;border:1px solid #F59E0B30; }
+[data-ds="25"] { }
+[data-ds="26"] { }
+[data-ds="27"] { color:#6366F1; }
+[data-ds="28"] { background:#6366F118;color:#818CF8; }
+[data-ds="29"] { border-color:#6366F140;color:#818CF8; }
+[data-ds="30"] { border-left:3px solid #6366F150; }
+[data-ds="31"] { background:#6366F10a;border-bottom:1px solid #6366F120; }
+[data-ds="32"] { color:#818CF8; }
+[data-ds="33"] { color:#818CF8; }
+[data-ds="34"] { color:#818CF8; }
+[data-ds="35"] { color:#818CF8; }
+[data-ds="36"] { color:#818CF8; }
+[data-ds="37"] { color:#818CF8; }
+[data-ds="38"] { color:#818CF8; }
+[data-ds="39"] { }
+[data-ds="40"] { }
+[data-ds="41"] { }
+[data-ds="42"] { background:#6366F112;border:1px solid #6366F130; }
+[data-ds="43"] { color:#818CF8; }
+[data-ds="44"] { background:#6366F118;border:1px solid #6366F140; }
+[data-ds="45"] { color:#818CF8; }
+[data-ds="46"] { background:#EF444418;border:1px solid #EF444430; }
+[data-ds="47"] { color:#EF4444; }
+[data-ds="48"] { background:#EF4444;color:#fff;border:none; }
+[data-ds="49"] { background:#6366F118;border:1px solid #6366F140; }
+[data-ds="50"] { color:#818CF8; }
+[data-ds="51"] { background:#6366F118;border:1px solid #6366F140; }
+[data-ds="52"] { color:#818CF8; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set RISK_MAP = {
+    "shell":"system","python_exec":"system","skill_manager":"system","self_improve":"system",
+    "meta_orchestrate":"system","agent_manager":"system",
+    "read_file":"file","write_file":"file",
+    "fetch_url":"network","http_request":"network","browser":"network","scrape":"network",
+    "browser_screenshot_full_page":"network","browser_deep_scrape":"network","browser_smart_navigate":"network",
+    "deep_scraper":"network","integration":"network",
+    "create_monitor":"network","list_monitors":"network","remove_monitor":"network","subscribe":"network",
+    "create_reminder":"safe","list_reminders":"safe","delete_reminder":"safe",
+    "create_note":"safe","search_notes":"safe",
+    "gmail":"network","google_calendar":"network",
+    "render_report":"safe","extract_fields":"safe",
+} %}
+{% set RISK_COLOR = {"safe":"#10B981","file":"#F59E0B","network":"#3B82F6","system":"#EF4444"} %}
+{% set RISK_LABEL = {"safe":"Safe","file":"File","network":"Net","system":"Sys"} %}
+{% set CAP_COLOR = {
+    "safe":"#10B981","monitored":"#3B82F6","controlled":"#F59E0B",
+    "restricted":"#EF4444","privileged":"#EF4444"
+} %}
+{% set CAP_LABEL = {
+    "safe":"Safe","monitored":"Monitor","controlled":"Ctrl",
+    "restricted":"Restricted","privileged":"Privileged"
+} %}
+{% set CAT_META = {
+    "web":          {"color":"#38BDF8","icon":"M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"},
+    "system":       {"color":"#F87171","icon":"M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"},
+    "filesystem":   {"color":"#FCD34D","icon":"M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"},
+    "productivity": {"color":"#4ADE80","icon":"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"},
+    "monitoring":   {"color":"#FB923C","icon":"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"},
+    "utility":      {"color":"#FBBF24","icon":"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"},
+    "communication":{"color":"#F472B6","icon":"M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"},
+    "data":         {"color":"#A78BFA","icon":"M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"},
+    "general":      {"color":"#6366F1","icon":"M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"},
+    "integrations": {"color":"#34D399","icon":"M13 10V3L4 14h7v7l9-11h-7z"},
+} %}
+{% set DEF_CAT = {"color":"#64748B","icon":"M13 10V3L4 14h7v7l9-11h-7z"} %}
+
+{% set enabled_count = skills | selectattr('enabled') | list | length %}
+{% set builtin_skills = skills | rejectattr('is_custom') | list %}
+{% set custom_skills_list = skills | selectattr('is_custom') | list %}
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" data-ds="1"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Skills</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">{{ enabled_count }} active · {{ (builtin_count + custom_count) - enabled_count }} idle · {{ builtin_count }} built-in · {{ custom_count }} custom</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <div class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-base-content/30 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+            </svg>
+            <input id="skill-search" type="text" placeholder="Filter skills…"
+                   data-action="skills:filterSkills"
+                   class="input input-sm input-bordered pl-8 pr-3 w-40 text-xs"
+>
+        </div>
+        <button data-dialog-open="create-modal" class="btn btn-sm btn-primary gap-1.5">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Skill
+        </button>
+    </div>
+</div>
+
+<!-- ── Risk legend ────────────────────────────────────────────────────────── -->
+<div class="flex flex-wrap items-center gap-3 mb-3 text-xs">
+    <span class="text-base-content/30 font-semibold uppercase tracking-wider text-[10px]">Risk:</span>
+    {% for level, color in RISK_COLOR.items() %}
+    <span class="flex items-center gap-1 px-2 py-0.5 rounded-full font-mono font-semibold text-[11px]"
+          data-ds="3" data-dv="background:{{ color}}15; color:{{ color }}; border:1px solid {{ color }}30">
+        <span class="w-1.5 h-1.5 rounded-full inline-block" data-ds="4" data-dv="background:{{ color}}"></span>{{ RISK_LABEL[level] }}
+    </span>
+    {% endfor %}
+</div>
+
+<!-- ── Category pills ─────────────────────────────────────────────────────── -->
+<div class="flex flex-wrap items-center gap-2 mb-5">
+    <span class="text-base-content/30 font-semibold uppercase tracking-wider text-[10px]">Categories:</span>
+    {% for cat, cat_skills in builtin_skills | groupby('category') %}
+    {% set cm = CAT_META.get(cat, DEF_CAT) %}
+    <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+          data-ds="5" data-dv="background:{{ cm.color}}15; color:{{ cm.color }}; border:1px solid {{ cm.color }}30">
+        <svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ cm.icon }}"/>
+        </svg>
+        {{ cat }}
+    </span>
+    {% endfor %}
+</div>
+
+<!-- ── Built-in Skills — 2-col category tables ───────────────────────────── -->
+<div class="flex items-center gap-2 mb-3">
+    <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v10m0 4h6m-6 0H5a2 2 0 01-2-2v-4m6 6V9m6 4h4a2 2 0 002-2V9m-6 4V9m0 0H9"/>
+    </svg>
+    <h2 class="font-bold text-sm">Built-in Skills</h2>
+    <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="6">{{ builtin_count }}</span>
+</div>
+
+<div class="flex flex-col gap-3 mb-6">
+{% for cat, cat_skills in builtin_skills | groupby('category') %}
+{% set cm = CAT_META.get(cat, DEF_CAT) %}
+{% set cat_list = cat_skills | list %}
+<div class="card bg-base-100 shadow-sm wasp-accent skill-cat-card overflow-hidden"
+     data-ds="7" data-dv="border-left:3px solid {{ cm.color}}50">
+    <!-- Category header -->
+    <div class="flex items-center gap-2 px-3 py-2.5" data-ds="8" data-dv="background:{{ cm.color}}0a; border-bottom:1px solid {{ cm.color }}20">
+        <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+             data-ds="9" data-dv="background:{{ cm.color}}20; border:1px solid {{ cm.color }}30">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="10" data-dv="color:{{ cm.color}}">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ cm.icon }}"/>
+            </svg>
+        </div>
+        <span class="font-semibold text-xs capitalize tracking-wide" data-ds="11" data-dv="color:{{ cm.color}}">{{ cat }}</span>
+        {% set cat_on = cat_list | selectattr('enabled') | list | length %}
+        <span class="ml-auto text-[10px] font-mono text-base-content/30">{{ cat_on }}/{{ cat_list | length }} on</span>
+    </div>
+    <!-- Table -->
+    <table class="table table-xs w-full">
+        <thead>
+            <tr class="text-[10px] font-semibold uppercase tracking-wider text-base-content/30 border-b border-base-200/40">
+                <th class="pl-3 py-2" data-ds="12">Skill</th>
+                <th class="pr-2 hidden md:table-cell" data-ds="13">Description</th>
+                <th class="pr-2 hidden lg:table-cell" data-ds="14">Params</th>
+                <th class="px-1 hidden sm:table-cell" data-ds="15">Level</th>
+                <th class="px-1" data-ds="16">Risk</th>
+                <th class="pr-2 text-right" data-ds="17">Active</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for skill in cat_list %}
+        {% set risk = RISK_MAP.get(skill.name, 'safe') %}
+        {% set rc = RISK_COLOR.get(risk, '#6B7280') %}
+        <tr class="skill-row hover:bg-base-200/40 transition-colors border-b border-base-200/30 last:border-0"
+            data-search="{{ skill.name }} {{ skill.description }} {{ cat }}">
+            <td class="py-2 pl-3 pr-2" data-ds="18">
+                <span class="font-mono text-xs font-medium {% if not skill.enabled %}opacity-35{% endif %}">{{ skill.name }}</span>
+            </td>
+            <td class="py-2 pr-2 text-xs text-base-content/45 hidden md:table-cell" data-ds="19">
+                {% if skill.description %}{{ skill.description[:110] }}{% if skill.description|length > 110 %}…{% endif %}{% endif %}
+            </td>
+            <td class="py-2 pr-2 hidden lg:table-cell" data-ds="20">
+                {% if skill.params %}
+                <div class="flex flex-wrap gap-1 items-center">
+                    {% for p in skill.params[:4] %}
+                    <span class="text-[10px] px-1 py-px rounded font-mono" data-ds="21">{{ p }}</span>
+                    {% endfor %}
+                    {% if skill.params|length > 4 %}
+                    <span class="wasp-tip text-[10px] text-base-content/25 font-mono cursor-default"
+                          data-tip="{{ skill.params[4:] | join(', ') }}">+{{ skill.params|length - 4 }}</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <span class="text-[10px] text-base-content/20 font-mono">—</span>
+                {% endif %}
+            </td>
+            <td class="py-2 px-1 whitespace-nowrap hidden sm:table-cell">
+                {% set cl = skill.capability_level | default('controlled') %}
+                {% set cc = CAP_COLOR.get(cl, '#6B7280') %}
+                <span class="text-[10px] px-1.5 py-px rounded font-mono font-bold"
+                      data-ds="22" data-dv="background:{{ cc}}15; color:{{ cc }}">{{ CAP_LABEL.get(cl, cl) }}</span>
+            </td>
+            <td class="py-2 px-1 whitespace-nowrap">
+                <span class="text-[10px] px-1.5 py-px rounded font-mono font-bold"
+                      data-ds="23" data-dv="background:{{ rc}}15; color:{{ rc }}">{{ RISK_LABEL.get(risk, risk) }}</span>
+            </td>
+            <td class="py-2 pl-1 pr-2 whitespace-nowrap text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                    {% if skill.is_overridden %}
+                    <span class="text-[9px] px-1 py-px rounded font-mono font-bold" data-ds="24" title="Description overridden">edited</span>
+                    {% endif %}
+                    <button class="btn btn-ghost btn-xs opacity-35 hover:opacity-100 open-builtin-edit" title="Edit"
+                            data-name="{{ skill.name }}"
+                            data-desc="{{ skill.effective_description | e }}"
+                            data-notes="{{ skill.effective_notes | e }}"
+                            data-overridden="{{ 'true' if skill.is_overridden else 'false' }}"
+                            data-action="skills:openBuiltinEdit">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <span id="status-{{ skill.name }}" class="text-[10px] font-mono font-bold w-6 text-right"
+                          data-ds="25" data-dv="color:{% if skill.enabled %}#10B981{% else %}rgba(var(--bc)/0.2){% endif %}">
+                        {% if skill.enabled %}ON{% else %}OFF{% endif %}
+                    </span>
+                    <input type="checkbox" class="toggle toggle-xs"
+                           data-ds="26" data-dv="{% if skill.enabled %}color:#10B981{% endif %}"
+                           {% if skill.enabled %}checked{% endif %}
+                           data-action="skills:toggleSkillBuiltin" data-name="{{ skill.name|e }}">
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+</div>
+
+<!-- ── Custom Skills ──────────────────────────────────────────────────────── -->
+<div class="flex items-center gap-2 mb-3">
+    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="27">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+    </svg>
+    <h2 class="font-bold text-sm">Custom Skills</h2>
+    <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="28">{{ custom_count }}</span>
+    <button data-dialog-open="create-modal"
+            class="ml-auto btn btn-xs btn-outline gap-1" data-ds="29">
+        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add
+    </button>
+</div>
+
+{% if custom_count > 0 %}
+<div id="custom-skills-card" class="card bg-base-100 shadow-sm mb-6 overflow-hidden" data-ds="30">
+    <table class="table table-xs w-full">
+        <thead>
+            <tr data-ds="31">
+                <th class="text-xs pl-3 py-2.5 font-semibold" data-ds="32">Skill</th>
+                <th class="text-xs hidden sm:table-cell py-2.5 font-semibold" data-ds="33">Slug</th>
+                <th class="text-xs hidden md:table-cell py-2.5 font-semibold" data-ds="34">Description</th>
+                <th class="text-xs py-2.5 font-semibold" data-ds="35">Risk</th>
+                <th class="text-xs py-2.5 text-center font-semibold" data-ds="36">Active</th>
+                <th class="text-xs py-2.5 text-right pr-3 font-semibold" data-ds="37">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for skill in custom_skills_list %}
+        {% set risk = RISK_MAP.get(skill.name, 'safe') %}
+        {% set rc = RISK_COLOR.get(risk, '#6B7280') %}
+        <tr class="skill-row hover:bg-base-200/40 transition-colors border-b border-base-200/30 last:border-0"
+            id="row-{{ skill.slug }}"
+            data-search="{{ skill.name }} {{ skill.description }}">
+            <td class="py-2.5 pl-3 font-semibold text-xs" data-ds="38">{{ skill.name }}</td>
+            <td class="hidden sm:table-cell py-2.5 font-mono text-xs text-base-content/30">{{ skill.slug }}/</td>
+            <td class="hidden md:table-cell py-2.5 text-xs text-base-content/45 max-w-xs truncate">{{ skill.description[:70] }}{% if skill.description|length > 70 %}…{% endif %}</td>
+            <td class="py-2.5">
+                <span class="text-[10px] px-1.5 py-px rounded font-mono font-bold"
+                      data-ds="39" data-dv="background:{{ rc}}15; color:{{ rc }}">{{ RISK_LABEL.get(risk, risk) }}</span>
+            </td>
+            <td class="py-2.5 text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                    <span id="status-{{ skill.slug }}" class="text-[10px] font-mono font-bold"
+                          data-ds="40" data-dv="color:{% if skill.enabled %}#10B981{% else %}rgba(var(--bc)/0.2){% endif %}">
+                        {% if skill.enabled %}ON{% else %}OFF{% endif %}
+                    </span>
+                    <input type="checkbox" class="toggle toggle-xs"
+                           data-ds="41" data-dv="{% if skill.enabled %}color:#10B981{% endif %}"
+                           {% if skill.enabled %}checked{% endif %}
+                           data-action="skills:toggleSkillCustom" data-name="{{ skill.name|e }}" data-slug="{{ skill.slug|e }}">
+                </div>
+            </td>
+            <td class="py-2.5 pr-2 text-right">
+                <div class="flex gap-1 justify-end">
+                    <button data-action="skills:openCustomEdit" data-slug="{{ skill.slug|e }}"
+                            class="btn btn-ghost btn-xs text-info opacity-55 hover:opacity-100" title="Edit">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button data-action="skills:deleteSkill" data-slug="{{ skill.slug|e }}" data-name="{{ skill.name|e }}"
+                            class="btn btn-ghost btn-xs text-error opacity-45 hover:opacity-100" title="Delete">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card bg-base-100 shadow-sm mb-6">
+    <div class="card-body items-center text-center py-10">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" data-ds="42">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="43">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+            </svg>
+        </div>
+        <p class="font-semibold text-base-content/60 text-sm">No custom skills yet</p>
+        <p class="text-xs text-base-content/30 mt-1 mb-4">Create one here or ask the agent via Telegram</p>
+        <button data-dialog-open="create-modal" class="btn btn-sm btn-primary gap-1.5">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create First Skill
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Edit Built-in Skill Modal ──────────────────────────────────────────── -->
+<dialog id="edit-builtin-modal" class="modal">
+    <div class="modal-box max-w-lg">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 data-ds="44">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="45">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-base">Edit Skill</h3>
+                <p id="ebi-subtitle" class="text-xs text-base-content/40 font-mono"></p>
+            </div>
+            <form method="dialog" class="ml-auto">
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+            </form>
+        </div>
+        <form id="edit-builtin-form" data-action="skills:saveBuiltinSkill">
+            <input type="hidden" id="ebi-name" name="_name">
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Name</span></label>
+                <input id="ebi-name-display" type="text"
+                       class="input input-bordered input-sm font-mono opacity-50" disabled>
+                <label class="label py-0.5"><span class="label-text-alt text-[10px] text-base-content/35">Built-in — cannot be renamed</span></label>
+            </div>
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Description</span></label>
+                <textarea id="ebi-description" name="description" rows="7"
+                          placeholder="What does this skill do?"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed"></textarea>
+                <label class="label py-0.5">
+                    <span id="ebi-original-hint" class="label-text-alt text-[10px] text-base-content/25 font-mono truncate"></span>
+                </label>
+            </div>
+            <div class="form-control mb-5">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Instructions</span></label>
+                <textarea id="ebi-notes" name="notes" rows="7"
+                          placeholder="Add extra instructions the agent follows when using this skill.&#10;You can reference built-in skills like shell, fetch_url, python_exec, store_memory…"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed"></textarea>
+                <label class="label py-0.5"><span class="label-text-alt text-[10px] text-base-content/35">Appended to the agent's skill list when this skill is active</span></label>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" id="ebi-reset-btn" data-action="skills:resetBuiltinSkill"
+                        class="btn btn-ghost btn-sm text-error opacity-60 hover:opacity-100 hidden">
+                    Reset to default
+                </button>
+                <div class="ml-auto flex gap-2">
+                    <button type="button" data-dialog-close="edit-builtin-modal" class="btn btn-ghost btn-sm">Cancel</button>
+                    <button type="submit" id="ebi-save-btn" class="btn btn-primary btn-sm gap-1.5">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Reset Confirm Modal ────────────────────────────────────────────────── -->
+<dialog id="reset-confirm-modal" class="modal">
+    <div class="modal-box max-w-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 data-ds="46">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="47">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-base">Reset to default</h3>
+                <p class="text-xs text-base-content/40">This will remove your custom edits</p>
+            </div>
+        </div>
+        <p class="text-sm text-base-content/60 mb-5">
+            The skill <span id="reset-skill-name" class="font-mono font-semibold text-base-content/80"></span> will revert to its original description and instructions.
+        </p>
+        <div class="flex justify-end gap-2">
+            <button type="button" data-dialog-close="reset-confirm-modal" class="btn btn-ghost btn-sm">Cancel</button>
+            <button type="button" id="reset-confirm-btn" data-action="skills:confirmReset" class="btn btn-sm gap-1.5" data-ds="48">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Reset
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Edit Custom Skill Modal ────────────────────────────────────────────── -->
+<dialog id="edit-custom-modal" class="modal">
+    <div class="modal-box max-w-lg">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 data-ds="49">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="50">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-base">Edit Skill</h3>
+                <p id="ecs-subtitle" class="text-xs text-base-content/40 font-mono"></p>
+            </div>
+            <form method="dialog" class="ml-auto">
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+            </form>
+        </div>
+
+        <!-- Loading state -->
+        <div id="ecs-loading" class="flex items-center justify-center py-10 gap-2 text-base-content/30">
+            <span class="loading loading-spinner loading-sm"></span>
+            <span class="text-xs">Loading…</span>
+        </div>
+
+        <form id="edit-custom-form" data-action="skills:saveCustomSkill" class="hidden">
+            <input type="hidden" id="ecs-slug" name="_slug">
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Name</span></label>
+                <input type="text" id="ecs-name" name="name" class="input input-bordered input-sm" required>
+            </div>
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Description</span></label>
+                <textarea id="ecs-description" name="description" rows="7"
+                          placeholder="What does this skill do?"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed"></textarea>
+            </div>
+            <div class="form-control mb-5">
+                <label class="label py-1">
+                    <span class="label-text text-xs font-medium">Instructions</span>
+                    <span class="label-text-alt text-[10px] text-base-content/35">Injected into system prompt when invoked</span>
+                </label>
+                <textarea id="ecs-instructions" name="instructions" rows="7"
+                          placeholder="Describe step-by-step how the agent should accomplish this task…"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed" required></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-base-200/40">
+                <button type="button" data-dialog-close="edit-custom-modal" class="btn btn-ghost btn-sm">Cancel</button>
+                <button type="submit" id="ecs-save-btn" class="btn btn-primary btn-sm gap-1.5">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Create Skill Modal ─────────────────────────────────────────────────── -->
+<dialog id="create-modal" class="modal">
+    <div class="modal-box max-w-lg">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 data-ds="51">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="52">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-base">Create Custom Skill</h3>
+                <p class="text-xs text-base-content/40">Teach the agent a new capability</p>
+            </div>
+            <form method="dialog" class="ml-auto">
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+            </form>
+        </div>
+        <form id="create-form" data-action="skills:createSkill">
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Name</span></label>
+                <input type="text" name="name" placeholder="e.g. weather-check"
+                       class="input input-bordered input-sm" required>
+                <label class="label py-0.5"><span class="label-text-alt text-[10px] text-base-content/35">Becomes the skill slug</span></label>
+            </div>
+            <div class="form-control mb-3">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Description</span></label>
+                <textarea name="description" rows="7"
+                          placeholder="What does this skill do?"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed"></textarea>
+            </div>
+            <div class="form-control mb-5">
+                <label class="label py-1"><span class="label-text text-xs font-medium">Instructions</span></label>
+                <textarea name="instructions" rows="7"
+                          placeholder="Describe step-by-step how the agent should accomplish this task.&#10;You can reference built-in skills like shell, fetch_url, python_exec, store_memory…"
+                          class="textarea textarea-bordered text-xs font-mono leading-relaxed" required></textarea>
+                <label class="label py-0.5"><span class="label-text-alt text-[10px] text-base-content/35">Injected into the agent's system prompt when this skill is invoked</span></label>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" data-dialog-close="create-modal" class="btn btn-ghost btn-sm">Cancel</button>
+                <button type="submit" id="create-btn" class="btn btn-primary btn-sm gap-1.5">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Create Skill
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+function toggleSkill(checkbox, name, slug, isCustom) {
+    var action = checkbox.checked ? 'enable' : 'disable';
+    var body = new FormData();
+    body.append('name', name);
+    body.append('slug', slug);
+    body.append('is_custom', isCustom ? 'true' : 'false');
+    body.append('action', action);
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/skills/toggle', {
+        method:'POST', credentials:'same-origin',
+        headers: csrf ? {'X-CSRF-Token': csrf.content} : {},
+        body: body
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            var id = isCustom ? slug : name;
+            var st = document.getElementById('status-' + id);
+            if (st) {
+                st.textContent = action === 'enable' ? 'ON' : 'OFF';
+                st.style.color = action === 'enable' ? '#10B981' : 'rgba(var(--bc)/0.2)';
+            }
+            if (action === 'enable') checkbox.style.color = '#10B981';
+            else checkbox.style.color = '';
+            WaspToast.show(d.message, action === 'enable' ? 'success' : 'info');
+        } else {
+            WaspToast.show(d.message || 'Error', 'error');
+            checkbox.checked = !checkbox.checked;
+        }
+    })
+    .catch(function(){
+        WaspToast.show('Connection error','error');
+        checkbox.checked = !checkbox.checked;
+    });
+}
+
+function createSkill(e) {
+    e.preventDefault();
+    var btn = document.getElementById('create-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Creating…';
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/skills/create', {
+        method:'POST', credentials:'same-origin',
+        headers: csrf ? {'X-CSRF-Token': csrf.content} : {},
+        body: new FormData(document.getElementById('create-form'))
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            document.getElementById('create-modal').close();
+            WaspToast.show(d.message, 'success');
+            setTimeout(function(){ location.reload(); }, 900);
+        } else {
+            WaspToast.show(d.message || 'Error', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Create Skill';
+        }
+    })
+    .catch(function(){
+        WaspToast.show('Connection error','error');
+        btn.disabled = false;
+        btn.innerHTML = 'Create Skill';
+    });
+    return false;
+}
+
+async function deleteSkill(slug, name) {
+    if (!await showConfirmModal({ title: 'Delete Skill', message: 'Delete "' + name + '"? This cannot be undone.', confirmText: 'Delete', danger: true })) return;
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    var body = new FormData();
+    body.append('slug', slug);
+    fetch('/skills/delete', {
+        method:'POST', credentials:'same-origin',
+        headers: csrf ? {'X-CSRF-Token': csrf.content} : {},
+        body: body
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            WaspToast.show(d.message, 'success');
+            var row = document.getElementById('row-' + slug);
+            if (row) {
+                row.style.transition = 'opacity .25s';
+                row.style.opacity = '0';
+                setTimeout(function(){ row.remove(); }, 260);
+            }
+        } else {
+            WaspToast.show(d.message || 'Error', 'error');
+        }
+    })
+    .catch(function(){ WaspToast.show('Connection error','error'); });
+}
+
+function filterSkills(q) {
+    q = (q || '').toLowerCase().trim();
+    document.querySelectorAll('.skill-row').forEach(function(el) {
+        var text = (el.getAttribute('data-search') || '').toLowerCase();
+        el.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+    });
+    // Collapse empty category cards (built-in)
+    document.querySelectorAll('.skill-cat-card').forEach(function(card) {
+        var rows = card.querySelectorAll('.skill-row');
+        var any = Array.prototype.some.call(rows, function(r){ return r.style.display !== 'none'; });
+        card.style.display = any ? '' : 'none';
+    });
+    // Collapse custom skills card when no rows visible
+    var customCard = document.getElementById('custom-skills-card');
+    if (customCard) {
+        var customRows = customCard.querySelectorAll('.skill-row');
+        var anyCustom = Array.prototype.some.call(customRows, function(r){ return r.style.display !== 'none'; });
+        customCard.style.display = anyCustom ? '' : 'none';
+    }
+}
+
+function openBuiltinEdit(btn) {
+    var name        = btn.dataset.name;
+    var description = btn.dataset.desc;
+    var notes       = btn.dataset.notes || '';
+    var isOverridden = btn.dataset.overridden === 'true';
+    document.getElementById('ebi-name').value           = name;
+    document.getElementById('ebi-name-display').value   = name;
+    document.getElementById('ebi-subtitle').textContent = name;
+    document.getElementById('ebi-description').value    = description;
+    document.getElementById('ebi-notes').value          = notes;
+    var hint = document.getElementById('ebi-original-hint');
+    hint.textContent = isOverridden ? 'Custom edit active — reset to restore defaults' : '';
+    var resetBtn = document.getElementById('ebi-reset-btn');
+    if (resetBtn) resetBtn.classList.toggle('hidden', !isOverridden);
+    document.getElementById('edit-builtin-modal').showModal();
+}
+
+function saveBuiltinSkill(e) {
+    e.preventDefault();
+    var name = document.getElementById('ebi-name').value;
+    var btn  = document.getElementById('ebi-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+    var body = new FormData(document.getElementById('edit-builtin-form'));
+    fetch('/skills/edit-builtin/' + encodeURIComponent(name), {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': getCsrf() },
+        body: body
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        document.getElementById('edit-builtin-modal').close();
+        if (d.ok) {
+            WaspToast.show(d.message, 'success');
+            setTimeout(function(){ location.reload(); }, 800);
+        } else {
+            WaspToast.show(d.message || 'Error', 'error');
+        }
+    })
+    .catch(function(){
+        WaspToast.show('Connection error', 'error');
+    })
+    .finally(function(){
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Save';
+    });
+    return false;
+}
+
+function resetBuiltinSkill() {
+    var name = document.getElementById('ebi-name').value;
+    document.getElementById('reset-skill-name').textContent = name;
+    document.getElementById('reset-confirm-modal').showModal();
+}
+
+function confirmReset() {
+    var name = document.getElementById('ebi-name').value;
+    var btn = document.getElementById('reset-confirm-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+    fetch('/skills/reset-builtin/' + encodeURIComponent(name), {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': getCsrf() }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        document.getElementById('reset-confirm-modal').close();
+        document.getElementById('edit-builtin-modal').close();
+        WaspToast.show(d.message, d.ok ? 'info' : 'error');
+        if (d.ok) setTimeout(function(){ location.reload(); }, 800);
+    })
+    .catch(function(){
+        WaspToast.show('Connection error', 'error');
+    })
+    .finally(function(){
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Reset';
+    });
+}
+
+function openCustomEdit(slug) {
+    var modal   = document.getElementById('edit-custom-modal');
+    var loading = document.getElementById('ecs-loading');
+    var form    = document.getElementById('edit-custom-form');
+    document.getElementById('ecs-subtitle').textContent = slug;
+    loading.classList.remove('hidden');
+    form.classList.add('hidden');
+    modal.showModal();
+
+    fetch('/skills/data/' + encodeURIComponent(slug), { credentials: 'same-origin' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (!d.ok) { WaspToast.show(d.message || 'Error loading skill', 'error'); modal.close(); return; }
+        var s = d.skill;
+        document.getElementById('ecs-slug').value         = s.slug;
+        document.getElementById('ecs-name').value         = s.name;
+        document.getElementById('ecs-description').value  = s.description || '';
+        document.getElementById('ecs-instructions').value = s.instructions || '';
+        document.getElementById('ecs-subtitle').textContent = s.name;
+        loading.classList.add('hidden');
+        form.classList.remove('hidden');
+    })
+    .catch(function(){
+        WaspToast.show('Connection error', 'error');
+        modal.close();
+    });
+}
+
+function saveCustomSkill(e) {
+    e.preventDefault();
+    var slug = document.getElementById('ecs-slug').value;
+    var btn  = document.getElementById('ecs-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Saving…';
+    fetch('/skills/edit/' + encodeURIComponent(slug), {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': getCsrf() },
+        body: new FormData(document.getElementById('edit-custom-form'))
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            document.getElementById('edit-custom-modal').close();
+            WaspToast.show(d.message, 'success');
+            setTimeout(function(){ location.reload(); }, 800);
+        } else {
+            WaspToast.show(d.message || 'Error', 'error');
+        }
+    })
+    .catch(function(){ WaspToast.show('Connection error', 'error'); })
+    .finally(function(){
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Save Changes';
+    });
+    return false;
+}
+
+registerWaspActions('skills', {
+    'toggleSkillBuiltin': function(el)    { toggleSkill(el, el.dataset.name, el.dataset.name, false); },
+    'toggleSkillCustom':  function(el)    { toggleSkill(el, el.dataset.name, el.dataset.slug, true); },
+    'openCustomEdit':     function(el)    { openCustomEdit(el.dataset.slug); },
+    'deleteSkill':        function(el)    { deleteSkill(el.dataset.slug, el.dataset.name); },
+    'openBuiltinEdit':    function(el)    { openBuiltinEdit(el); },
+    'filterSkills':       function(el)    { filterSkills(el.value); },
+    'saveBuiltinSkill':   function(el, e) { saveBuiltinSkill(e); },
+    'resetBuiltinSkill':  function()      { resetBuiltinSkill(); },
+    'confirmReset':       function()      { confirmReset(); },
+    'saveCustomSkill':    function(el, e) { saveCustomSkill(e); },
+    'createSkill':        function(el, e) { createSkill(e); },
+});
+
+})();
+</script>
+{% endblock %}

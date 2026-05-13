@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}Reset — Agent Wasp{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+.reset-step-ok   { color: oklch(var(--su)); }
+.reset-step-fail { color: oklch(var(--er)); }
+.reset-mode-tab { transition: all 0.2s; }
+.reset-mode-tab[data-active="true"] { background: oklch(var(--er) / 0.18); border-color: oklch(var(--er) / 0.5); color: oklch(var(--er)); }
+.mode-panel { display: none; }
+.mode-panel[data-active="true"] { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-6">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-error/15 border border-error/30 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-error leading-tight" id="page-title">Panic Reset</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5" id="page-subtitle">Erase cognitive state and restart from zero</p>
+        </div>
+    </div>
+
+    <!-- Mode selector -->
+    <div id="reset-mode-card" class="card bg-base-200/40 border border-base-content/10 mb-4">
+        <div class="card-body p-3">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/40 mb-2 px-1">Reset type</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button class="reset-mode-tab btn btn-sm btn-outline border-base-content/20 justify-start gap-2 normal-case font-semibold" data-mode="panic" data-active="true">
+                    <span class="text-base">⚠</span>
+                    <div class="text-left">
+                        <div class="text-xs">Panic Reset</div>
+                        <div class="text-[10px] opacity-60 font-normal">Cognitive wipe (recoverable)</div>
+                    </div>
+                </button>
+                <button class="reset-mode-tab btn btn-sm btn-outline border-base-content/20 justify-start gap-2 normal-case font-semibold" data-mode="factory" data-active="false">
+                    <span class="text-base">⛔</span>
+                    <div class="text-left">
+                        <div class="text-xs">Factory Reset</div>
+                        <div class="text-[10px] opacity-60 font-normal">Full wipe (release-ready)</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form card -->
+    <div id="reset-form-card" class="card bg-error/8 border border-error/25 shadow-sm mb-5">
+        <div class="card-body p-5">
+
+            <!-- PANIC panel -->
+            <div class="mode-panel" data-mode="panic" data-active="true">
+                <p class="text-sm text-base-content/80 mb-4">
+                    Permanently erases all agent <strong>cognitive state</strong> (memory, learning, goals, knowledge graph).
+                    Browser sessions, logs, .env, and admin accounts are <strong>preserved</strong>.
+                </p>
+
+                <div class="mb-4">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-error/60 mb-2">What will be erased</p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-base-content/60 font-mono">
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Knowledge Graph</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Behavioral Rules</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Learning Examples</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Procedural Memory</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Goals &amp; Active Tasks</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Scheduled Tasks</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Agents Registry</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Visual Memory</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> World Timeline</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Vector Embeddings</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Execution History</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Dream Log</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Redis agent state</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Filesystem memory</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Custom Python skills</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Self-improve patches</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> prime.md (→ default)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Agent life &amp; Experience</div>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-success/70 mb-2">What is preserved</p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-base-content/60 font-mono">
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Browser sessions</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Logs (forensics)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> .env (API keys)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Admin accounts</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Integration vault</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Last 100 audit rows</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FACTORY panel -->
+            <div class="mode-panel" data-mode="factory" data-active="false">
+                <p class="text-sm text-base-content/80 mb-3">
+                    Wipes the platform to <strong>"as if never used"</strong> — everything Panic Reset wipes plus browser sessions, logs, full audit history. Use for release prep, demo handoff, GitHub baseline.
+                </p>
+                <div class="alert alert-warning text-xs py-2 mb-4 border border-warning/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3l-6.93-12a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"/></svg>
+                    <span>Cannot blank <code class="font-mono">.env</code> from the dashboard. Run <code class="font-mono">scripts/factory_reset.sh --wipe-env</code> on the host for that. Your dashboard session will be invalidated.</span>
+                </div>
+
+                <div class="mb-4">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-error/60 mb-2">What will be erased</p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-base-content/60 font-mono">
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Everything in Panic Reset</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Browser sessions (cookies)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> All logs</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Full audit history</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> All Redis keys (FLUSHDB)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Dashboard session</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> Integration vault cache</div>
+                        <div class="flex items-center gap-1.5"><span class="text-error/50">×</span> CSRF / login-rate state</div>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-success/70 mb-2">What is preserved</p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-base-content/60 font-mono">
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> .env (API keys, tokens)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Admin accounts (DB)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> LLM model weights (ollama)</div>
+                        <div class="flex items-center gap-1.5"><span class="text-success/70">✓</span> Source code &amp; configs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider my-2 text-error/30"></div>
+
+            <!-- Confirmation input (shared) -->
+            <div class="mb-4">
+                <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-1.5">
+                    Type <span class="font-mono text-error font-bold" id="phrase-display">RESET WASP</span> to confirm
+                </label>
+                <input
+                    id="reset-confirm-input"
+                    type="text"
+                    class="input input-bordered input-sm w-full font-mono text-sm"
+                    placeholder="RESET WASP"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                >
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between gap-3">
+                <a href="/overview" class="btn btn-ghost btn-sm">Cancel</a>
+                <button id="reset-execute-btn" class="btn btn-error gap-2 font-bold opacity-40" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span id="btn-label">Reset Agent Brain</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-dynamic"></div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function () {
+'use strict';
+
+var MODE_CONFIG = {
+    panic: {
+        phrase:    'RESET WASP',
+        title:     'Panic Reset',
+        subtitle:  'Erase cognitive state and restart from zero',
+        btnLabel:  'Reset Agent Brain',
+    },
+    factory: {
+        phrase:    'FACTORY RESET WASP',
+        title:     'Factory Reset',
+        subtitle:  'Full wipe — leaves the platform "as if never used"',
+        btnLabel:  'Factory Reset Platform',
+    },
+};
+
+var currentMode = 'panic';
+var input    = document.getElementById('reset-confirm-input');
+var btn      = document.getElementById('reset-execute-btn');
+var btnLabel = document.getElementById('btn-label');
+var phraseEl = document.getElementById('phrase-display');
+var titleEl  = document.getElementById('page-title');
+var subEl    = document.getElementById('page-subtitle');
+var formCard = document.getElementById('reset-form-card');
+var modeCard = document.getElementById('reset-mode-card');
+var dynArea  = document.getElementById('reset-dynamic');
+
+function applyMode(mode) {
+    currentMode = mode;
+    var cfg = MODE_CONFIG[mode];
+
+    // Update tab active states
+    document.querySelectorAll('.reset-mode-tab').forEach(function (el) {
+        el.setAttribute('data-active', el.getAttribute('data-mode') === mode ? 'true' : 'false');
+    });
+    // Show only the active mode panel
+    document.querySelectorAll('.mode-panel').forEach(function (el) {
+        el.setAttribute('data-active', el.getAttribute('data-mode') === mode ? 'true' : 'false');
+    });
+    // Update phrase, title, button
+    phraseEl.textContent = cfg.phrase;
+    input.placeholder = cfg.phrase;
+    input.value = '';
+    titleEl.textContent = cfg.title;
+    subEl.textContent = cfg.subtitle;
+    btnLabel.textContent = cfg.btnLabel;
+    btn.disabled = true;
+    btn.classList.add('opacity-40');
+}
+
+document.querySelectorAll('.reset-mode-tab').forEach(function (el) {
+    el.addEventListener('click', function () { applyMode(el.getAttribute('data-mode')); });
+});
+
+// Block paste — must be typed manually
+input.addEventListener('paste', function (e) { e.preventDefault(); });
+input.addEventListener('drop',  function (e) { e.preventDefault(); });
+
+input.addEventListener('input', function () {
+    var match = input.value === MODE_CONFIG[currentMode].phrase;
+    btn.disabled = !match;
+    btn.classList.toggle('opacity-40', !match);
+});
+
+var STEP_LABELS = {
+    'scheduler_paused':    'Pause scheduler',
+    'goals_cleared':       'Clear active goals',
+    'db_cleaned':          'Wipe database tables',
+    'db_vacuumed':         'Reclaim disk space',
+    'redis_cleaned':       'Clear Redis state',
+    'filesystem_cleaned':  'Clean filesystem memory',
+    'config_restored':     'Restore prime.md to default',
+    'failsafe_reinit':     'Initialize base cognitive state',
+    'fresh_flag_set':      'Set boot flag',
+    'scheduler_resumed':   'Resume scheduler',
+    'audit_logged':        'Write audit entry',
+};
+
+var resetCard = null;
+
+function showProgress() {
+    resetCard = document.createElement('div');
+    resetCard.id = 'reset-card';
+    resetCard.style.background    = 'var(--b1)';
+    resetCard.style.border        = '1px solid rgba(128,128,128,0.2)';
+    resetCard.style.borderRadius  = '0.5rem';
+    resetCard.style.padding       = '1.5rem';
+    resetCard.style.marginTop     = '0.5rem';
+    resetCard.style.transition    = 'border-color 0.3s, background 0.3s';
+    resetCard.innerHTML =
+        '<div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:0.875rem;margin-bottom:1.5rem;">' +
+        '<span id="progress-spinner" class="loading loading-spinner loading-xs text-error"></span>' +
+        '<span id="progress-title">Executing reset…</span>' +
+        '</div>' +
+        '<div id="reset-steps" style="display:flex;flex-direction:column;gap:0.5rem;font-size:0.75rem;font-family:monospace;"></div>';
+    dynArea.appendChild(resetCard);
+}
+
+function addStep(step) {
+    var stepsEl = document.getElementById('reset-steps');
+    if (!stepsEl) return;
+    var label = STEP_LABELS[step.step] || step.step;
+    var icon  = step.ok ? '✓' : '✗';
+    var cls   = step.ok ? 'reset-step-ok' : 'reset-step-fail';
+    var el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:baseline;gap:0.5rem;';
+    el.innerHTML =
+        '<span class="' + cls + '" style="flex-shrink:0;width:1rem;">' + icon + '</span>' +
+        '<span class="' + cls + '" style="font-weight:600;flex-shrink:0;">' + label + '</span>' +
+        '<span style="opacity:0.4;font-size:0.65rem;margin-left:0.25rem;">' + (step.detail || '') + '</span>';
+    stepsEl.appendChild(el);
+}
+
+function showResult(ok, msg) {
+    if (window.WaspToast) {
+        WaspToast.show(ok ? 'Reset complete' : 'Reset completed with errors', ok ? 'success' : 'warning');
+    }
+    if (!resetCard) return;
+
+    var borderColor = ok ? '#22c55e' : '#f59e0b';
+    var bgColor     = ok ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)';
+    var textColor   = ok ? '#22c55e' : '#f59e0b';
+    resetCard.style.border     = '1px solid ' + borderColor;
+    resetCard.style.background = bgColor;
+
+    var divider = document.createElement('div');
+    divider.style.cssText = 'border-top:1px solid ' + borderColor + ';opacity:0.3;margin:1.5rem 0 1.25rem;';
+    resetCard.appendChild(divider);
+
+    var iconPath = ok
+        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+
+    var iconBg = ok ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)';
+    var subMsg;
+    if (ok) {
+        subMsg = currentMode === 'factory'
+            ? 'Platform wiped. Your session was invalidated — log in again.'
+            : 'Boot sequence will activate on the next message.';
+    } else {
+        subMsg = 'Some steps failed — check the details above.';
+    }
+
+    var resultRow = document.createElement('div');
+    resultRow.style.cssText = 'display:flex;align-items:center;gap:1rem;';
+    resultRow.innerHTML =
+        '<div style="flex-shrink:0;width:2.75rem;height:2.75rem;border-radius:50%;background:' + iconBg + ';border:1.5px solid ' + borderColor + ';display:flex;align-items:center;justify-content:center;">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" stroke="' + textColor + '" fill="none" viewBox="0 0 24 24" stroke-width="2.5">' + iconPath + '</svg>' +
+        '</div>' +
+        '<div>' +
+        '<p style="font-weight:700;font-size:1rem;color:' + textColor + ';line-height:1.2;letter-spacing:-0.01em;">' + (ok ? 'Reset complete' : 'Completed with errors') + '</p>' +
+        '<p style="font-size:0.75rem;margin-top:0.35rem;opacity:0.6;line-height:1.45;">' + subMsg + '</p>' +
+        '</div>';
+    resetCard.appendChild(resultRow);
+}
+
+btn.addEventListener('click', function () {
+    var phrase = MODE_CONFIG[currentMode].phrase;
+    if (input.value !== phrase) return;
+
+    formCard.remove();
+    modeCard.remove();
+    btn.disabled = true;
+    showProgress();
+
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = meta ? meta.content : '';
+
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, 60000);
+
+    fetch('/reset/execute', {
+        method: 'POST',
+        credentials: 'same-origin',
+        signal: controller.signal,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+        },
+        body: JSON.stringify({ confirm: phrase, mode: currentMode }),
+    })
+    .then(function (r) {
+        clearTimeout(timeoutId);
+        if (!r.ok && r.status !== 409) {
+            return r.text().then(function (txt) {
+                throw new Error('HTTP ' + r.status + ': ' + txt.slice(0, 120));
+            });
+        }
+        return r.json();
+    })
+    .then(function (data) {
+        (data.steps || []).forEach(addStep);
+        var spinnerEl = document.getElementById('progress-spinner');
+        var titleEl   = document.getElementById('progress-title');
+        if (spinnerEl) spinnerEl.style.display = 'none';
+        if (titleEl) {
+            titleEl.textContent = data.ok ? 'All steps completed' : 'Finished with errors';
+            titleEl.style.color = data.ok ? '#22c55e' : '#f59e0b';
+        }
+        showResult(data.ok, data.message || data.error || '');
+    })
+    .catch(function (err) {
+        clearTimeout(timeoutId);
+        var msg = (err && err.name === 'AbortError')
+            ? 'Request timed out (60s). Check the audit log.'
+            : String(err);
+        var spinnerEl = document.getElementById('progress-spinner');
+        var titleEl   = document.getElementById('progress-title');
+        if (spinnerEl) spinnerEl.style.display = 'none';
+        if (titleEl)   titleEl.textContent = 'Error';
+        var el = document.createElement('div');
+        el.className = 'reset-step-fail text-xs mt-1';
+        el.textContent = msg;
+        var stepsEl = document.getElementById('reset-steps');
+        if (stepsEl) stepsEl.appendChild(el);
+        showResult(false, msg);
+    });
+});
+
+// Initialize
+applyMode('panic');
+
+})();
+</script>
+{% endblock %}

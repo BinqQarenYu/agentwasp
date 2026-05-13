@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+{% from "macros.html" import empty_state %}
+{% block title %}Tasks - Agent Wasp{% endblock %}
+
+{% block content %}
+
+{# ── Header ──────────────────────────────────────────────────────────────── #}
+<div class="mb-4">
+  <h1 class="text-2xl font-bold tracking-tight">Scheduled Tasks</h1>
+  <p class="text-sm text-base-content/50 mt-0.5">Periodic agent instructions that run automatically</p>
+</div>
+
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <div class="flex flex-wrap items-center gap-2">
+
+    {# Total #}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Tasks</div>
+        <div class="text-lg font-bold tabular-nums leading-none" id="stat-total">{{ stats.total }}</div>
+      </div>
+    </div>
+
+    {# Active #}
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <span class="w-2 h-2 rounded-full bg-success animate-pulse shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Active</div>
+        <div class="text-lg font-bold tabular-nums text-success leading-none" id="stat-active">{{ stats.active }}</div>
+      </div>
+    </div>
+
+    {# Paused — hidden when 0 #}
+    <div id="stat-paused-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.paused == 0 %}hidden{% endif %}">
+      <span class="w-2 h-2 rounded-full bg-warning shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Paused</div>
+        <div class="text-lg font-bold tabular-nums text-warning leading-none" id="stat-paused">{{ stats.paused }}</div>
+      </div>
+    </div>
+
+    {# Failed — hidden when 0 #}
+    <div id="stat-failed-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.failed == 0 %}hidden{% endif %}">
+      <span class="w-2 h-2 rounded-full bg-error shrink-0"></span>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Failed</div>
+        <div class="text-lg font-bold tabular-nums text-error leading-none" id="stat-failed">{{ stats.failed }}</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button id="btn-tasks-refresh" class="btn btn-ghost btn-sm gap-1.5" title="Refresh" data-action="tasks:refreshNow">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Refresh
+    </button>
+    <button data-dialog-open="modal-create" class="btn btn-primary btn-sm btn-glow gap-1.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      New Task
+    </button>
+  </div>
+</div>
+
+{# ── Task List ────────────────────────────────────────────────────────────── #}
+{% if not tasks %}
+{{ empty_state("No scheduled tasks", "Create tasks to have the agent execute instructions periodically and send you results via Telegram.", "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z") }}
+{% else %}
+<div id="task-list" class="grid grid-cols-1 gap-3">
+  {% for task in tasks %}
+  <div class="card bg-base-100 shadow-sm wasp-accent" data-task-id="{{ task.task_id }}">
+    <div class="card-body p-5 gap-3">
+
+      {# Top row: dot + info + destinations #}
+      <div class="flex items-start gap-3 min-w-0">
+        <div class="mt-1 shrink-0">
+          {% if not task.enabled %}
+          <span class="status-dot w-2.5 h-2.5 rounded-full bg-warning block" title="Paused"></span>
+          {% elif task.last_success is false %}
+          <span class="status-dot w-2.5 h-2.5 rounded-full bg-error block" title="Last run failed"></span>
+          {% else %}
+          <span class="status-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse block" title="Active"></span>
+          {% endif %}
+        </div>
+
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="font-bold text-sm leading-snug">{{ task.name }}</h3>
+            {# Status pill #}
+            {% if not task.enabled %}
+            <span class="badge badge-warning badge-sm font-semibold">PAUSED</span>
+            {% elif task.last_success is none %}
+            <span class="badge badge-info badge-sm font-semibold">NEW</span>
+            {% elif task.last_success %}
+            <span class="badge badge-success badge-sm font-semibold gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-success-content inline-block"></span>OK
+            </span>
+            {% else %}
+            <span class="badge badge-error badge-sm font-semibold">ERROR</span>
+            {% endif %}
+          </div>
+          <p class="text-xs text-base-content/55 mt-1 leading-relaxed line-clamp-2">{{ task.instruction }}</p>
+        </div>
+
+        {# Destination icons + interval chip — top-right #}
+        <div class="shrink-0 flex flex-col items-end gap-1.5 ml-auto">
+          {# Interval chip #}
+          <div class="badge badge-neutral badge-sm font-mono font-medium">every {{ task.interval_fmt }}</div>
+          {# Destinations #}
+          {% if task.destinations %}
+          <div class="flex items-center gap-1">
+            {% for dest in task.destinations %}
+            {% if dest == 'telegram' %}
+            <span title="Telegram">
+              <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="12" fill="#26A5E4"/>
+                <path d="M5.491 11.74 18.3 6.67c.58-.222 1.088.14.9.993l-2.058 9.71c-.152.664-.557.824-1.128.514l-3.124-2.302-1.508 1.453c-.166.166-.306.305-.627.305l.223-3.174 5.754-5.196c.248-.222-.054-.346-.386-.124L7.362 13.7l-3.124-.977c-.677-.217-.693-.677.146-.963Z" fill="#fff"/>
+              </svg>
+            </span>
+            {% elif dest == 'email' %}
+            <span title="Email">
+              <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+              </svg>
+            </span>
+            {% elif dest == 'slack' %}
+            <span title="Slack">
+              <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" fill="#4A154B"/>
+              </svg>
+            </span>
+            {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Stats row #}
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/50 pl-[22px]">
+        <span class="run-count tabular-nums">{{ task.run_count }} run{{ 's' if task.run_count != 1 }}</span>
+        {% if task.failure_count %}
+        <span class="text-error tabular-nums">· {{ task.failure_count }} error{{ 's' if task.failure_count != 1 }}</span>
+        {% endif %}
+        {% if task.last_run %}
+        <span>· last <span data-ts="{{ task.last_run }}" class="text-base-content/70 font-medium">—</span></span>
+        {% else %}
+        <span class="italic">· never run</span>
+        {% endif %}
+        {% if task.next_run %}
+        <span class="{% if not task.enabled %}opacity-30{% endif %}">· next <span class="nr-label font-medium text-base-content/70" data-next-run="{{ task.next_run }}">—</span></span>
+        {% endif %}
+      </div>
+
+      {# Action buttons #}
+      <div class="flex items-center gap-2 flex-wrap pl-[22px]">
+        <button data-action="tasks:triggerTask" data-id="{{ task.task_id }}" class="btn btn-primary btn-xs btn-glow">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Run
+        </button>
+        <button data-action="tasks:openEdit" data-id="{{ task.task_id }}" class="btn btn-xs btn-outline btn-info">Edit</button>
+        <button data-action="tasks:toggleTask" data-id="{{ task.task_id }}"
+            class="btn btn-xs btn-outline {% if task.enabled %}btn-warning{% else %}btn-success{% endif %}">
+          {{ 'Pause' if task.enabled else 'Resume' }}
+        </button>
+        <button data-action="tasks:confirmDeleteTask" data-id="{{ task.task_id }}" class="btn btn-error btn-xs btn-outline">Delete</button>
+      </div>
+
+      {# Last result collapsible #}
+      {% if task.last_result and task.last_result not in ('', 'Triggered') %}
+      <details class="group pl-[22px]">
+        <summary class="flex items-center gap-1.5 text-xs text-base-content/45 cursor-pointer select-none hover:text-base-content/75 transition-colors list-none w-fit">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform group-open:rotate-90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          Last result
+        </summary>
+        <div class="mt-2 bg-base-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+          <pre class="last-result-pre text-xs whitespace-pre-wrap text-base-content/70 font-mono leading-relaxed">{{ task.last_result[:600] }}{% if task.last_result|length > 600 %}…{% endif %}</pre>
+        </div>
+      </details>
+      {% else %}
+      {# placeholder so JS can find it if result arrives after initial load #}
+      <div class="last-result-placeholder pl-[22px] hidden">
+        <details class="group">
+          <summary class="flex items-center gap-1.5 text-xs text-base-content/45 cursor-pointer select-none hover:text-base-content/75 transition-colors list-none w-fit">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform group-open:rotate-90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            Last result
+          </summary>
+          <div class="mt-2 bg-base-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+            <pre class="last-result-pre text-xs whitespace-pre-wrap text-base-content/70 font-mono leading-relaxed"></pre>
+          </div>
+        </details>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Embed task data for edit modal #}
+<script nonce="{{ request.state.csp_nonce }}">
+window.TASK_DATA = {
+  {% for task in tasks %}
+  {{ task.task_id | tojson }}: {{ task | tojson }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+</script>
+{% endif %}
+
+{# ── Delete Modal ─────────────────────────────────────────────────────────── #}
+<dialog id="modal-delete-task" class="modal">
+  <div class="modal-box max-w-sm">
+    <h3 class="font-bold text-lg text-error mb-2">Delete Task</h3>
+    <p class="text-sm text-base-content/70">Permanently delete <strong id="delete-task-name"></strong>? This cannot be undone.</p>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-delete-task" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-exec-delete-task" class="btn btn-error btn-sm" data-action="tasks:execDeleteTask">Delete</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Edit Modal ───────────────────────────────────────────────────────────── #}
+<dialog id="modal-edit" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="font-bold text-lg mb-4">Edit Task</h3>
+    <input type="hidden" id="edit-task-id">
+    <form id="edit-task-form" class="space-y-4">
+      <div class="form-control">
+        <label class="label"><span class="label-text font-medium">Name</span></label>
+        <input type="text" id="edit-task-name" class="input input-bordered input-sm w-full" required>
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Instruction</span>
+          <span class="label-text-alt text-base-content/40">What the agent should do</span>
+        </label>
+        <textarea id="edit-task-instruction" rows="4" class="textarea textarea-bordered text-sm w-full" required></textarea>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text font-medium">Interval</span></label>
+        <select id="edit-task-interval-preset" class="select select-bordered select-sm w-full" data-action="tasks:onEditPresetChange">
+          <option value="60">Every minute</option>
+          <option value="300">Every 5 minutes</option>
+          <option value="1800">Every 30 minutes</option>
+          <option value="3600">Every hour</option>
+          <option value="21600">Every 6 hours</option>
+          <option value="43200">Every 12 hours</option>
+          <option value="86400">Daily</option>
+          <option value="604800">Weekly</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="text" id="edit-task-interval-custom" placeholder="e.g. every 2h / every 45 minutes" class="input input-bordered input-sm w-full mt-2 hidden">
+      </div>
+    </form>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-edit" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-submit-edit" class="btn btn-primary btn-sm btn-glow" data-action="tasks:submitEdit">Save Changes</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ── Create Modal ─────────────────────────────────────────────────────────── #}
+<dialog id="modal-create" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="font-bold text-lg mb-4">New Scheduled Task</h3>
+    <form id="create-task-form" class="space-y-4">
+      <div class="form-control">
+        <label class="label"><span class="label-text font-medium">Name</span></label>
+        <input type="text" id="task-name" placeholder="Daily Bitcoin Price" class="input input-bordered input-sm w-full" required>
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Instruction</span>
+          <span class="label-text-alt text-base-content/40">What the agent should do</span>
+        </label>
+        <textarea id="task-instruction" rows="3" placeholder="Find the current Bitcoin price and send me a brief trend analysis" class="textarea textarea-bordered text-sm w-full" required></textarea>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text font-medium">Interval</span></label>
+        <select id="task-interval-preset" class="select select-bordered select-sm w-full" data-action="tasks:onPresetChange">
+          <option value="3600">Every hour</option>
+          <option value="21600">Every 6 hours</option>
+          <option value="43200">Every 12 hours</option>
+          <option value="86400" selected>Daily</option>
+          <option value="604800">Weekly</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="text" id="task-interval-custom" placeholder="every 2h / every 30 minutes / every 3 days" class="input input-bordered input-sm w-full mt-2 hidden">
+      </div>
+    </form>
+    <div class="modal-action mt-5">
+      <button data-dialog-close="modal-create" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-submit-create-task" class="btn btn-primary btn-sm btn-glow" data-action="tasks:submitCreate">Create Task</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+const CSRF = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 5)   return 'just now';
+  if (diff < 60)  return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function fmtNextRun(iso) {
+  if (!iso) return '';
+  const delta = (new Date(iso) - Date.now()) / 1000;
+  if (delta <= 0) return 'overdue';
+  if (delta < 60) return `in ${Math.floor(delta)}s`;
+  if (delta < 3600) return `in ${Math.floor(delta / 60)}m ${Math.floor(delta % 60)}s`;
+  return `in ${Math.floor(delta / 3600)}h ${Math.floor((delta % 3600) / 60)}m`;
+}
+
+async function postJSON(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': CSRF(),
+      'x-requested-with': 'xmlhttprequest',
+    },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+// ── Timestamps (update every 30s) ────────────────────────────────────────────
+function renderTimestamps() {
+  document.querySelectorAll('[data-ts]').forEach(el => {
+    el.textContent = timeAgo(el.getAttribute('data-ts'));
+  });
+  document.querySelectorAll('[data-next-run]').forEach(el => {
+    el.textContent = fmtNextRun(el.getAttribute('data-next-run'));
+  });
+}
+renderTimestamps();
+setInterval(renderTimestamps, 30000);
+
+// ── Auto-refresh (10s) ───────────────────────────────────────────────────────
+async function refreshNow() {
+  try {
+    const r = await fetch('/tasks/api/status', {
+      headers: {'x-requested-with': 'xmlhttprequest'},
+    });
+    const d = await r.json();
+    // Stats
+    const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const setWrap = (wid, nid, v) => {
+      const w = document.getElementById(wid);
+      if (w) w.classList.toggle('hidden', v === 0);
+      setNum(nid, v);
+    };
+    setNum('stat-total', d.total);
+    setNum('stat-active', d.active);
+    setWrap('stat-paused-wrap', 'stat-paused', d.paused);
+    setWrap('stat-failed-wrap', 'stat-failed', d.failed);
+    // Cards
+    for (const t of (d.tasks || [])) updateCard(t);
+  } catch (e) { console.warn('[tasks] Background refresh failed:', e.message); }
+}
+setInterval(refreshNow, 10000);
+
+function updateCard(t) {
+  const card = document.querySelector(`[data-task-id="${t.task_id}"]`);
+  if (!card) return;
+
+  // Status dot
+  const dot = card.querySelector('.status-dot');
+  if (dot) {
+    const cls = t.enabled
+      ? (t.last_success === false ? 'bg-error' : 'bg-success animate-pulse')
+      : 'bg-warning';
+    dot.className = `status-dot w-2.5 h-2.5 rounded-full block ${cls}`;
+  }
+
+  // Run count
+  const rc = card.querySelector('.run-count');
+  if (rc) rc.textContent = `${t.run_count} run${t.run_count !== 1 ? 's' : ''}`;
+
+  // Last-run time-ago
+  const ts = card.querySelector('[data-ts]');
+  if (ts && t.last_run) {
+    ts.setAttribute('data-ts', t.last_run);
+    ts.textContent = timeAgo(t.last_run);
+  }
+
+  // Next-run chip
+  const nr = card.querySelector('.nr-label');
+  if (nr && t.next_run) {
+    nr.setAttribute('data-next-run', t.next_run);
+    nr.textContent = fmtNextRun(t.next_run);
+  }
+
+  // Last result — reveal placeholder if result appears after page load
+  const pre = card.querySelector('.last-result-pre');
+  if (pre && t.last_result && !['', 'Triggered'].includes(t.last_result)) {
+    pre.textContent = t.last_result.slice(0, 600) + (t.last_result.length > 600 ? '…' : '');
+    const placeholder = card.querySelector('.last-result-placeholder');
+    if (placeholder) placeholder.classList.remove('hidden');
+  }
+
+  // Update TASK_DATA cache for edit modal
+  if (window.TASK_DATA) window.TASK_DATA[t.task_id] = t;
+}
+
+// ── Create ───────────────────────────────────────────────────────────────────
+function onPresetChange(el) {
+  document.getElementById('task-interval-custom').classList.toggle('hidden', el.value !== 'custom');
+}
+
+async function submitCreate() {
+  const name        = document.getElementById('task-name').value.trim();
+  const instruction = document.getElementById('task-instruction').value.trim();
+  const preset      = document.getElementById('task-interval-preset').value;
+  const custom      = document.getElementById('task-interval-custom').value.trim();
+
+  if (!name || !instruction) { showToast('Name and instruction are required', 'error'); return; }
+
+  const interval = preset === 'custom' ? custom : preset;
+  const d = await postJSON('/tasks/create', {name, instruction, interval});
+  if (d.ok) {
+    showToast(`Task "${d.name}" created`);
+    document.getElementById('modal-create').close();
+    setTimeout(() => location.reload(), 700);
+  } else {
+    showToast(d.error || 'Error creating task', 'error');
+  }
+}
+
+// ── Edit ─────────────────────────────────────────────────────────────────────
+const INTERVAL_PRESETS = [60, 300, 1800, 3600, 21600, 43200, 86400, 604800];
+
+function onEditPresetChange(el) {
+  document.getElementById('edit-task-interval-custom').classList.toggle('hidden', el.value !== 'custom');
+}
+
+function openEdit(task_id) {
+  const t = (window.TASK_DATA || {})[task_id];
+  if (!t) { showToast('Task data not found', 'error'); return; }
+
+  document.getElementById('edit-task-id').value          = task_id;
+  document.getElementById('edit-task-name').value        = t.name || '';
+  document.getElementById('edit-task-instruction').value = t.instruction || '';
+
+  const secs = t.interval_seconds || 3600;
+  const sel  = document.getElementById('edit-task-interval-preset');
+  const cust = document.getElementById('edit-task-interval-custom');
+
+  if (INTERVAL_PRESETS.includes(secs)) {
+    sel.value = String(secs);
+    cust.classList.add('hidden');
+  } else {
+    sel.value = 'custom';
+    cust.classList.remove('hidden');
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    cust.value = h > 0
+      ? `every ${h}h${m > 0 ? m + 'm' : ''}`
+      : `every ${m} minutes`;
+  }
+
+  document.getElementById('modal-edit').showModal();
+}
+
+async function submitEdit() {
+  const task_id     = document.getElementById('edit-task-id').value;
+  const name        = document.getElementById('edit-task-name').value.trim();
+  const instruction = document.getElementById('edit-task-instruction').value.trim();
+  const preset      = document.getElementById('edit-task-interval-preset').value;
+  const custom      = document.getElementById('edit-task-interval-custom').value.trim();
+
+  if (!name || !instruction) { showToast('Name and instruction are required', 'error'); return; }
+
+  const interval = preset === 'custom' ? custom : preset;
+  const d = await postJSON('/tasks/update', {task_id, name, instruction, interval});
+  if (d.ok) {
+    const changed = (d.changed && d.changed.length) ? d.changed.join(', ') : 'no changes';
+    showToast(`"${d.name}" saved — ${changed}`);
+    document.getElementById('modal-edit').close();
+    setTimeout(() => location.reload(), 700);
+  } else {
+    showToast(d.error || 'Error saving task', 'error');
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+let _pendingDeleteId = null;
+let _pendingDeleteCard = null;
+
+function confirmDeleteTask(task_id, btn) {
+  const card = btn.closest('[data-task-id]');
+  const name = card ? card.querySelector('h3')?.textContent?.trim() : task_id;
+  _pendingDeleteId = task_id;
+  _pendingDeleteCard = card;
+  document.getElementById('delete-task-name').textContent = name || task_id;
+  document.getElementById('modal-delete-task').showModal();
+}
+
+async function execDeleteTask() {
+  document.getElementById('modal-delete-task').close();
+  if (!_pendingDeleteId) return;
+  const task_id = _pendingDeleteId;
+  const card    = _pendingDeleteCard;
+  const name    = document.getElementById('delete-task-name').textContent;
+  _pendingDeleteId = null;
+  _pendingDeleteCard = null;
+  const d = await postJSON('/tasks/delete', {task_id});
+  if (d.ok) {
+    showToast(`Task "${name}" deleted`);
+    card?.remove();
+    // Update total stat immediately
+    const el = document.getElementById('stat-total');
+    if (el) el.textContent = Math.max(0, Number(el.textContent) - 1);
+  } else {
+    showToast(d.error || 'Error deleting task', 'error');
+  }
+}
+
+// ── Toggle ────────────────────────────────────────────────────────────────────
+async function toggleTask(task_id) {
+  const d = await postJSON('/tasks/toggle', {task_id});
+  if (d.ok) {
+    showToast(`Task ${d.enabled ? 'resumed' : 'paused'}`);
+    setTimeout(() => location.reload(), 600);
+  } else {
+    showToast(d.error || 'Error', 'error');
+  }
+}
+
+// ── Trigger ───────────────────────────────────────────────────────────────────
+async function triggerTask(task_id, btn) {
+  const card = btn.closest('[data-task-id]');
+  const name = card ? card.querySelector('h3')?.textContent?.trim() : task_id;
+  btn.disabled = true;
+  const d = await postJSON('/tasks/trigger', {task_id});
+  btn.disabled = false;
+  if (d.ok) {
+    showToast(`"${name}" queued — runs in < 60s`);
+  } else {
+    showToast(d.error || 'Error running task', 'error');
+  }
+}
+// Bind static controls
+registerWaspActions('tasks', {
+  'triggerTask':       function(el) { triggerTask(el.dataset.id, el); },
+  'openEdit':          function(el) { openEdit(el.dataset.id); },
+  'toggleTask':        function(el) { toggleTask(el.dataset.id); },
+  'confirmDeleteTask': function(el) { confirmDeleteTask(el.dataset.id, el); },
+  'refreshNow':        function()   { refreshNow(); },
+  'execDeleteTask':    function()   { execDeleteTask(); },
+  'submitEdit':        function()   { submitEdit(); },
+  'submitCreate':      function()   { submitCreate(); },
+  'onEditPresetChange': function(el) { onEditPresetChange(el); },
+  'onPresetChange':    function(el) { onPresetChange(el); },
+});
+// Prevent default form submit (Enter key in fields) — runs immediately (SPA-safe)
+(function() {
+  var _ef = document.getElementById('edit-task-form');
+  var _cf = document.getElementById('create-task-form');
+  if (_ef) _ef.addEventListener('submit', function(e) { e.preventDefault(); });
+  if (_cf) _cf.addEventListener('submit', function(e) { e.preventDefault(); });
+})();
+</script>
+{% endblock %}

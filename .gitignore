@@ -1,0 +1,79 @@
+# ── Secrets / runtime config ───────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+secrets/
+
+# ── Data / state ───────────────────────────────────────────────────────
+data/
+backups/
+logs/
+*.log
+*.log.*
+
+# Container-mounted volumes (when running locally without Docker)
+postgres_data/
+redis_data/
+ollama_data/
+browser_sessions/
+screenshots/
+src_patches/
+
+# ── Python ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# ── Node (if any frontend tooling lands later) ─────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# ── OS / editor ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Local dev artifacts ────────────────────────────────────────────────
+*.pid
+*.lock
+.cache/
+.tmp/
+tmp/
+
+# ── Production paths from prior VPS deployment (do NOT publish) ────────
+data/config/
+data/memory/
+data/uploads/
+
+# ── Operator-only audit reports (internal to maintainer, not public) ───
+docs/reports/
+containers/*/docs/reports/
+
+# ── Docusaurus build/cache artifacts ───────────────────────────────────
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/node_modules/
+
+# ── Pre-built release tarball (regenerate via build-release.sh) ────────
+wasp-release.tar.gz

@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block title %}{{ agent.name if agent else 'Agent' }} - Agent Wasp{% endblock %}
+
+{% block content %}
+{% if not agent %}
+<div class="alert alert-error">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    </svg>
+    <span>Agent not found (ID: {{ agent_id }})</span>
+</div>
+{% else %}
+
+<!-- Header -->
+<div class="flex items-start justify-between mb-5 gap-3">
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <a href="/agents" class="btn btn-ghost btn-xs text-base-content/40">&larr; Agents</a>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <div id="detail-dot-wrap" class="flex-shrink-0">
+                {% if agent.status == 'running' %}
+                <span class="detail-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse inline-block" title="Running"></span>
+                {% elif agent.status == 'paused' %}
+                <span class="detail-dot w-2.5 h-2.5 rounded-full bg-warning inline-block" title="Paused"></span>
+                {% elif agent.status == 'archived' %}
+                <span class="detail-dot w-2.5 h-2.5 rounded-full bg-base-300 inline-block" title="Archived"></span>
+                {% else %}
+                <span class="detail-dot w-2.5 h-2.5 rounded-full bg-base-content/20 inline-block" title="Idle"></span>
+                {% endif %}
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight">{{ agent.name }}</h1>
+            <span id="detail-status-badge">
+                {% if agent.status == 'running' %}
+                <span class="badge badge-success badge-outline badge-sm">running</span>
+                {% elif agent.status == 'paused' %}
+                <span class="badge badge-warning badge-outline badge-sm">paused</span>
+                {% elif agent.status == 'archived' %}
+                <span class="badge badge-ghost badge-sm">archived</span>
+                {% else %}
+                <span class="badge badge-ghost badge-sm">idle</span>
+                {% endif %}
+            </span>
+            {% if agent.autonomy_mode == 'full' %}
+            <span class="badge badge-success badge-sm">FULL</span>
+            {% elif agent.autonomy_mode == 'semi' %}
+            <span class="badge badge-warning badge-sm">SEMI</span>
+            {% else %}
+            <span class="badge badge-error badge-sm">ASSIST</span>
+            {% endif %}
+            {% if agent.budget_exceeded %}
+            <span class="badge badge-error badge-sm animate-pulse" id="budget-exceeded-badge">BUDGET!</span>
+            {% endif %}
+        </div>
+        {% if agent.description %}
+        <p class="text-sm text-base-content/50 mt-1">{{ agent.description }}</p>
+        {% endif %}
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+        {% if agent.status != 'archived' %}
+        {% if agent.status in ['paused', 'idle'] %}
+        <button id="btn-ad-resume" class="btn btn-success btn-sm">Resume</button>
+        {% else %}
+        <button id="btn-ad-pause" class="btn btn-warning btn-sm">Pause</button>
+        {% endif %}
+        <button class="btn btn-ghost btn-sm" data-dialog-open="modal-archive">Archive</button>
+        {% endif %}
+        <button class="btn btn-error btn-sm btn-outline" data-dialog-open="modal-delete">Delete</button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Left column: config + budget + identity -->
+    <div class="lg:col-span-1 space-y-4">
+
+        <!-- Config card -->
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+            <div class="card-body p-4">
+                <h3 class="font-semibold text-sm mb-3">Configuration</h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">ID</span>
+                        <span class="font-mono truncate text-base-content/60" title="{{ agent.id }}">{{ agent.id[:20] }}…</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">Provider</span>
+                        <span>{{ agent.model_provider or '(global)' }}</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">Model</span>
+                        <span class="truncate max-w-[150px]" title="{{ agent.model_name }}">{{ agent.model_name or '(global)' }}</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">Namespace</span>
+                        <span class="font-mono truncate max-w-[140px]" title="{{ agent.memory_namespace }}">{{ agent.memory_namespace[:22] }}{% if agent.memory_namespace|length > 22 %}…{% endif %}</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">Created</span>
+                        <span data-ts="{{ agent.created_at }}">{{ agent.created_at[:10] }}</span>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-base-content/45">Updated</span>
+                        <span data-ts="{{ agent.updated_at }}">{{ agent.updated_at[:10] }}</span>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    {% if agent.allowed_capabilities %}
+                    <p class="text-xs text-base-content/45 mb-1.5">Allowed capabilities</p>
+                    <div class="flex flex-wrap gap-1">
+                        {% for cap in agent.allowed_capabilities %}
+                        <span class="badge badge-info badge-xs">{{ cap }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="badge badge-ghost badge-sm">unrestricted</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget card -->
+        <div class="card bg-base-100 shadow-sm wasp-accent" id="budget-card">
+            <div class="card-body p-4">
+                <h3 class="font-semibold text-sm mb-3">Cognitive Budget</h3>
+                {% if agent.budget_exceeded %}
+                <div class="alert alert-error py-1 px-2 mb-3 text-xs">Budget exceeded</div>
+                {% endif %}
+                <div class="space-y-3" id="budget-bars">
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-base-content/45">Planning tokens</span>
+                            <span id="b-planning-label"
+                                {% if agent.budget_pct_planning >= 80 %}class="text-error"{% elif agent.budget_pct_planning >= 60 %}class="text-warning"{% endif %}>
+                                {{ agent.budget_used_planning }} / {{ agent.budget_max_planning }}
+                            </span>
+                        </div>
+                        <progress id="b-planning-bar"
+                            class="progress {% if agent.budget_pct_planning >= 80 %}progress-error{% elif agent.budget_pct_planning >= 60 %}progress-warning{% else %}progress-primary{% endif %} h-2 w-full"
+                            value="{{ agent.budget_pct_planning }}" max="100"></progress>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-base-content/45">Steps executed</span>
+                            <span id="b-steps-label"
+                                {% if agent.budget_pct_steps >= 80 %}class="text-error"{% elif agent.budget_pct_steps >= 60 %}class="text-warning"{% endif %}>
+                                {{ agent.budget_used_steps }} / {{ agent.budget_max_steps }}
+                            </span>
+                        </div>
+                        <progress id="b-steps-bar"
+                            class="progress {% if agent.budget_pct_steps >= 80 %}progress-error{% elif agent.budget_pct_steps >= 60 %}progress-warning{% else %}progress-secondary{% endif %} h-2 w-full"
+                            value="{{ agent.budget_pct_steps }}" max="100"></progress>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Identity prompt -->
+        {% if agent.identity_prompt %}
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+            <div class="card-body p-4">
+                <h3 class="font-semibold text-sm mb-2">Identity Prompt</h3>
+                <p class="text-xs text-base-content/60 whitespace-pre-wrap leading-relaxed">{{ agent.identity_prompt[:500] }}{% if agent.identity_prompt|length > 500 %}…{% endif %}</p>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Right column: goals + messages -->
+    <div class="lg:col-span-2 space-y-4">
+
+        <!-- Active goals -->
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+            <div class="card-body p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-sm">
+                        Active Goals
+                        <span id="goal-count-badge" class="badge {% if agent.active_goal_count > 0 %}badge-success{% else %}badge-ghost{% endif %} badge-sm ml-1">{{ agent.active_goal_count }}</span>
+                    </h3>
+                    <a href="/goals" class="btn btn-ghost btn-xs text-base-content/40">All goals &rarr;</a>
+                </div>
+                <div id="active-goals-list">
+                    {% if agent.active_goal_ids %}
+                    <div class="space-y-1.5">
+                        {% for gid in agent.active_goal_ids %}
+                        <div class="flex items-center justify-between px-2.5 py-2 bg-base-200 rounded-lg text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>
+                                <span class="font-mono text-base-content/60" title="{{ gid }}">{{ gid[:20] }}…</span>
+                            </div>
+                            <a href="/goals" class="btn btn-ghost btn-xs py-0 h-auto min-h-0">View</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-base-content/35">No active goals</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Inter-agent messages -->
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+            <div class="card-body p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-sm">
+                        Messages
+                        <span class="badge badge-ghost badge-sm ml-1">{{ messages|length }}</span>
+                    </h3>
+                    <button class="btn btn-primary btn-xs" data-dialog-open="modal-send">Assign Goal</button>
+                </div>
+                {% if messages %}
+                <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {% for m in messages %}
+                    <div class="px-3 py-2 bg-base-200 rounded-lg text-xs {% if not m.read %}border-l-2 border-primary{% endif %}">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-base-content/40">from</span>
+                            <span class="font-mono text-base-content/60" title="{{ m.from_agent_id }}">{{ m.from_agent_id[:20] }}…</span>
+                            <span class="badge badge-ghost badge-xs">{{ m.message_type }}</span>
+                            {% if not m.read %}
+                            <span class="badge badge-primary badge-xs">new</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-base-content/75 line-clamp-2">{{ m.content }}</p>
+                        <p class="text-base-content/30 mt-1" data-ts="{{ m.created_at }}">{{ m.created_at }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-base-content/35">No messages received</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- ── Assign Goal Modal (was "Send Message") ── -->
+<dialog id="modal-send" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-base mb-1">Assign Goal to Agent</h3>
+        <p class="text-xs text-base-content/45 mb-4">Creates a new goal on the target agent and starts execution immediately.</p>
+        <div class="space-y-3">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Target Agent ID <span class="text-error">*</span></span></label>
+                <input type="text" id="msg-to" class="input input-bordered input-sm font-mono" placeholder="Recipient agent ID" />
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Type</span></label>
+                <select id="msg-type" class="select select-bordered select-sm">
+                    <option value="text">text</option>
+                    <option value="request">request</option>
+                    <option value="task_result">task_result</option>
+                    <option value="notification">notification</option>
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Objective / Content <span class="text-error">*</span></span></label>
+                <textarea id="msg-content" class="textarea textarea-bordered textarea-sm" rows="3" placeholder="Goal objective or message content"></textarea>
+            </div>
+        </div>
+        <div class="modal-action">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-send">Cancel</button>
+            <button id="btn-ad-send" class="btn btn-primary btn-sm">Assign</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Archive Confirm Modal ── -->
+<dialog id="modal-archive" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base mb-2">Archive Agent</h3>
+        <p class="text-sm text-base-content/70">Archive <strong>{{ agent.name }}</strong>?</p>
+        <p class="text-xs text-base-content/45 mt-1">This will stop all active goals. Cannot be restored.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-archive">Cancel</button>
+            <button id="btn-ad-archive" class="btn btn-warning btn-sm">Archive</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Delete Confirm Modal ── -->
+<dialog id="modal-delete" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base text-error mb-2">Delete Agent</h3>
+        <p class="text-sm text-base-content/70">Permanently delete <strong>{{ agent.name }}</strong>?</p>
+        <p class="text-xs text-base-content/45 mt-1">Removes the agent and all its goals. Cannot be undone.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-delete">Cancel</button>
+            <button id="btn-ad-delete" class="btn btn-error btn-sm">Delete</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if agent %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+    var AGENT_ID = '{{ agent_id }}';
+
+    function getCsrf() {
+        return (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    }
+
+    async function apiCall(path, body) {
+        var r = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+            body: JSON.stringify(body || {}),
+        });
+        return r.json();
+    }
+
+    // ── Agent actions ──────────────────────────────────────────────────────
+    window.agentAction = async function(action) {
+        try {
+            var data = await apiCall('/agents/api/' + AGENT_ID + '/' + action);
+            if (data.ok) {
+                showToast('Agent ' + action + 'd', 'success');
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+
+    // ── Delete ─────────────────────────────────────────────────────────────
+    window.execDelete = async function() {
+        document.getElementById('modal-delete').close();
+        try {
+            var data = await apiCall('/agents/api/' + AGENT_ID + '/delete');
+            if (data.ok) {
+                showToast('Agent deleted', 'success');
+                setTimeout(function() { window.location.href = '/agents'; }, 700);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+
+    // ── Assign goal to another agent ───────────────────────────────────────
+    window.sendMessage = async function() {
+        var to = document.getElementById('msg-to').value.trim();
+        var content = document.getElementById('msg-content').value.trim();
+        if (!to || !content) { showToast('Target agent ID and content are required', 'error'); return; }
+        try {
+            var data = await apiCall('/agents/api/' + AGENT_ID + '/send_message', {
+                to_agent_id: to,
+                content: content,
+                message_type: document.getElementById('msg-type').value,
+            });
+            if (data.ok) {
+                showToast('Goal assigned', 'success');
+                document.getElementById('modal-send').close();
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed', 'error');
+        }
+    };
+
+    // ── Auto-refresh (budget + status) ─────────────────────────────────────
+    function progressClass(pct, type) {
+        if (pct >= 80) return 'progress progress-error h-2 w-full';
+        if (pct >= 60) return 'progress progress-warning h-2 w-full';
+        return 'progress progress-' + type + ' h-2 w-full';
+    }
+
+    function dotClass(status) {
+        if (status === 'running') return 'detail-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse inline-block';
+        if (status === 'paused')  return 'detail-dot w-2.5 h-2.5 rounded-full bg-warning inline-block';
+        if (status === 'archived')return 'detail-dot w-2.5 h-2.5 rounded-full bg-base-300 inline-block';
+        return 'detail-dot w-2.5 h-2.5 rounded-full bg-base-content/20 inline-block';
+    }
+
+    function statusBadge(status) {
+        if (status === 'running') return '<span class="badge badge-success badge-outline badge-sm">running</span>';
+        if (status === 'paused')  return '<span class="badge badge-warning badge-outline badge-sm">paused</span>';
+        if (status === 'archived')return '<span class="badge badge-ghost badge-sm">archived</span>';
+        return '<span class="badge badge-ghost badge-sm">idle</span>';
+    }
+
+    function refreshNow() {
+        fetch('/agents/api/' + AGENT_ID)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) return;
+                var a = data.agent;
+
+                // Status dot
+                var dot = document.querySelector('.detail-dot');
+                if (dot) { dot.className = dotClass(a.status); dot.title = a.status; }
+
+                // Status badge
+                var sb = document.getElementById('detail-status-badge');
+                if (sb) sb.innerHTML = statusBadge(a.status);
+
+                // Budget bars
+                var bpl = document.getElementById('b-planning-label');
+                var bpb = document.getElementById('b-planning-bar');
+                var bsl = document.getElementById('b-steps-label');
+                var bsb = document.getElementById('b-steps-bar');
+                if (bpl) bpl.textContent = a.budget_used_planning + ' / ' + a.budget_max_planning;
+                if (bpb) { bpb.value = a.budget_pct_planning; bpb.className = progressClass(a.budget_pct_planning, 'primary'); }
+                if (bsl) bsl.textContent = a.budget_used_steps + ' / ' + a.budget_max_steps;
+                if (bsb) { bsb.value = a.budget_pct_steps; bsb.className = progressClass(a.budget_pct_steps, 'secondary'); }
+
+                // Goal count badge
+                var gcb = document.getElementById('goal-count-badge');
+                if (gcb) {
+                    gcb.textContent = a.active_goal_count;
+                    gcb.className = 'badge ' + (a.active_goal_count > 0 ? 'badge-success' : 'badge-ghost') + ' badge-sm ml-1';
+                }
+
+                renderTimestamps();
+            })
+            .catch(function() {});
+    }
+
+    setInterval(refreshNow, 10000);
+// Bind buttons
+var _adResume = document.getElementById('btn-ad-resume');
+var _adPause = document.getElementById('btn-ad-pause');
+var _adSend = document.getElementById('btn-ad-send');
+var _adArchive = document.getElementById('btn-ad-archive');
+var _adDelete = document.getElementById('btn-ad-delete');
+if (_adResume) _adResume.addEventListener('click', function() { agentAction('resume'); });
+if (_adPause) _adPause.addEventListener('click', function() { agentAction('pause'); });
+if (_adSend) _adSend.addEventListener('click', sendMessage);
+if (_adArchive) _adArchive.addEventListener('click', function() {
+    var dlg = document.getElementById('modal-archive');
+    if (dlg) dlg.close();
+    agentAction('archive');
+});
+if (_adDelete) _adDelete.addEventListener('click', execDelete);
+})();
+</script>
+{% endif %}
+{% endblock %}

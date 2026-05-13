@@ -1,0 +1,553 @@
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#fff; }
+[data-ds="2"] { background:#F97316; }
+[data-ds="3"] { background:#8B5CF6; }
+[data-ds="4"] { background:#3B82F6; }
+[data-ds="5"] { background:#10B981; }
+[data-ds="6"] { background:#EF4444; }
+[data-ds="7"] { background:#FBBF24; }
+</style>
+{% endblock %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Neural Brain</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<style nonce="{{ request.state.csp_nonce }}">
+:root { --glass-border:rgba(255,255,255,0.08); --glass-hl:rgba(255,255,255,0.2); --tm:rgba(255,255,255,0.9); --td:rgba(255,255,255,0.55); }
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none;}
+body{overflow:hidden;background:#050508;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--tm);}
+canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;cursor:grab;}
+canvas.dragging{cursor:grabbing;}
+
+.glass-panel{backdrop-filter:blur(24px) saturate(120%);-webkit-backdrop-filter:blur(24px) saturate(120%);
+  background:linear-gradient(145deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.01) 100%);
+  border:1px solid var(--glass-border);border-top:1px solid var(--glass-hl);border-left:1px solid var(--glass-hl);
+  box-shadow:0 20px 40px rgba(0,0,0,0.4),inset 0 0 20px rgba(255,255,255,0.02);
+  border-radius:20px;color:var(--tm);position:absolute;z-index:10;overflow:hidden;}
+
+#info-panel{top:24px;left:24px;width:248px;padding:18px 20px;transition:width .25s,padding .25s;}
+#panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+#back-link{display:inline-flex;align-items:center;gap:6px;color:#f4bf2a;font-size:11px;text-decoration:none;letter-spacing:1px;text-transform:uppercase;transition:opacity .2s;}
+#back-link:hover{opacity:.75;}
+#panel-toggle{background:none;border:none;cursor:pointer;padding:2px 4px;color:rgba(255,255,255,0.4);transition:color .2s,transform .25s;display:flex;align-items:center;}
+#panel-toggle:hover{color:rgba(255,255,255,0.8);}
+#panel-body{overflow:hidden;transition:max-height .25s,opacity .2s;max-height:600px;opacity:1;}
+#info-panel.collapsed #panel-body{max-height:0;opacity:0;pointer-events:none;}
+#info-panel.collapsed #panel-toggle{transform:rotate(180deg);}
+#panel-title{font-weight:500;font-size:19px;letter-spacing:-.02em;margin-bottom:3px;background:linear-gradient(135deg,#fff 30%,#a5b4fc 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+#panel-subtitle{font-size:11px;color:var(--td);font-weight:300;margin-bottom:12px;}
+#brain-stats{font-size:11px;color:var(--td);margin-bottom:12px;font-weight:300;}
+.legend{display:flex;flex-direction:column;gap:5px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--td);font-weight:300;}
+.legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.density-row{display:flex;justify-content:space-between;font-size:11px;color:var(--td);font-weight:300;margin-bottom:7px;}
+#density-value{color:rgba(255,255,255,0.8);font-weight:400;}
+.density-slider{-webkit-appearance:none;width:100%;height:4px;background:rgba(255,255,255,0.1);border-radius:10px;outline:none;}
+.density-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 0 10px rgba(255,255,255,0.7),0 1px 3px rgba(0,0,0,0.3);}
+#refresh-status{font-size:10px;color:var(--td);margin-top:10px;opacity:.55;}
+
+#tooltip{position:fixed;z-index:50;pointer-events:none;display:none;max-width:200px;padding:9px 12px;
+  background:rgba(8,8,18,0.88);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);
+  border-top:1px solid rgba(255,255,255,0.18);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.55);}
+#tt-cat{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--td);margin-bottom:3px;font-weight:600;}
+#tt-label{font-size:13px;font-weight:600;margin-bottom:4px;line-height:1.3;}
+#tt-detail{font-size:11px;color:var(--td);line-height:1.5;font-weight:300;}
+
+#control-buttons{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:20;padding:6px;}
+.control-button{backdrop-filter:blur(20px);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-top:1px solid rgba(255,255,255,0.25);color:var(--tm);padding:11px 22px;border-radius:50px;cursor:pointer;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:12px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;
+  transition:all .3s;box-shadow:0 8px 20px rgba(0,0,0,0.3);min-width:88px;text-align:center;}
+.control-button:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.4);transform:translateY(-4px);box-shadow:0 15px 30px rgba(0,0,0,0.4);}
+
+#loading-overlay{position:fixed;inset:0;background:rgba(5,5,8,0.92);z-index:100;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;transition:opacity .6s;}
+#loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loading-ring{width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,0.1);border-top-color:#a78bfa;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading-text{font-size:13px;color:var(--td);font-weight:300;letter-spacing:1px;}
+#zoom-hint{position:absolute;bottom:80px;right:28px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:1px;z-index:10;pointer-events:none;}
+@media(max-width:640px){
+#info-panel{top:12px;left:12px;right:12px;width:auto;padding:14px;}
+}
+</style>
+</head>
+<body>
+<div id="loading-overlay"><div class="loading-ring"></div><div id="loading-text">Loading neural data…</div></div>
+<div id="info-panel" class="glass-panel">
+  <div id="panel-header">
+    <a id="back-link" href="/">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L4 6l4 4"/></svg>Dashboard
+    </a>
+    <button id="panel-toggle">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 9l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div id="panel-body">
+    <div id="panel-title">Neural Brain</div>
+    <div id="panel-subtitle">Live agent knowledge graph</div>
+    <div id="brain-stats">Loading…</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" data-ds="1"></div>Core</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="2"></div>Skills</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="3"></div>Knowledge</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="4"></div>Memory</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="5"></div>Epistemic</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="6"></div>Goals</div>
+      <div class="legend-item"><div class="legend-dot" data-ds="7"></div>Self-Model</div>
+    </div>
+    <div class="density-row"><span>Density</span><span id="density-value">100%</span></div>
+    <input type="range" min="20" max="100" value="100" class="density-slider" id="density-slider" aria-label="Node Density">
+    <div id="refresh-status"></div>
+  </div>
+</div>
+<div id="tooltip"><div id="tt-cat"></div><div id="tt-label"></div><div id="tt-detail"></div></div>
+<div id="zoom-hint">scroll · zoom &nbsp;|&nbsp; drag · rotate</div>
+<div id="control-buttons">
+  <button id="btn-refresh" class="control-button">Refresh</button>
+  <button id="btn-pause"   class="control-button">Freeze</button>
+  <button id="btn-pulse"   class="control-button">Pulse</button>
+  <button id="btn-reset"   class="control-button">Reset</button>
+</div>
+<canvas id="neural-canvas"></canvas>
+<script nonce="{{ request.state.csp_nonce }}">
+// All referenced elements (#back-link, #panel-toggle, legend dots) are above this
+// script tag in the DOM, so DOMContentLoaded is not needed — run immediately.
+(function() {
+  /* Apply data-style attributes for legend dots */
+  document.querySelectorAll('[data-style]').forEach(function(el) {
+    var s = el.getAttribute('data-style');
+    s.split(';').forEach(function(rule) {
+      var parts = rule.trim().split(':');
+      if (parts.length >= 2) {
+        var prop = parts[0].trim().replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+        el.style[prop] = parts.slice(1).join(':').trim();
+      }
+    });
+  });
+
+  /* Back link */
+  var backLink = document.getElementById('back-link');
+  if (backLink) {
+    backLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (history.length > 1) history.back();
+      else window.location.href = '/';
+    });
+  }
+
+  /* Panel toggle */
+  var panelToggle = document.getElementById('panel-toggle');
+  if (panelToggle) {
+    panelToggle.addEventListener('click', function() {
+      document.getElementById('info-panel').classList.toggle('collapsed');
+    });
+  }
+})();
+</script>
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+// Guard: brain.html is a full-page navigation, but defend against any duplicate execution.
+if (window.__brainInitialized) return;
+window.__brainInitialized = true;
+
+var CAT_COLOR={ core:'#ffffff',skill:'#F97316',knowledge:'#8B5CF6',memory:'#3B82F6',epistemic:'#10B981',goal:'#EF4444',self_model:'#FBBF24' };
+var CAT_R3D  ={ core:0,self_model:40,goal:65,skill:95,epistemic:130,memory:155,knowledge:185 };
+
+var canvas=document.getElementById('neural-canvas');
+var ctx=canvas.getContext('2d');
+var W=0,H=0,CX=0,CY=0,SCALE=1;
+
+var neurons=[],connections=[],signals=[],particles=[],stars=[];
+var paused=false,time=0,densityFactor=1.0,rawData=null,hoveredNode=-1;
+
+// View
+var rotY=0,rotX=0.15,zoom=1.0;
+var dragging=false,dragX=0,dragY=0,dragRotY=0,dragRotX=0;
+
+// ── Starfield ──────────────────────────────────────────────────────────────
+function genStars(){
+  stars=[];
+  for(var i=0;i<220;i++) stars.push({
+    x:Math.random()*W, y:Math.random()*H,
+    r:Math.random()*0.85+0.1,
+    a:Math.random()*0.15+0.03,
+    phase:Math.random()*Math.PI*2,
+    spd:0.006+Math.random()*0.01
+  });
+}
+
+// ── Resize ─────────────────────────────────────────────────────────────────
+function resize(){
+  var dpr=window.devicePixelRatio||1;
+  W=window.innerWidth; H=window.innerHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  ctx.scale(dpr,dpr);
+  CX=W/2; CY=H/2;
+  SCALE=Math.min(W,H)*0.0024; // world-to-screen for 3D coords
+  genStars();
+}
+window.addEventListener('resize',function(){ resize(); if(rawData) buildFromData(rawData); });
+
+// ── 3D helpers ──────────────────────────────────────────────────────────────
+function fibSphere(idx,total,r){
+  if(total<=1) return {x:r,y:0,z:0};
+  var phi=Math.acos(1-2*(idx+0.5)/total);
+  var theta=Math.PI*(1+Math.sqrt(5))*idx;
+  return {x:r*Math.sin(phi)*Math.cos(theta),y:r*Math.sin(phi)*Math.sin(theta),z:r*Math.cos(phi)};
+}
+
+function project(ox,oy,oz){
+  // Rotate around X then Y
+  var cosX=Math.cos(rotX),sinX=Math.sin(rotX);
+  var ry1=oy*cosX-oz*sinX, rz1=oy*sinX+oz*cosX;
+  var cosY=Math.cos(rotY),sinY=Math.sin(rotY);
+  var rx2=ox*cosY+rz1*sinY, rz2=-ox*sinY+rz1*cosY;
+  var fov=320*SCALE*zoom;
+  var maxR=200;
+  var pz=rz2+maxR+fov;
+  if(pz<1) pz=1;
+  var sc=fov/pz*SCALE*zoom;
+  return {
+    sx: CX+rx2*sc,
+    sy: CY-ry1*sc,
+    depth: Math.max(0,Math.min(1,(rz2+maxR)/(maxR*2))),
+    sc: sc
+  };
+}
+
+// ── Build ───────────────────────────────────────────────────────────────────
+function buildFromData(data){
+  rawData=data; neurons=[]; connections=[]; signals=[]; particles=[];
+  var byCat={};
+  data.nodes.forEach(function(n){
+    var c=n.category||'knowledge';
+    if(!byCat[c]) byCat[c]=[];
+    byCat[c].push(n);
+  });
+  Object.keys(byCat).forEach(function(c){
+    if(c==='core') return;
+    byCat[c]=byCat[c].slice(0,Math.max(1,Math.ceil(byCat[c].length*densityFactor)));
+  });
+
+  var idMap={};
+  Object.keys(byCat).forEach(function(cat){
+    var arr=byCat[cat];
+    var r3=CAT_R3D[cat]!==undefined?CAT_R3D[cat]:160;
+    arr.forEach(function(n,i){
+      var p3=cat==='core'?{x:0,y:0,z:0}:fibSphere(i,arr.length,r3);
+      var jit=r3*0.06;
+      var ox=p3.x+(cat==='core'?0:(Math.random()-.5)*jit);
+      var oy=p3.y+(cat==='core'?0:(Math.random()-.5)*jit);
+      var oz=p3.z+(cat==='core'?0:(Math.random()-.5)*jit);
+      var idx=neurons.length;
+      idMap[n.id]=idx;
+      neurons.push({
+        ox:ox,oy:oy,oz:oz,
+        x:CX,y:CY,depth:0.5,sc:1,
+        r:cat==='core'?5:1.8+(n.size||0.8)*1.4,
+        color:CAT_COLOR[cat]||'#888',
+        energy:0,baseEnergy:cat==='core'?.4:.05,
+        pulsePhase:Math.random()*Math.PI*2,
+        pulseSpeed:.012+Math.random()*.012,
+        label:n.label||n.id,detail:n.detail||'',
+        category:cat,lastFired:0
+      });
+    });
+  });
+
+  data.edges.forEach(function(e){
+    var fi=idMap[e.source],ti=idMap[e.target];
+    if(fi===undefined||ti===undefined) return;
+    connections.push({from:fi,to:ti,weight:e.strength||.5,activity:0,offFrac:(Math.random()-.5)*.3});
+  });
+
+  document.getElementById('brain-stats').textContent=neurons.length+' nodes · '+connections.length+' connections';
+}
+
+// ── Fetch ────────────────────────────────────────────────────────────────────
+async function fetchData(){
+  document.getElementById('refresh-status').textContent='Refreshing…';
+  try{
+    var d=await fetch('/brain/data',{credentials:'same-origin'}).then(r=>r.json());
+    buildFromData(d);
+    document.getElementById('refresh-status').textContent='Updated '+new Date().toLocaleTimeString();
+  }catch(e){ document.getElementById('refresh-status').textContent='Error'; }
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+// ── Fire neuron ────────────────────────────────────────────────────────────
+function fireNeuron(idx){
+  var n=neurons[idx];
+  if(!n||time-(n.lastFired||0)<10) return;
+  n.energy=1; n.lastFired=time;
+  for(var p=0;p<(n.category==='core'?10:4);p++){
+    var spd=1.5+Math.random()*2.5,ang=Math.random()*Math.PI*2;
+    particles.push({x:n.x,y:n.y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:1,decay:.02+Math.random()*.025,color:n.color,size:1.5+Math.random()*2});
+  }
+  for(var i=0;i<connections.length;i++){
+    var c=connections[i];
+    if(c.from===idx&&Math.random()<c.weight*.7)
+      signals.push({ci:i,progress:0,speed:.007+Math.random()*.006,color:n.color});
+  }
+}
+
+// ── Bezier ─────────────────────────────────────────────────────────────────
+function getMid(nF,nT,offFrac){
+  var mx=(nF.x+nT.x)/2,my=(nF.y+nT.y)/2;
+  var dx=nT.x-nF.x,dy=nT.y-nF.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+  var off=offFrac*len;
+  return {x:mx+(-dy/len)*off,y:my+(dx/len)*off};
+}
+function bzPt(t,x0,y0,cx,cy,x1,y1){
+  var it=1-t;
+  return {x:it*it*x0+2*it*t*cx+t*t*x1,y:it*it*y0+2*it*t*cy+t*t*y1};
+}
+
+// ── Update ──────────────────────────────────────────────────────────────────
+function update(){
+  time++;
+  if(!dragging) rotY+=.0022;
+
+  // Project all nodes
+  for(var i=0;i<neurons.length;i++){
+    var n=neurons[i];
+    var p=project(n.ox,n.oy,n.oz);
+    n.x=p.sx; n.y=p.sy; n.depth=p.depth; n.sc=p.sc;
+    n.pulsePhase+=n.pulseSpeed;
+    n.energy*=.96;
+    if(n.energy<n.baseEnergy) n.energy=n.baseEnergy;
+    // Mouse proximity (only when not dragging)
+    if(!dragging&&mouseX>0){
+      var dx=mouseX-n.x,dy=mouseY-n.y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120) n.energy=Math.min(1,n.energy+.02*(1-d/120));
+    }
+  }
+
+  if(time%28===0&&neurons.length>0) fireNeuron(Math.floor(Math.random()*neurons.length));
+  if(time%90===0&&neurons.length>0) fireNeuron(0);
+
+  for(var i=signals.length-1;i>=0;i--){
+    var s=signals[i]; s.progress+=s.speed;
+    if(s.progress>=1){
+      var c=connections[s.ci];
+      connections[s.ci].activity=1;
+      if(!s.reverse){
+        // Forward signal arrived — flash target node, spawn return signal
+        var tgt=c.to;
+        var returnColor=s.color; // default: same color
+        if(tgt<neurons.length){
+          neurons[tgt].energy=Math.min(1,neurons[tgt].energy+.5);
+          neurons[tgt].flash=(neurons[tgt].flash||0)+1;
+          returnColor=neurons[tgt].color; // use the target node's own color for return
+        }
+        signals.splice(i,1);
+        signals.push({ci:s.ci,progress:0,speed:s.speed*.85,color:returnColor,reverse:true});
+      } else {
+        // Return signal arrived back at core/origin — flash origin node
+        var src=c.from;
+        if(src<neurons.length) neurons[src].energy=Math.min(1,neurons[src].energy+.3);
+        signals.splice(i,1);
+      }
+    }
+  }
+  for(var i=0;i<connections.length;i++) connections[i].activity*=.94;
+  for(var i=particles.length-1;i>=0;i--){
+    var p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vx*=.96; p.vy*=.96; p.life-=p.decay;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function render(){
+  ctx.fillStyle='#050508'; ctx.fillRect(0,0,W,H);
+
+  // Stars
+  for(var i=0;i<stars.length;i++){
+    var s=stars[i]; s.phase+=s.spd;
+    var a=s.a*(.55+.45*Math.sin(s.phase));
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,'+a.toFixed(3)+')'; ctx.fill();
+  }
+
+  // Subtle radial lines from core to every node
+  for(var i=0;i<neurons.length;i++){
+    if(neurons[i].category!=='core') continue;
+    var nC=neurons[i];
+    for(var j=0;j<neurons.length;j++){
+      if(neurons[j].category==='core') continue;
+      var nJ=neurons[j];
+      var avgD=(nC.depth+nJ.depth)*.5;
+      ctx.beginPath(); ctx.moveTo(nC.x,nC.y); ctx.lineTo(nJ.x,nJ.y);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.22+avgD*0.18).toFixed(3)+')';
+      ctx.lineWidth=0.7; ctx.stroke();
+    }
+  }
+
+  // Sort connections back to front
+  var connSorted=connections.slice().sort(function(a,b){
+    return (neurons[a.from].depth+neurons[a.to].depth)-(neurons[b.from].depth+neurons[b.to].depth);
+  });
+  for(var i=0;i<connSorted.length;i++){
+    var c=connSorted[i];
+    var nF=neurons[c.from],nT=neurons[c.to];
+    var avgD=(nF.depth+nT.depth)*.5;
+    var alpha=(.12+c.activity*.85)*(.4+avgD*.8);
+    var m=getMid(nF,nT,c.offFrac);
+    ctx.beginPath(); ctx.moveTo(nF.x,nF.y);
+    ctx.quadraticCurveTo(m.x,m.y,nT.x,nT.y);
+    ctx.strokeStyle='rgba(0,191,255,'+alpha.toFixed(3)+')';
+    ctx.lineWidth=(.7+c.activity*2.2)*(.4+avgD*.8); ctx.stroke();
+  }
+
+  // Signals (forward + return)
+  for(var i=0;i<signals.length;i++){
+    var s=signals[i],c=connections[s.ci];
+    // reverse: travel from c.to back to c.from
+    var nF=s.reverse?neurons[c.to]:neurons[c.from];
+    var nT=s.reverse?neurons[c.from]:neurons[c.to];
+    var m=getMid(nF,nT,c.offFrac);
+    var pt=bzPt(s.progress,nF.x,nF.y,m.x,m.y,nT.x,nT.y);
+    var avgD=(nF.depth+nT.depth)*.5;
+    // Return signals: smaller, warm amber tint, slightly transparent
+    var drawColor=s.color; // return signal already has node color baked in
+    var drawBlur =s.reverse?10:14;
+    var drawSize =s.reverse?1.8:2.5;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,drawSize*(.4+avgD*.6)+.5,0,Math.PI*2);
+    ctx.fillStyle=drawColor; ctx.shadowColor=drawColor; ctx.shadowBlur=drawBlur;
+    ctx.globalAlpha=s.reverse?0.7:1;
+    ctx.fill(); ctx.shadowBlur=0; ctx.globalAlpha=1;
+  }
+
+  // Sort neurons back to front
+  var sorted=neurons.slice().sort(function(a,b){ return a.depth-b.depth; });
+  for(var i=0;i<sorted.length;i++){
+    var n=sorted[i];
+    var pulse=Math.sin(n.pulsePhase)*.22+.78;
+    var r=n.r*(.85+n.energy*.4)*pulse*(.3+n.depth*.7)*Math.max(.5,zoom);
+    // Flash ring when a signal arrives
+    if(n.flash>0){
+      ctx.beginPath(); ctx.arc(n.x,n.y,r*4.5,0,Math.PI*2);
+      ctx.strokeStyle='rgba(244,191,42,'+(n.flash*.18)+')';
+      ctx.lineWidth=2; ctx.stroke(); ctx.lineWidth=1;
+      n.flash=Math.max(0,n.flash-.06);
+    }
+    if(n.energy>.18){
+      ctx.beginPath(); ctx.arc(n.x,n.y,r*3.0,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,'+(n.energy*.12)+')';
+      ctx.shadowColor=n.color; ctx.shadowBlur=28*n.energy*n.depth;
+      ctx.fill(); ctx.shadowBlur=0;
+    }
+    ctx.beginPath(); ctx.arc(n.x,n.y,r,0,Math.PI*2);
+    ctx.fillStyle=n.color;
+    ctx.globalAlpha=(.4+n.depth*.8)*(.55+n.energy*.65); ctx.fill(); ctx.globalAlpha=1;
+    if(n.energy>.4){
+      ctx.beginPath(); ctx.arc(n.x,n.y,r*.4,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.globalAlpha=Math.min(1,n.energy*.95*n.depth);
+      ctx.fill(); ctx.globalAlpha=1;
+    }
+  }
+
+  // Particles
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.globalAlpha=p.life*.85; ctx.fill(); ctx.globalAlpha=1;
+  }
+}
+
+// ── Hover ────────────────────────────────────────────────────────────────────
+var tooltip=document.getElementById('tooltip');
+var ttCat=document.getElementById('tt-cat'),ttLabel=document.getElementById('tt-label'),ttDetail=document.getElementById('tt-detail');
+var mouseX=-1,mouseY=-1;
+
+function checkHover(mx,my){
+  var best=-1,bestD=Infinity;
+  for(var i=0;i<neurons.length;i++){
+    var n=neurons[i],dx=mx-n.x,dy=my-n.y,d=dx*dx+dy*dy;
+    if(d<bestD){bestD=d;best=i;}
+  }
+  if(best>=0&&bestD<1200){
+    if(hoveredNode!==best){
+      hoveredNode=best; var n=neurons[best];
+      ttCat.textContent=n.category; ttLabel.textContent=n.label;
+      ttDetail.textContent=n.detail; ttCat.style.color=n.color;
+    }
+    var tx=mx+16,ty=my-8;
+    if(tx+210>W) tx=mx-220;
+    tooltip.style.left=tx+'px'; tooltip.style.top=ty+'px'; tooltip.style.display='block';
+  } else { hoveredNode=-1; tooltip.style.display='none'; }
+}
+
+// ── Loop ─────────────────────────────────────────────────────────────────────
+function loop(){ window.__brainRAF = requestAnimationFrame(loop); if(!paused) update(); render(); }
+
+// ── Events ───────────────────────────────────────────────────────────────────
+canvas.addEventListener('mousedown',function(e){
+  dragging=true; dragX=e.clientX; dragY=e.clientY; dragRotY=rotY; dragRotX=rotX;
+  canvas.classList.add('dragging');
+});
+canvas.addEventListener('mousemove',function(e){
+  mouseX=e.clientX; mouseY=e.clientY;
+  if(dragging){
+    rotY=dragRotY+(e.clientX-dragX)*.005;
+    rotX=dragRotX+(e.clientY-dragY)*.004;
+  } else { checkHover(mouseX,mouseY); }
+});
+canvas.addEventListener('mouseup',function(){
+  dragging=false; canvas.classList.remove('dragging');
+});
+canvas.addEventListener('mouseleave',function(){
+  dragging=false; hoveredNode=-1; tooltip.style.display='none'; canvas.classList.remove('dragging');
+});
+canvas.addEventListener('click',function(e){
+  if(!dragging||Math.abs(e.clientX-dragX)<4){
+    var best=-1,bestD=Infinity;
+    for(var i=0;i<neurons.length;i++){
+      var n=neurons[i],dx=e.clientX-n.x,dy=e.clientY-n.y,d=dx*dx+dy*dy;
+      if(d<bestD){bestD=d;best=i;}
+    }
+    if(best>=0&&bestD<2500) fireNeuron(best);
+  }
+});
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  zoom=Math.max(.35,Math.min(3.5,zoom*(1-e.deltaY*.001)));
+},{passive:false});
+// Touch
+var tStartX=0,tStartY=0,tRotY=0,tRotX=0;
+canvas.addEventListener('touchstart',function(e){ tStartX=e.touches[0].clientX; tStartY=e.touches[0].clientY; tRotY=rotY; tRotX=rotX; },{passive:true});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  rotY=tRotY+(e.touches[0].clientX-tStartX)*.005;
+  rotX=tRotX+(e.touches[0].clientY-tStartY)*.004;
+},{passive:false});
+
+document.getElementById('btn-refresh').addEventListener('click',fetchData);
+document.getElementById('btn-pause').addEventListener('click',function(){ paused=!paused; this.textContent=paused?'Resume':'Freeze'; });
+document.getElementById('btn-pulse').addEventListener('click',function(){
+  for(var i=0;i<Math.min(neurons.length,12);i++)
+    setTimeout((function(ii){return function(){fireNeuron(ii);};})(i),i*40);
+});
+document.getElementById('btn-reset').addEventListener('click',function(){ rotY=0; rotX=.15; zoom=1.0; });
+document.getElementById('density-slider').addEventListener('input',function(){
+  densityFactor=this.value/100;
+  document.getElementById('density-value').textContent=this.value+'%';
+  if(rawData) buildFromData(rawData);
+});
+
+setInterval(fetchData,60000);
+resize();
+if (window.__brainRAF) { cancelAnimationFrame(window.__brainRAF); }
+loop(); fetchData();
+})();
+</script>
+</body>
+</html>

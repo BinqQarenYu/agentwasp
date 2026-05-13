@@ -1,0 +1,693 @@
+{% extends "base.html" %}
+{% block title %}Scheduler — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#06b6d420;border-color:#06b6d440;color:#06b6d4; }
+[data-ds="2"] { }
+[data-ds="3"] { }
+[data-ds="4"] { }
+[data-ds="5"] { }
+[data-ds="6"] { }
+[data-ds="7"] { }
+[data-ds="8"] { background:#06b6d4; }
+[data-ds="9"] { color:#06b6d4; }
+[data-ds="10"] { background:#06b6d420;border-color:#06b6d440;color:#06b6d4; }
+[data-ds="11"] { border-left: 3px solid #06b6d422; }
+[data-ds="12"] { background:#06b6d418; }
+[data-ds="13"] { color:#06b6d4; }
+[data-ds="14"] { color:#06b6d4cc; }
+[data-ds="15"] { background:#06b6d4;border-color:#06b6d4;color:#000; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Header ──────────────────────────────────────────────────────────── #}
+<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight">Scheduler</h1>
+        <p class="text-sm text-base-content/50 mt-0.5">Background jobs that keep the agent alive and learning</p>
+    </div>
+
+    {# Live stats bar #}
+    <div id="sched-stats" class="flex flex-wrap gap-2 items-center">
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-200 text-xs font-medium tabular-nums">
+            <span class="w-2 h-2 rounded-full bg-base-content/30 inline-block"></span>
+            <span id="stat-total">{{ total }}</span> jobs
+        </div>
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-success/10 text-success text-xs font-medium tabular-nums">
+            <span class="w-2 h-2 rounded-full bg-success inline-block job-dot-run"></span>
+            <span id="stat-running">{{ running }}</span> running
+        </div>
+        <div id="stat-paused-wrap" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-warning/10 text-warning text-xs font-medium tabular-nums {% if not paused %}hidden{% endif %}">
+            <span class="w-2 h-2 rounded-full bg-warning inline-block"></span>
+            <span id="stat-paused">{{ paused }}</span> paused
+        </div>
+        <div id="stat-failed-wrap" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-error/10 text-error text-xs font-medium tabular-nums {% if not failed %}hidden{% endif %}">
+            <span class="w-2 h-2 rounded-full bg-error inline-block"></span>
+            <span id="stat-failed">{{ failed }}</span> failed
+        </div>
+        <button data-dialog-open="ct-modal"
+                class="btn btn-xs gap-1" data-ds="1">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Job
+        </button>
+        <button id="btn-sched-refresh" title="Refresh" class="btn btn-ghost btn-xs btn-square opacity-50 hover:opacity-100" data-action="scheduler:schedRefresh">
+            <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+{% if not jobs %}
+<div class="flex flex-col items-center justify-center py-20 text-base-content/30">
+    <svg class="h-12 w-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm font-medium">No scheduled jobs</p>
+    <p class="text-xs mt-1">Jobs appear after the agent scheduler starts.</p>
+</div>
+{% else %}
+
+{# ── Job groups ─────────────────────────────────────────────────────── #}
+<div id="sched-grid" class="space-y-8">
+{% for cat_key, cat_jobs in groups %}
+{% set cm = cat_meta[cat_key] if cat_key in cat_meta else {"label": cat_key|title, "color": "#6366f1"} %}
+<section>
+    {# Section header #}
+    <div class="flex items-center gap-2 mb-3">
+        <div class="h-3.5 w-1 rounded-full flex-shrink-0" data-ds="2" data-dv="background:{{ cm.color}}"></div>
+        <span class="text-xs font-semibold uppercase tracking-widest" data-ds="3" data-dv="color:{{ cm.color}}">{{ cm.label }}</span>
+        <span class="text-xs text-base-content/30">{{ cat_jobs|length }}</span>
+        <div class="flex-1 h-px bg-base-content/5 ml-1"></div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+    {% for job in cat_jobs %}
+    <div class="job-card card bg-base-100 border border-base-content/5 fade-in"
+         id="job-{{ job.name }}"
+         data-ds="4" data-dv="border-left: 3px solid {{ cm.color}}22">
+
+        <div class="card-body p-4 gap-0">
+            {# Row 1: icon + name + status #}
+            <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    {# Status dot #}
+                    {% if job.paused %}
+                    <span class="w-2 h-2 rounded-full bg-warning flex-shrink-0 mt-0.5"></span>
+                    {% elif not job.last_success and job.run_count > 0 %}
+                    <span class="w-2 h-2 rounded-full bg-error flex-shrink-0 mt-0.5"></span>
+                    {% elif job.next_run == 'overdue' %}
+                    <span class="w-2 h-2 rounded-full bg-warning flex-shrink-0 mt-0.5 job-dot-slow"></span>
+                    {% else %}
+                    <span class="w-2 h-2 rounded-full bg-success flex-shrink-0 mt-0.5 job-dot-run"></span>
+                    {% endif %}
+
+                    {# Icon #}
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" data-ds="5" data-dv="background:{{ cm.color}}18">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="6" data-dv="color:{{ cm.color}}">
+                            {{ job.icon | safe }}
+                        </svg>
+                    </div>
+
+                    <div class="min-w-0">
+                        <p class="font-mono font-semibold text-sm leading-tight truncate">{{ job.name }}</p>
+                        {% if job.desc %}
+                        <p class="text-xs text-base-content/45 mt-0.5 leading-snug line-clamp-2">{{ job.desc }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Status badge #}
+                <div class="flex-shrink-0">
+                    {% if job.paused %}
+                    <span class="badge badge-warning badge-sm gap-1">PAUSED</span>
+                    {% elif not job.last_success and job.run_count > 0 %}
+                    <span class="badge badge-error badge-sm gap-1">FAIL</span>
+                    {% else %}
+                    <span class="badge badge-success badge-sm gap-1">OK</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Row 2: stats + next-run chip + last ran #}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/45 mb-3 pl-[3.25rem]">
+                <span class="font-mono tabular-nums font-medium" data-ds="7" data-dv="color:{{ cm.color}}cc">{{ job.interval_fmt }}</span>
+                <span class="tabular-nums">{{ job.run_count }} run{{ 's' if job.run_count != 1 }}</span>
+                {% if job.failure_count %}
+                <span class="text-error tabular-nums">{{ job.failure_count }} fail{{ 's' if job.failure_count != 1 }}</span>
+                {% endif %}
+                {% if job.last_run %}
+                <span class="tabular-nums" data-ts="{{ job.last_run }}" title="{{ job.last_run[:19] }}">{{ job.last_run[:19] }}</span>
+                {% endif %}
+                {% if not job.paused %}
+                <span id="next-{{ job.name }}"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-mono tabular-nums
+                             {% if job.next_run == 'overdue' %}bg-warning/15 text-warning font-semibold
+                             {% elif job.next_run %}bg-base-200 text-base-content/50
+                             {% else %}hidden{% endif %}">
+                    <svg class="h-2.5 w-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {% if job.next_run == 'overdue' %}overdue{% elif job.next_run %}{{ job.next_run }}{% endif %}
+                </span>
+                {% endif %}
+            </div>
+
+            {# Row 3: last result collapsible #}
+            {% if job.last_result %}
+            <details class="group pl-[3.25rem] mb-3">
+                <summary class="flex items-center gap-1.5 text-xs text-base-content/40 cursor-pointer select-none hover:text-base-content/70 transition-colors list-none w-fit">
+                    <svg class="h-3 w-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    Last output
+                </summary>
+                <div class="mt-1.5 bg-base-200/70 rounded-lg p-2.5 max-h-32 overflow-y-auto">
+                    <pre class="text-xs whitespace-pre-wrap text-base-content/60 font-mono leading-relaxed">{{ job.last_result }}</pre>
+                </div>
+            </details>
+            {% endif %}
+
+            {# Row 4: action buttons #}
+            <div class="flex items-center gap-2 pl-[3.25rem]">
+                <button
+                    data-action="scheduler:jobAction" data-op="trigger" data-name="{{ job.name }}"
+                    class="btn btn-xs btn-primary gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Run now
+                </button>
+
+                {% if job.paused %}
+                <button
+                    data-action="scheduler:jobAction" data-op="resume" data-name="{{ job.name }}"
+                    class="btn btn-xs btn-success btn-outline gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Resume
+                </button>
+                {% else %}
+                <button
+                    data-action="scheduler:jobAction" data-op="pause" data-name="{{ job.name }}"
+                    class="btn btn-xs btn-warning btn-outline gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Pause
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+</section>
+{% endfor %}
+</div>
+
+{# ── Custom Jobs ────────────────────────────────────────────────────── #}
+<section class="mt-10" id="custom-tasks-section">
+    <div class="flex items-center gap-2 mb-3">
+        <div class="h-3.5 w-1 rounded-full flex-shrink-0" data-ds="8"></div>
+        <span class="text-xs font-semibold uppercase tracking-widest" data-ds="9">Custom Jobs</span>
+        <span class="text-xs text-base-content/30" id="ct-count">{{ custom_tasks|length }}</span>
+        <div class="flex-1 h-px bg-base-content/5 ml-1"></div>
+        <button data-dialog-open="ct-modal"
+                class="btn btn-xs gap-1" data-ds="10">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Job
+        </button>
+    </div>
+
+    {% if not custom_tasks %}
+    <div id="ct-empty" class="flex items-center gap-2 text-xs text-base-content/35 py-4 pl-1">
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        No custom tasks yet. Click <strong class="text-base-content/50">New Job</strong> to create your first automated job.
+    </div>
+    {% else %}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3" id="ct-grid">
+    {% for task in custom_tasks %}
+    <div class="job-card card bg-base-100 border border-base-content/5 fade-in"
+         id="ct-{{ task.task_id }}"
+         data-ds="11">
+        <div class="card-body p-4 gap-0">
+            {# Row 1: name + enabled badge #}
+            <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    {% if task.enabled %}
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 mt-0.5 job-dot-run"></span>
+                    {% else %}
+                    <span class="w-2 h-2 rounded-full bg-base-content/20 flex-shrink-0 mt-0.5"></span>
+                    {% endif %}
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" data-ds="12">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ds="13">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-sm leading-tight truncate">{{ task.name }}</p>
+                        <p class="text-xs text-base-content/40 mt-0.5 leading-snug line-clamp-2">{{ task.instruction }}</p>
+                    </div>
+                </div>
+                <span class="badge badge-sm flex-shrink-0 {% if task.enabled %}badge-success{% else %}badge-ghost{% endif %}">
+                    {{ 'ON' if task.enabled else 'OFF' }}
+                </span>
+            </div>
+
+            {# Row 2: stats #}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/45 mb-3 pl-[3.25rem]">
+                <span class="font-mono tabular-nums font-medium" data-ds="14">{{ task.interval_fmt }}</span>
+                <span class="tabular-nums">{{ task.run_count }} run{{ 's' if task.run_count != 1 }}</span>
+                {% if task.failure_count %}
+                <span class="text-error tabular-nums">{{ task.failure_count }} fail{{ 's' if task.failure_count != 1 }}</span>
+                {% endif %}
+                {% if task.last_run %}
+                <span class="tabular-nums" data-ts="{{ task.last_run }}" title="{{ task.last_run[:19] }}">{{ task.last_run[:19] }}</span>
+                {% endif %}
+                {% if task.last_success == false %}
+                <span class="text-error">last run failed</span>
+                {% endif %}
+            </div>
+
+            {# Last result #}
+            {% if task.last_result %}
+            <details class="group pl-[3.25rem] mb-3">
+                <summary class="flex items-center gap-1.5 text-xs text-base-content/40 cursor-pointer select-none hover:text-base-content/70 transition-colors list-none w-fit">
+                    <svg class="h-3 w-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    Last output
+                </summary>
+                <div class="mt-1.5 bg-base-200/70 rounded-lg p-2.5 max-h-32 overflow-y-auto">
+                    <pre class="text-xs whitespace-pre-wrap text-base-content/60 font-mono leading-relaxed">{{ task.last_result[:600] }}</pre>
+                </div>
+            </details>
+            {% endif %}
+
+            {# Actions #}
+            <div class="flex items-center gap-2 pl-[3.25rem]">
+                <button data-action="scheduler:ctToggle" data-id="{{ task.task_id }}"
+                        class="btn btn-xs {% if task.enabled %}btn-warning btn-outline{% else %}btn-success btn-outline{% endif %} gap-1">
+                    {{ 'Disable' if task.enabled else 'Enable' }}
+                </button>
+                <button data-action="scheduler:ctDelete" data-id="{{ task.task_id }}"
+                        class="btn btn-xs btn-error btn-outline gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+    {% endif %}
+</section>
+
+{% endif %}{# end jobs #}
+
+
+{# ── Create Custom Task modal ────────────────────────────────────────── #}
+<dialog id="ct-delete-modal" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-base mb-2">Delete job?</h3>
+        <p class="text-sm text-base-content/60">
+            <span class="font-semibold text-base-content" id="ct-delete-name"></span> will be permanently removed and won't run again.
+        </p>
+        <div class="modal-action mt-5">
+            <button data-dialog-close="ct-delete-modal" class="btn btn-ghost btn-sm">Cancel</button>
+            <button id="btn-ct-delete-confirm" class="btn btn-error btn-sm gap-1" data-action="scheduler:ctDeleteConfirm">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Delete
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="ct-modal" class="modal">
+    <div class="modal-box max-w-lg">
+        <h3 class="font-bold text-lg mb-1">New Custom Job</h3>
+        <p class="text-sm text-base-content/50 mb-5">Define a recurring automated job. The agent will execute the instruction on every run.</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="label pb-1"><span class="label-text text-xs font-medium">Name</span></label>
+                <input id="ct-name" type="text" placeholder="e.g. BTC Price Check"
+                       class="input input-bordered input-sm w-full" maxlength="80">
+            </div>
+            <div>
+                <label class="label pb-1"><span class="label-text text-xs font-medium">Instruction</span></label>
+                <textarea id="ct-instruction" rows="3" placeholder="e.g. Check the current BTC price and send me a message if it dropped more than 5% in the last 24h"
+                          class="textarea textarea-bordered textarea-sm w-full leading-relaxed resize-none" maxlength="500"></textarea>
+                <p class="text-xs text-base-content/35 mt-1">Be specific — this is what the agent will execute on each run.</p>
+            </div>
+            <div>
+                <label class="label pb-1"><span class="label-text text-xs font-medium">Interval</span></label>
+                <div class="flex gap-2">
+                    <select id="ct-interval-preset" class="select select-bordered select-sm flex-1" data-action="scheduler:ctIntervalPreset">
+                        <option value="1800">Every 30 min</option>
+                        <option value="3600" selected>Every hour</option>
+                        <option value="21600">Every 6 hours</option>
+                        <option value="43200">Every 12 hours</option>
+                        <option value="86400">Daily</option>
+                        <option value="604800">Weekly</option>
+                        <option value="custom">Custom…</option>
+                    </select>
+                    <input id="ct-interval-custom-input" type="text" placeholder="e.g. 2h, 90m, 3600"
+                           data-action="scheduler:ctValidateCustom"
+                           class="input input-bordered input-sm w-32 hidden">
+                </div>
+                <p id="ct-interval-hint" class="text-xs text-base-content/35 mt-1">Runs every hour.</p>
+            </div>
+        </div>
+
+        <div id="ct-error" class="alert alert-error text-xs py-2 mt-4 hidden"></div>
+
+        <div class="modal-action mt-5">
+            <button data-dialog-close="ct-modal" class="btn btn-ghost btn-sm">Cancel</button>
+            <button id="btn-ct-create" class="btn btn-sm gap-1" data-action="scheduler:ctCreate" data-ds="15">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Create task
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+'use strict';
+
+const CSRF = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+/* ── Toast (alias → global showToast) ──────────────────────────────── */
+function toast(msg, type) {
+    showToast(msg, type === 'ok' ? 'success' : type === 'err' ? 'error' : (type || 'info'));
+}
+
+/* ── Stats update ───────────────────────────────────────────────────── */
+function updateStats(data) {
+    function setNum(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+    function setWrap(wrapperId, numId, v) {
+        const wrap = document.getElementById(wrapperId);
+        const num  = document.getElementById(numId);
+        if (num) num.textContent = v;
+        if (wrap) {
+            if (v > 0) { wrap.classList.remove('hidden'); wrap.className = wrap.className.replace(/opacity-\S+/g,''); }
+            else { wrap.classList.add('hidden'); }
+        }
+    }
+    setNum('stat-total', data.total);
+    setNum('stat-running', data.running);
+    setWrap('stat-paused-wrap', 'stat-paused', data.paused);
+    setWrap('stat-failed-wrap', 'stat-failed', data.failed);
+}
+
+/* ── Next-run chip update ───────────────────────────────────────────── */
+function updateNextRun(jobs) {
+    jobs.forEach(function(job) {
+        const chip = document.getElementById('next-' + job.name);
+        if (!chip) return;
+        const nr = job.next_run || '';
+        if (!nr || job.paused) { chip.classList.add('hidden'); return; }
+        chip.classList.remove('hidden');
+        // Use a dedicated <span> inside the chip for the text, avoiding text-node fragility
+        var lbl = chip.querySelector('.nr-label');
+        if (!lbl) {
+            lbl = document.createElement('span');
+            lbl.className = 'nr-label';
+            chip.appendChild(lbl);
+        }
+        lbl.textContent = nr === 'overdue' ? 'overdue' : nr;
+        // Color
+        if (nr === 'overdue') {
+            chip.classList.remove('bg-base-200', 'text-base-content/50');
+            chip.classList.add('bg-warning/15', 'text-warning', 'font-semibold');
+        } else {
+            chip.classList.remove('bg-warning/15', 'text-warning', 'font-semibold');
+            chip.classList.add('bg-base-200', 'text-base-content/50');
+        }
+    });
+}
+
+/* ── Refresh ────────────────────────────────────────────────────────── */
+function refreshNow() {
+    const icon = document.getElementById('refresh-icon');
+    if (icon) icon.classList.add('spin');
+    fetch('/scheduler/api/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            updateStats(data);
+            updateNextRun(data.jobs);
+        })
+        .catch(function() {})
+        .finally(function() {
+            if (icon) icon.classList.remove('spin');
+        });
+}
+
+/* ── Job actions via AJAX ───────────────────────────────────────────── */
+window.jobAction = function(action, jobName, btn) {
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="h-3 w-3 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
+
+    const fd = new FormData();
+    fd.append('job', jobName);
+    
+
+    fetch('/scheduler/' + action, {
+        method: 'POST',
+        headers: { 'x-requested-with': 'xmlhttprequest', 'X-CSRF-Token': CSRF() },
+        body: fd,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            const labels = { trigger: 'Triggered', pause: 'Paused', resume: 'Resumed' };
+            toast(jobName + ' — ' + (labels[action] || action), 'ok');
+            setTimeout(refreshNow, 800);
+            // Optimistic UI: flip pause/resume button
+            if (action === 'pause' || action === 'resume') {
+                setTimeout(function() { window.location.reload(); }, 1400);
+            }
+        }
+    })
+    .catch(function() { toast('Action failed', 'err'); })
+    .finally(function() {
+        setTimeout(function() {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }, 900);
+    });
+};
+
+/* ── Humanize timestamps ────────────────────────────────────────────── */
+function timeAgo(iso) {
+    if (!iso) return '';
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 5)   return 'just now';
+    if (diff < 60)  return diff + 's ago';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+}
+
+function renderTimestamps() {
+    document.querySelectorAll('[data-ts]').forEach(function(el) {
+        const ago = timeAgo(el.dataset.ts);
+        if (ago) el.textContent = ago;
+    });
+}
+
+/* ── Custom task actions ────────────────────────────────────────────── */
+window.ctToggle = function(taskId, btn) {
+    const fd = new FormData();
+    fd.append('task_id', taskId);
+    
+    btn.disabled = true;
+    fetch('/scheduler/custom-tasks/toggle', {
+        method: 'POST', headers: {'x-requested-with': 'xmlhttprequest', 'X-CSRF-Token': CSRF()}, body: fd,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            toast((data.enabled ? 'Enabled' : 'Disabled') + ' task', 'ok');
+            setTimeout(function() { window.location.reload(); }, 800);
+        }
+    })
+    .catch(function() { toast('Action failed', 'err'); btn.disabled = false; });
+};
+
+var _deleteTargetId = null;
+
+window.ctDelete = function(taskId, btn) {
+    _deleteTargetId = taskId;
+    // Fill modal with job name
+    const card = document.getElementById('ct-' + taskId);
+    const name = card ? (card.querySelector('.font-semibold.text-sm') || {}).textContent || 'this job' : 'this job';
+    document.getElementById('ct-delete-name').textContent = name.trim();
+    document.getElementById('ct-delete-modal').showModal();
+};
+
+window.ctDeleteConfirm = function(btn) {
+    if (!_deleteTargetId) return;
+    const taskId = _deleteTargetId;
+    _deleteTargetId = null;
+    document.getElementById('ct-delete-modal').close();
+    const fd = new FormData();
+    fd.append('task_id', taskId);
+    fetch('/scheduler/custom-tasks/delete', {
+        method: 'POST', headers: {'x-requested-with': 'xmlhttprequest', 'X-CSRF-Token': CSRF()}, body: fd,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            toast('Job deleted', 'ok');
+            const card = document.getElementById('ct-' + taskId);
+            if (card) card.remove();
+            const count = document.getElementById('ct-count');
+            if (count) count.textContent = Math.max(0, (+count.textContent || 0) - 1);
+        }
+    })
+    .catch(function() { toast('Delete failed', 'err'); });
+};
+
+/* ── Create task modal helpers ──────────────────────────────────────── */
+var _INTERVAL_HINTS = {
+    '1800': 'Runs every 30 minutes.',
+    '3600': 'Runs every hour.',
+    '21600': 'Runs every 6 hours.',
+    '43200': 'Runs every 12 hours.',
+    '86400': 'Runs once a day.',
+    '604800': 'Runs once a week.',
+};
+
+window.ctIntervalPreset = function(sel) {
+    var custom = document.getElementById('ct-interval-custom');
+    var hint = document.getElementById('ct-interval-hint');
+    if (sel.value === 'custom') {
+        custom.classList.remove('hidden');
+        if (hint) hint.textContent = 'Use: 30m, 2h, 1d, 3600, etc.';
+    } else {
+        custom.classList.add('hidden');
+        custom.value = '';
+        if (hint) hint.textContent = _INTERVAL_HINTS[sel.value] || '';
+    }
+};
+
+window.ctValidateCustom = function(inp) {
+    var hint = document.getElementById('ct-interval-hint');
+    if (!hint) return;
+    var v = inp.value.trim().toLowerCase();
+    // Try to parse
+    var secs = 0;
+    var m;
+    if ((m = v.match(/^(\d+)d$/)))  secs = +m[1] * 86400;
+    else if ((m = v.match(/^(\d+)h$/)))  secs = +m[1] * 3600;
+    else if ((m = v.match(/^(\d+)m$/)))  secs = +m[1] * 60;
+    else if ((m = v.match(/^(\d+)s?$/))) secs = +m[1];
+    if (secs >= 60) {
+        hint.textContent = 'Runs every ' + humanInterval(secs) + '.';
+        hint.className = 'text-xs text-success mt-1';
+    } else if (v) {
+        hint.textContent = 'Minimum interval is 1 minute.';
+        hint.className = 'text-xs text-error mt-1';
+    } else {
+        hint.textContent = 'Use: 30m, 2h, 1d, 3600, etc.';
+        hint.className = 'text-xs text-base-content/35 mt-1';
+    }
+};
+
+function humanInterval(secs) {
+    if (secs < 3600)  return Math.floor(secs / 60) + ' minutes';
+    if (secs < 86400) return Math.floor(secs / 3600) + ' hour' + (secs >= 7200 ? 's' : '');
+    return Math.floor(secs / 86400) + ' day' + (secs >= 172800 ? 's' : '');
+}
+
+window.ctCreate = function(btn) {
+    var name = (document.getElementById('ct-name').value || '').trim();
+    var instr = (document.getElementById('ct-instruction').value || '').trim();
+    var preset = document.getElementById('ct-interval-preset').value;
+    var customVal = (document.getElementById('ct-interval-custom').value || '').trim();
+    var errEl = document.getElementById('ct-error');
+
+    function showErr(msg) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+    errEl.classList.add('hidden');
+
+    if (!name) { showErr('Please enter a name.'); return; }
+    if (!instr) { showErr('Please enter an instruction.'); return; }
+
+    var intervalStr = preset === 'custom' ? customVal : preset;
+    if (!intervalStr) { showErr('Please choose an interval.'); return; }
+
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('instruction', instr);
+    fd.append('interval', intervalStr);
+    
+
+    fetch('/scheduler/custom-tasks/create', {
+        method: 'POST', headers: {'x-requested-with': 'xmlhttprequest', 'X-CSRF-Token': CSRF()}, body: fd,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            document.getElementById('ct-modal').close();
+            toast('Task created — ' + name, 'ok');
+            setTimeout(function() { window.location.reload(); }, 600);
+        } else {
+            showErr(data.error || 'Failed to create task.');
+            btn.disabled = false;
+        }
+    })
+    .catch(function() { showErr('Request failed.'); btn.disabled = false; });
+};
+
+/* ── Auto-refresh ────────────────────────────────────────────────────── */
+window.refreshNow = refreshNow;
+// Guard: prevent double-execution within the same script context.
+if (!window.__schedulerInitialized) {
+    window.__schedulerInitialized = true;
+    (function initScheduler() {
+        refreshNow();
+        if (window.__schedulerTsInterval) { clearInterval(window.__schedulerTsInterval); }
+        if (window.__schedulerRefreshInterval) { clearInterval(window.__schedulerRefreshInterval); }
+        renderTimestamps();
+        window.__schedulerTsInterval = setInterval(renderTimestamps, 30000);
+        window.__schedulerRefreshInterval = setInterval(refreshNow, 15000);
+    })();
+}
+registerWaspActions('scheduler', {
+    'jobAction':        function(el) { jobAction(el.dataset.op, el.dataset.name, el); },
+    'ctToggle':         function(el) { ctToggle(el.dataset.id, el); },
+    'ctDelete':         function(el) { ctDelete(el.dataset.id, el); },
+    'schedRefresh':     function()   { refreshNow(); },
+    'ctDeleteConfirm':  function(el) { ctDeleteConfirm(el); },
+    'ctCreate':         function(el) { ctCreate(el); },
+    'ctIntervalPreset': function(el) { ctIntervalPreset(el); },
+    'ctValidateCustom': function(el) { ctValidateCustom(el); },
+});
+
+})();
+</script>
+{% endblock %}

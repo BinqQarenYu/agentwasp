@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Graph — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#06b6d4; }
+[data-ds="2"] { background:#06b6d4; }
+[data-ds="3"] { color:#06b6d4; }
+[data-ds="4"] { }
+[data-ds="5"] { border-left:3px solid #06b6d450; }
+[data-ds="6"] { position:relative;height:460px;overflow:hidden;border-radius:inherit; }
+[data-ds="7"] { width:100%;height:100%;display:block; }
+[data-ds="8"] { background:rgba(10,10,20,0.92);border:1px solid rgba(255,255,255,0.1);min-width:180px;max-width:240px;backdrop-filter:blur(8px); }
+[data-ds="9"] { background:#06b6d415;color:#06b6d4; }
+[data-ds="10"] { max-width:50%; }
+[data-ds="11"] { color:#06b6d4; }
+[data-ds="12"] { }
+[data-ds="13"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <div class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" data-ds="1"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight leading-tight">Knowledge Graph</h1>
+      <p class="text-xs text-base-content/40 font-mono mt-0.5">Entities and relations extracted from conversations</p>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <input type="text" id="kg-search" placeholder="Search nodes…"
+           data-action="kg:kgSearch"
+           class="input input-sm input-bordered font-mono text-xs w-44">
+    <button id="btn-kg-reset" class="btn btn-sm btn-ghost gap-1.5 opacity-60 hover:opacity-100" data-action="kg:kgReset">Reset</button>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono" data-ds="3">{{ stats.node_count }}</div>
+      <div class="text-xs text-base-content/40">Nodes</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono text-base-content/60">{{ stats.relation_count }}</div>
+      <div class="text-xs text-base-content/40">Relations</div>
+    </div>
+  </div>
+  {% for et, n in stats.entity_types.items() %}
+  {% if loop.index <= 2 %}
+  {% set etc = {"person":"#3b82f6","concept":"#8b5cf6","preference":"#f59e0b","fact":"#10b981","organization":"#06b6d4","asset":"#f97316","place":"#22c55e","event":"#ec4899"}.get(et,"#6b7280") %}
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-4 text-center">
+      <div class="text-2xl font-bold font-mono" data-ds="4" data-dv="color:{{ etc}}">{{ n }}</div>
+      <div class="text-xs text-base-content/40">{{ et }}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Canvas Graph -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4" data-ds="5">
+  <div class="card-body p-0">
+    <div id="kg-wrap" data-ds="6">
+      <canvas id="kg-canvas" data-ds="7"></canvas>
+      <!-- Selected node detail -->
+      <div id="kg-detail" class="hidden absolute top-3 right-3 rounded-xl p-3 text-xs"
+           data-ds="8">
+        <div class="flex items-center justify-between mb-2">
+          <span id="kd-type" class="text-xs px-1.5 py-0.5 rounded font-mono" data-ds="9">type</span>
+          <button id="btn-kg-close-detail" class="text-base-content/30 hover:text-base-content/70 text-sm leading-none" data-action="kg:kgCloseDetail">✕</button>
+        </div>
+        <div id="kd-name" class="font-semibold text-sm mb-1 text-base-content/90"></div>
+        <div id="kd-desc" class="text-base-content/50 leading-relaxed mb-2"></div>
+        <div id="kd-conf" class="text-base-content/30 font-mono"></div>
+        <button id="kd-delete" class="btn btn-xs btn-ghost text-error opacity-60 hover:opacity-100 mt-2 w-full gap-1">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Delete node
+        </button>
+      </div>
+      <!-- Legend -->
+      <div id="kg-legend" class="absolute bottom-3 left-3 flex flex-wrap gap-1.5" data-ds="10"></div>
+      <!-- Empty state -->
+      {% if not nodes %}
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <svg class="h-12 w-12 opacity-10 mb-3" data-ds="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        <p class="text-sm text-base-content/30">No knowledge nodes yet</p>
+        <p class="text-xs text-base-content/20 mt-1">Nodes are extracted automatically from conversations</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Node table -->
+{% if nodes %}
+<div class="card bg-base-100 shadow-sm wasp-accent">
+  <div class="card-body p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <svg class="h-4 w-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+      <span class="text-sm font-semibold">All Nodes</span>
+      <span class="text-xs text-base-content/25 font-mono">{{ nodes|length }} shown</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table table-xs table-dense">
+        <thead>
+          <tr class="bg-base-200/30">
+            <th class="text-xs">Name</th>
+            <th class="text-xs">Type</th>
+            <th class="text-xs hidden md:table-cell">Description</th>
+            <th class="text-xs">Confidence</th>
+            <th class="text-xs hidden sm:table-cell">Created</th>
+            <th class="text-xs text-center">Del</th>
+          </tr>
+        </thead>
+        <tbody id="node-table">
+          {% for n in nodes %}
+          {% set nc = {"person":"#3b82f6","concept":"#8b5cf6","preference":"#f59e0b","fact":"#10b981","organization":"#06b6d4","asset":"#f97316","place":"#22c55e","event":"#ec4899"}.get(n.entity_type,"#6b7280") %}
+          <tr class="hover:bg-base-200/20 transition-colors" id="node-row-{{ n.id }}">
+            <td class="font-mono text-xs font-semibold">{{ n.name }}</td>
+            <td><span class="text-xs px-1.5 py-0.5 rounded-md font-mono" data-ds="12" data-dv="background:{{ nc}}15; color:{{ nc }}">{{ n.entity_type }}</span></td>
+            <td class="hidden md:table-cell text-xs text-base-content/50 max-w-xs truncate">{{ n.description }}</td>
+            <td>
+              <div class="flex items-center gap-1">
+                <div class="h-1 w-10 rounded-full bg-base-300 overflow-hidden">
+                  <div class="h-full rounded-full" data-ds="13" data-dv="width:{{ (n.confidence*100)|int}}%; background:{{ nc }}"></div>
+                </div>
+                <span class="text-xs font-mono text-base-content/35">{{ (n.confidence*100)|int }}%</span>
+              </div>
+            </td>
+            <td class="hidden sm:table-cell text-xs text-base-content/30 font-mono">{{ n.created_at }}</td>
+            <td class="text-center">
+              <button class="btn btn-xs btn-ghost text-error opacity-30 hover:opacity-100"
+                      data-action="kg:deleteNodeById" data-id="{{ n.id }}">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+// ── Data from server ──────────────────────────────────────────────────────────
+var NODES_RAW = {{ nodes | tojson }};
+var RELS_RAW  = {{ relations | tojson }};
+
+// ── Entity type colors ────────────────────────────────────────────────────────
+var TYPE_COLOR = {
+  person:'#3b82f6', concept:'#8b5cf6', preference:'#f59e0b',
+  fact:'#10b981', organization:'#06b6d4', asset:'#f97316',
+  place:'#22c55e', event:'#ec4899', entity:'#06b6d4'
+};
+function nodeColor(type) { return TYPE_COLOR[type] || '#6b7280'; }
+
+// ── Physics sim state ─────────────────────────────────────────────────────────
+var nodes = [], links = [], nodeMap = {};
+var W = 0, H = 0;
+var canvas, ctx, wrap;
+var drag = null, mx = 0, my = 0;
+var dragStartX = 0, dragStartY = 0;
+var selectedId = null;
+
+function initPhysics() {
+  nodeMap = {};
+  var total = NODES_RAW.length;
+  // Place nodes on a ring centered in the canvas so physics starts from a
+  // good position rather than spreading from random scattered positions.
+  var ringR = Math.min(W, H) * 0.46;
+  nodes = NODES_RAW.map(function(n, i) {
+    var angle = (i / total) * Math.PI * 2 - Math.PI / 2;
+    var obj = {
+      id: n.id, name: n.name, type: n.entity_type,
+      desc: n.description, conf: n.confidence,
+      x: W/2 + Math.cos(angle) * ringR + (Math.random()-0.5)*12,
+      y: H/2 + Math.sin(angle) * ringR + (Math.random()-0.5)*12,
+      vx: 0, vy: 0,
+      r: 7 + n.confidence * 8,
+      color: nodeColor(n.entity_type),
+      _hidden: false,
+    };
+    nodeMap[n.id] = obj;
+    return obj;
+  });
+  links = RELS_RAW.map(function(r) {
+    return { source: nodeMap[r.from_id], target: nodeMap[r.to_id], type: r.relation_type };
+  }).filter(function(l){ return l.source && l.target; });
+}
+
+function tick() {
+  var attract = 0.025, center = 0.020;
+  nodes.forEach(function(a) {
+    if (a._hidden) return;
+    a.vx += (W/2 - a.x) * center;
+    a.vy += (H/2 - a.y) * center;
+    nodes.forEach(function(b) {
+      if (a === b || b._hidden) return;
+      var dx = a.x - b.x, dy = a.y - b.y;
+      var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      // Linear falloff: repulsion only meaningful when nodes are close
+      var ideal = (a.r + b.r) * 8.0;
+      if (dist < ideal) {
+        var f = (ideal - dist) / ideal * 1.8;
+        a.vx += (dx / dist) * f;
+        a.vy += (dy / dist) * f;
+      }
+    });
+  });
+  links.forEach(function(l) {
+    if (!l.source || !l.target || l.source._hidden || l.target._hidden) return;
+    var dx = l.target.x - l.source.x, dy = l.target.y - l.source.y;
+    l.source.vx += dx * attract;
+    l.source.vy += dy * attract;
+    l.target.vx -= dx * attract;
+    l.target.vy -= dy * attract;
+  });
+  nodes.forEach(function(n) {
+    if (n === drag || n._hidden) return;
+    n.vx *= 0.92; n.vy *= 0.92;
+    n.x += n.vx; n.y += n.vy;
+    var margin = n.r + 24;
+    n.x = Math.max(margin, Math.min(W-margin, n.x));
+    n.y = Math.max(margin, Math.min(H-margin, n.y));
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // Links — skip if either endpoint is hidden
+  links.forEach(function(l) {
+    if (!l.source || !l.target || l.source._hidden || l.target._hidden) return;
+    var alpha = l.source.id === selectedId || l.target.id === selectedId ? 0.55 : 0.15;
+    ctx.beginPath();
+    ctx.moveTo(l.source.x, l.source.y);
+    ctx.lineTo(l.target.x, l.target.y);
+    ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+  // Nodes — skip hidden
+  nodes.forEach(function(n) {
+    if (n._hidden) return;
+    var selected = n.id === selectedId;
+    if (selected) {
+      var g = ctx.createRadialGradient(n.x, n.y, n.r, n.x, n.y, n.r*2.8);
+      g.addColorStop(0, n.color + '55');
+      g.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r*2.8, 0, Math.PI*2);
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+    ctx.fillStyle = n.color + (selected ? 'ff' : 'cc');
+    ctx.fill();
+    ctx.strokeStyle = selected ? '#fff' : n.color + '88';
+    ctx.lineWidth = selected ? 1.5 : 0.8;
+    ctx.stroke();
+    ctx.font = (selected ? 'bold ' : '') + '11px monospace';
+    ctx.fillStyle = selected ? '#fff' : 'rgba(255,255,255,0.85)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var label = n.name.length > 16 ? n.name.slice(0,15)+'…' : n.name;
+    ctx.fillText(label, n.x, n.y + n.r + 11);
+  });
+}
+
+var animId;
+function loop() {
+  tick(); draw();
+  animId = requestAnimationFrame(loop);
+}
+
+function resize() {
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  canvas.width = W; canvas.height = H;
+}
+
+// ── Input helpers ─────────────────────────────────────────────────────────────
+function hitTest(px, py) {
+  for (var i = nodes.length-1; i >= 0; i--) {
+    var n = nodes[i];
+    if (n._hidden) continue;
+    var dx = px-n.x, dy = py-n.y;
+    if (dx*dx+dy*dy <= (n.r+4)*(n.r+4)) return n;
+  }
+  return null;
+}
+function canvasXY(e) {
+  var rect = canvas.getBoundingClientRect();
+  var t = e.touches ? e.touches[0] : e;
+  return { x: (t.clientX - rect.left) * (W / rect.width),
+           y: (t.clientY - rect.top)  * (H / rect.height) };
+}
+
+function selectNode(n) {
+  selectedId = n.id;
+  var detail = document.getElementById('kg-detail');
+  var nc = n.color;
+  detail.classList.remove('hidden');
+  document.getElementById('kd-type').textContent = n.type;
+  document.getElementById('kd-type').style.background = nc + '20';
+  document.getElementById('kd-type').style.color = nc;
+  document.getElementById('kd-name').textContent = n.name;
+  document.getElementById('kd-desc').textContent = n.desc || '—';
+  document.getElementById('kd-conf').textContent = 'confidence: ' + Math.round(n.conf*100) + '%';
+  document.getElementById('kd-delete').onclick = function(){ deleteNodeById(n.id); };
+}
+
+window.closeDetail = function() {
+  selectedId = null;
+  document.getElementById('kg-detail').classList.add('hidden');
+};
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+function buildLegend() {
+  var seen = {};
+  nodes.forEach(function(n){ seen[n.type] = n.color; });
+  var leg = document.getElementById('kg-legend');
+  leg.innerHTML = '';
+  Object.keys(seen).forEach(function(t) {
+    var el = document.createElement('div');
+    el.className = 'flex items-center gap-1 px-1.5 py-0.5 rounded-md';
+    el.style.cssText = 'background:' + seen[t] + '15;border:1px solid ' + seen[t] + '30';
+    var dot = document.createElement('span');
+    dot.className = 'legend-dot-color';
+    dot.style.background = seen[t];
+    var lbl = document.createElement('span');
+    lbl.className = 'text-[9px] font-mono';
+    lbl.style.color = seen[t];
+    lbl.textContent = t;
+    el.appendChild(dot);
+    el.appendChild(lbl);
+    leg.appendChild(el);
+  });
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+window.searchNodes = function(q) {
+  q = q.toLowerCase().trim();
+  nodes.forEach(function(n){
+    n._hidden = q ? !(n.name.toLowerCase().includes(q) || (n.desc||'').toLowerCase().includes(q)) : false;
+  });
+};
+
+window.resetGraph = function() {
+  document.getElementById('kg-search').value = '';
+  nodes.forEach(function(n){ n._hidden=false; n.vx=(Math.random()-0.5)*2; n.vy=(Math.random()-0.5)*2; });
+  selectedId = null; closeDetail();
+};
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+window.deleteNodeById = async function(id) {
+  if (!await showConfirmModal({ title: 'Delete Node', message: 'Delete this node and all its relations?', confirmText: 'Delete', danger: true })) return;
+  try {
+    var r = await fetch('/knowledge-graph/api/node/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': getCsrf() },
+    });
+    var d = await r.json();
+    if (d.ok) {
+      nodes = nodes.filter(function(n){ return n.id !== id; });
+      links = links.filter(function(l){ return l.source.id !== id && l.target.id !== id; });
+      delete nodeMap[id];
+      if (selectedId === id) closeDetail();
+      var row = document.getElementById('node-row-' + id);
+      if (row) { row.style.opacity='0'; setTimeout(function(){ row.remove(); },300); }
+      showToast('Node deleted', 'success');
+    } else {
+      showToast(d.error || 'Delete failed', 'error');
+    }
+  } catch(e) { showToast('Request failed', 'error'); }
+};
+
+// ── Boot — canvas assigned here, all listeners attached after ────────────────
+function boot() {
+  canvas = document.getElementById('kg-canvas');
+  ctx = canvas.getContext('2d');
+  wrap = document.getElementById('kg-wrap');
+  resize();
+
+  canvas.addEventListener('mousedown', function(e) {
+    var p = canvasXY(e);
+    var hit = hitTest(p.x, p.y);
+    if (hit) {
+      drag = hit;
+      mx = p.x - hit.x; my = p.y - hit.y;
+      dragStartX = p.x; dragStartY = p.y;
+    }
+  });
+  canvas.addEventListener('mousemove', function(e) {
+    var p = canvasXY(e);
+    if (drag) { drag.x = p.x - mx; drag.y = p.y - my; drag.vx=0; drag.vy=0; }
+  });
+  canvas.addEventListener('mouseup', function(e) {
+    var p = canvasXY(e);
+    if (drag) {
+      var moved = Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY);
+      if (moved < 5) selectNode(drag);
+      drag = null;
+    }
+  });
+  canvas.addEventListener('click', function(e) {
+    var p = canvasXY(e);
+    var hit = hitTest(p.x, p.y);
+    if (!hit) { selectedId = null; closeDetail(); }
+  });
+
+  if (NODES_RAW.length > 0) {
+    initPhysics();
+    buildLegend();
+    loop();
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function(){ resize(); }).observe(wrap);
+  }
+}
+requestAnimationFrame(function(){ requestAnimationFrame(boot); });
+registerWaspActions('kg', {
+  'kgSearch':       function(el) { window.searchNodes(el.value); },
+  'kgReset':        function()   { window.resetGraph(); },
+  'kgCloseDetail':  function()   { window.closeDetail(); },
+  'deleteNodeById': function(el) { window.deleteNodeById(el.dataset.id); },
+});
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+{% from "macros.html" import pill, empty_state %}
+{% block title %}Audit Log — Agent Wasp{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:oklch(var(--a)/0.6); }
+[data-ds="2"] { background:oklch(var(--er)/0.7); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{%- set err_rate = ((stats.errors_today / stats.today * 100) | round(1)) if stats.today > 0 else 0 -%}
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Audit Log</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">Every agent action · auto-refresh 30s</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <span id="new-entries-banner" class="hidden items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent cursor-pointer">
+            <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+            <span id="new-entries-label">new entries — click to reload</span>
+        </span>
+        <span id="refresh-dot" class="hidden flex text-xs text-base-content/30 items-center gap-1">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>live
+        </span>
+        <button id="btn-export-audit" class="btn btn-outline btn-sm gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Export
+        </button>
+    </div>
+</div>
+
+<!-- ── Stats bar ─────────────────────────────────────────────────────────── -->
+<div class="flex flex-wrap gap-2 mb-5">
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Total</span>
+        <span id="stat-total" class="font-bold font-mono text-sm text-base-content/80">{{ stats.total | default(0) }}</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Today</span>
+        <span id="stat-today" class="font-bold font-mono text-sm text-accent">{{ stats.today | default(0) }}</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Errors today</span>
+        <span id="stat-errors-today" class="font-bold font-mono text-sm {% if stats.errors_today > 0 %}text-error{% else %}text-success{% endif %}">{{ stats.errors_today | default(0) }}</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Error rate</span>
+        <span id="stat-errrate" class="font-bold font-mono text-sm {% if err_rate > 5 %}text-error{% elif err_rate > 0 %}text-warning{% else %}text-success{% endif %}">{{ err_rate }}%</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Avg latency</span>
+        <span id="stat-lat" class="font-bold font-mono text-sm text-base-content/60">{{ stats.avg_lat | default(0) }}ms</span>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="text-base-content/40 text-xs">Sources</span>
+        <span class="font-bold font-mono text-sm text-info">{{ stats.sources_count | default(0) }}</span>
+    </div>
+</div>
+
+<!-- ── 24h Activity chart ─────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-4">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <svg class="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                <span class="font-semibold text-sm">Activity (today, hourly)</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1 text-xs text-base-content/40">
+                    <span class="inline-block w-2.5 h-2.5 rounded-sm" data-ds="1"></span>events
+                </span>
+                <span class="flex items-center gap-1 text-xs text-base-content/40">
+                    <span class="inline-block w-2.5 h-2.5 rounded-sm" data-ds="2"></span>errors
+                </span>
+            </div>
+        </div>
+        <svg id="audit-hourly-svg" viewBox="0 0 700 80" xmlns="http://www.w3.org/2000/svg" class="w-full"></svg>
+    </div>
+</div>
+
+<!-- ── Filters ────────────────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm mb-4 wasp-accent">
+    <div class="card-body py-3 px-5">
+        <form method="get" action="/audit/" class="flex flex-wrap gap-3 items-end">
+            <div class="form-control">
+                <label class="label py-1"><span class="label-text text-xs">Event Type</span></label>
+                <select name="event_type" class="select select-bordered select-sm">
+                    <option value="">All Types</option>
+                    {% for et in event_types %}
+                    <option value="{{ et }}" {% if et == event_type %}selected{% endif %}>{{ et }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label py-1"><span class="label-text text-xs">Source</span></label>
+                <select name="source" class="select select-bordered select-sm">
+                    <option value="">All Sources</option>
+                    {% for s in sources | default([]) %}
+                    <option value="{{ s }}" {% if s == current_source | default('') %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label py-1"><span class="label-text text-xs">Search</span></label>
+                <input type="text" name="search" value="{{ search }}" placeholder="input / output text…" class="input input-bordered input-sm w-44">
+            </div>
+            <div class="form-control justify-end pb-0.5">
+                <label class="label cursor-pointer gap-2 py-1">
+                    <span class="label-text text-xs">Errors only</span>
+                    <input type="checkbox" name="errors_only" value="true" class="checkbox checkbox-xs checkbox-error" {% if errors_only %}checked{% endif %}>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm btn-glow">Filter</button>
+            {% if event_type or (current_source | default('')) or errors_only or search %}
+            <a href="/audit/" class="btn btn-ghost btn-sm">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- ── Quick-filter pills ─────────────────────────────────────────────────── -->
+<div class="flex flex-wrap gap-1.5 mb-4">
+    <a href="/audit/?errors_only=true"
+       class="pill {% if errors_only %}pill-danger{% else %}pill-neutral{% endif %} pill-xs font-mono hover:opacity-80 transition-opacity">
+        ⚡ errors only
+    </a>
+    {% for et, count in event_type_counts %}
+    <a href="/audit/?event_type={{ et | urlencode }}"
+       class="pill {% if event_type == et %}pill-primary{% else %}pill-neutral{% endif %} pill-xs font-mono hover:opacity-80 transition-opacity">
+        {{ et }}: {{ count }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- ── Audit Table ────────────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="overflow-x-auto">
+        <table class="table table-xs table-dense" id="audit-table">
+            <thead>
+                <tr class="bg-base-200/50">
+                    <th class="text-xs whitespace-nowrap">Time</th>
+                    <th class="text-xs">Event</th>
+                    <th class="text-xs">Source</th>
+                    <th class="text-xs">Action</th>
+                    <th class="text-xs">Input</th>
+                    <th class="text-xs">Output</th>
+                    <th class="text-xs text-right">Latency</th>
+                    <th class="text-xs text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                {%- set has_meta = entry.metadata_json and entry.metadata_json != {} -%}
+                {%- set has_err = entry.error -%}
+                {%- set row_data = {
+                    "ts":      entry.timestamp.strftime("%Y-%m-%d %H:%M:%S") if entry.timestamp else "",
+                    "type":    entry.event_type or "",
+                    "source":  entry.source or "",
+                    "action":  entry.action or "",
+                    "input":   (entry.input_summary or "")[:200],
+                    "output":  (entry.output_summary or "")[:200],
+                    "latency": entry.latency_ms or 0,
+                    "error":   (entry.error or "")[:300]
+                } -%}
+                <tr class="transition-colors {% if has_err %}bg-error/5 hover:bg-error/10{% elif has_meta %}cursor-pointer hover:bg-base-200/40{% else %}hover:bg-base-200/30{% endif %}"
+                    data-row='{{ row_data | tojson }}'
+                    {% if has_meta %}
+                    data-meta='{{ entry.metadata_json | tojson }}'
+                    data-action="audit:toggleTrace"
+                    title="Click to expand trace"
+                    {% endif %}>
+                    <td class="whitespace-nowrap text-xs text-base-content/50 font-mono tabular-nums" data-ts-cell="{{ entry.timestamp.isoformat() if entry.timestamp else '' }}">
+                        {{ entry.timestamp.strftime('%m-%d %H:%M:%S') if entry.timestamp else '—' }}
+                    </td>
+                    <td>
+                        {%- set et = entry.event_type -%}
+                        {%- if "error" in et or "fail" in et -%}
+                        {{ pill(et, "danger", "xs") }}
+                        {%- elif "skill" in et or "execute" in et -%}
+                        {{ pill(et, "info", "xs") }}
+                        {%- elif "login" in et or "auth" in et or "security" in et -%}
+                        {{ pill(et, "warning", "xs") }}
+                        {%- elif "telegram" in et or "message" in et -%}
+                        {{ pill(et, "success", "xs") }}
+                        {%- elif "scheduled" in et -%}
+                        {{ pill(et, "neutral", "xs") }}
+                        {%- else -%}
+                        {{ pill(et, "primary", "xs") }}
+                        {%- endif -%}
+                    </td>
+                    <td class="text-xs text-base-content/55 font-mono">{{ entry.source or '—' }}</td>
+                    <td class="max-w-[130px]">
+                        <span class="text-xs text-base-content/45 truncate block font-mono" title="{{ entry.action }}">
+                            {%- set act = entry.action | replace("scheduler.", "") | replace("skill.", "") -%}
+                            {{ act[:30] }}{% if act | length > 30 %}…{% endif %}
+                        </span>
+                    </td>
+                    <td class="max-w-[160px]">
+                        <span class="text-xs text-base-content/65 truncate block" title="{{ entry.input_summary }}">
+                            {{ (entry.input_summary or '')[:50] }}{% if entry.input_summary and entry.input_summary|length > 50 %}…{% endif %}
+                        </span>
+                    </td>
+                    <td class="max-w-[160px]">
+                        <span class="text-xs {% if has_err %}text-error/70{% else %}text-base-content/65{% endif %} truncate block" title="{{ entry.error if has_err else entry.output_summary }}">
+                            {%- if has_err -%}
+                            {{ (entry.error or '')[:50] }}{% if entry.error and entry.error|length > 50 %}…{% endif %}
+                            {%- else -%}
+                            {{ (entry.output_summary or '')[:50] }}{% if entry.output_summary and entry.output_summary|length > 50 %}…{% endif %}
+                            {%- endif -%}
+                        </span>
+                    </td>
+                    <td class="text-right whitespace-nowrap">
+                        {% if entry.latency_ms %}
+                        <span class="text-xs font-mono tabular-nums {% if entry.latency_ms > 5000 %}text-error{% elif entry.latency_ms > 1000 %}text-warning{% else %}text-success{% endif %}">
+                            {{ entry.latency_ms }}ms
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if has_err %}
+                        <span class="text-xs font-mono text-error font-bold">ERR</span>
+                        {% elif has_meta %}
+                        <span class="text-base-content/25 text-xs trace-toggle-icon">▾</span>
+                        {% else %}
+                        <span class="text-base-content/15 text-xs">·</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="p-0">
+                    {{ empty_state("No audit entries found.", "Entries appear as the agent processes messages.", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2") }}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── Pagination (keyset — no OFFSET) ────────────────────────────────────── -->
+{% if page > 1 or has_more %}
+{%- set sep = "&" if filter_qs else "" -%}
+<div class="flex items-center justify-between mt-4">
+    <span class="text-xs text-base-content/35 font-mono">
+        Page {{ page }} · {{ total | default(0) }} total entries
+    </span>
+    <div class="join">
+        {% if page > 1 %}
+        <a href="/audit?{{ filter_qs }}" class="join-item btn btn-xs" title="First page">«</a>
+        {% endif %}
+        <span class="join-item btn btn-xs btn-active">{{ page }}</span>
+        {% if has_more %}
+        <a href="/audit?{{ filter_qs }}{{ sep }}cursor={{ next_cursor | urlencode }}&page={{ page + 1 }}"
+           class="join-item btn btn-xs" title="Next page">›</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+'use strict';
+
+// ── SSR data ──────────────────────────────────────────────────────────────
+const HOURLY_SSR = {{ hourly | tojson }};
+const LATEST_TS_SSR = {{ latest_ts | tojson }};
+
+// ── Hourly activity chart ─────────────────────────────────────────────────
+function renderHourly(hourly) {
+    const svg = document.getElementById('audit-hourly-svg');
+    if (!svg || !hourly || !hourly.length) return;
+    const W = 700, H = 80, padL = 4, padR = 4, padT = 6, padB = 18;
+    const chartH = H - padT - padB;
+    const n = hourly.length;
+    const barW = Math.floor((W - padL - padR) / n);
+    const gap  = Math.max(1, Math.floor(barW * 0.18));
+    const maxTotal = Math.max(...hourly.map(h => h.total), 1);
+    let html = '';
+
+    // Subtle gridlines
+    for (let i = 0; i <= 3; i++) {
+        const y = padT + chartH - (i / 3) * chartH;
+        html += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
+            stroke="oklch(var(--bc)/0.05)" stroke-width="1"/>`;
+    }
+
+    const now = new Date();
+    hourly.forEach((h, i) => {
+        const x  = padL + i * barW + gap / 2;
+        const bw = barW - gap;
+        const isNow = i === now.getHours();
+        const totalH = h.total > 0 ? Math.max(3, (h.total / maxTotal) * chartH) : 0;
+        const errH   = h.total > 0 ? Math.max(0, (h.errors  / maxTotal) * chartH) : 0;
+
+        if (totalH > 0) {
+            html += `<rect x="${x.toFixed(1)}" y="${(padT + chartH - totalH).toFixed(1)}"
+                width="${bw}" height="${totalH.toFixed(1)}" rx="2"
+                fill="oklch(var(--a)/${isNow ? '0.85' : '0.45'})">
+                <title>Hour ${i}h: ${h.total} events, ${h.errors} errors</title></rect>`;
+        }
+        if (errH > 0) {
+            html += `<rect x="${x.toFixed(1)}" y="${(padT + chartH - errH).toFixed(1)}"
+                width="${bw}" height="${errH.toFixed(1)}" rx="2"
+                fill="oklch(var(--er)/0.75)"/>`;
+        }
+        if (i % 4 === 0 || isNow) {
+            html += `<text x="${(x + bw / 2).toFixed(1)}" y="${(padT + chartH + 13).toFixed(1)}"
+                text-anchor="middle" font-size="9"
+                fill="${isNow ? 'oklch(var(--a)/0.8)' : 'oklch(var(--bc)/0.3)'}">${i}h</text>`;
+        }
+    });
+
+    svg.innerHTML = html;
+}
+renderHourly(HOURLY_SSR);
+
+// ── Time-ago helper ───────────────────────────────────────────────────────
+function timeAgo(iso) {
+    if (!iso) return '—';
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)    return Math.round(diff)         + 's ago';
+    if (diff < 3600)  return Math.round(diff / 60)    + 'm ago';
+    if (diff < 86400) return Math.round(diff / 3600)  + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+}
+function applyTimeAgo() {
+    document.querySelectorAll('[data-ts-cell]').forEach(el => {
+        const ts = el.getAttribute('data-ts-cell');
+        if (ts) el.textContent = timeAgo(ts);
+    });
+}
+applyTimeAgo();
+setInterval(applyTimeAgo, 60000);
+
+// ── Stats bar updates ─────────────────────────────────────────────────────
+function updateStats(d) {
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = v; };
+    const cls = (id, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = el.className.replace(/\btext-(error|warning|success|accent|base-content\/\d+)\b/g, '') + ' ' + cls;
+    };
+    set('stat-total',        d.total?.toLocaleString());
+    set('stat-today',        d.today?.toLocaleString());
+    set('stat-errors-today', d.errors_today);
+    set('stat-lat',          (d.avg_lat ?? 0) + 'ms');
+
+    const errRate = d.today > 0 ? Math.round((d.errors_today / d.today) * 1000) / 10 : 0;
+    set('stat-errrate', errRate + '%');
+
+    cls('stat-errors-today', d.errors_today > 0 ? 'text-error' : 'text-success');
+    cls('stat-errrate', errRate > 5 ? 'text-error' : errRate > 0 ? 'text-warning' : 'text-success');
+}
+
+// ── Live new-entries banner ───────────────────────────────────────────────
+let _latestTs = LATEST_TS_SSR;
+function checkNewEntries(newTs) {
+    if (!newTs || !_latestTs) { _latestTs = newTs || _latestTs; return; }
+    if (newTs !== _latestTs) {
+        const banner = document.getElementById('new-entries-banner');
+        if (banner) banner.classList.replace('hidden', 'flex');
+    }
+}
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────
+async function doRefresh() {
+    const dot = document.getElementById('refresh-dot');
+    try {
+        const r = await fetch('/audit/api/stats');
+        const d = await r.json();
+        if (!d.ok) return;
+        updateStats(d);
+        checkNewEntries(d.latest_ts);
+        if (dot) { dot.classList.remove('hidden'); setTimeout(() => { dot.classList.add('hidden'); }, 2000); }
+    } catch (_) { console.warn('[audit] Background refresh failed'); }
+}
+setInterval(doRefresh, 30000);
+setTimeout(doRefresh, 5000);
+
+// ── Export ────────────────────────────────────────────────────────────────
+window.exportAudit = function() {
+    const rows = [];
+    document.querySelectorAll('#audit-table tbody tr[data-row]').forEach(tr => {
+        try { rows.push(JSON.parse(tr.getAttribute('data-row'))); } catch (_) {}
+    });
+    if (!rows.length) { WaspToast.show('No data to export', 'info'); return; }
+    const blob = new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'audit-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+};
+
+// ── Trace expand ──────────────────────────────────────────────────────────
+window.toggleTrace = function(tr) {
+    const next = tr.nextElementSibling;
+    if (next && next.classList.contains('trace-expand-row')) {
+        next.remove();
+        const icon = tr.querySelector('.trace-toggle-icon');
+        if (icon) icon.textContent = '▾';
+        return;
+    }
+    const raw = tr.getAttribute('data-row');
+    const metaRaw = tr.getAttribute('data-meta');
+    let rowData, meta = {};
+    try { rowData = JSON.parse(raw); } catch (_) { return; }
+    try { if (metaRaw) meta = JSON.parse(metaRaw); } catch (_) {}
+
+    // Build expand content from data-row + metadata if available
+    const skills = meta.skills_called || meta.unique_skills || [];
+    const skillHtml = skills.length
+        ? '<span class="text-base-content/40 text-xs mr-1">Skills</span>' +
+          [...new Set(skills)].map(s =>
+              `<span class="badge badge-xs badge-outline font-mono">${s}</span>`
+          ).join('')
+        : '';
+
+    const tags = [
+        meta.kg_active           ? '<span class="badge badge-xs badge-success badge-outline">KG</span>' : '',
+        meta.epistemic_active    ? '<span class="badge badge-xs badge-info badge-outline">Epistemic</span>' : '',
+        meta.temporal_active     ? '<span class="badge badge-xs badge-accent badge-outline">Timeline</span>' : '',
+        meta.procedures_checked  ? '<span class="badge badge-xs badge-secondary badge-outline">Procedures</span>' : '',
+        meta.has_image           ? '<span class="badge badge-xs badge-warning badge-outline">Image</span>' : '',
+        meta.has_audio           ? '<span class="badge badge-xs badge-warning badge-outline">Audio</span>' : '',
+    ].filter(Boolean).join('');
+
+    const modelInfo = meta.provider
+        ? `<div class="flex items-center gap-1.5">
+               <span class="text-base-content/40">Model</span>
+               <span class="font-mono text-primary font-medium">${meta.provider} / ${meta.model || '?'}</span>
+           </div>
+           <div class="flex items-center gap-1.5">
+               <span class="text-base-content/40">Rounds</span>
+               <span class="font-bold tabular-nums">${meta.rounds || 0}</span>
+           </div>`
+        : '';
+
+    const errorInfo = rowData.error
+        ? `<div class="flex items-start gap-1.5 col-span-2">
+               <span class="text-error font-semibold shrink-0">Error</span>
+               <span class="font-mono text-xs text-error/80 break-all">${rowData.error}</span>
+           </div>`
+        : '';
+
+    const row = document.createElement('tr');
+    row.className = 'trace-expand-row';
+    row.innerHTML = `<td colspan="8" class="p-0">
+        <div class="bg-base-200/40 border-t border-base-200 px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 text-xs">
+            ${modelInfo}
+            ${skillHtml ? `<div class="flex items-center gap-1.5 flex-wrap">${skillHtml}</div>` : ''}
+            ${tags ? `<div class="flex items-center gap-1.5 ml-auto">${tags}</div>` : ''}
+            ${errorInfo}
+        </div>
+    </td>`;
+    tr.after(row);
+
+    const icon = tr.querySelector('.trace-toggle-icon');
+    if (icon) icon.textContent = '▴';
+};
+
+// Bind static buttons
+var _banner = document.getElementById('new-entries-banner');
+if (_banner) _banner.addEventListener('click', function() { location.reload(); });
+var _expBtn = document.getElementById('btn-export-audit');
+if (_expBtn) _expBtn.addEventListener('click', exportAudit);
+registerWaspActions('audit', {
+  'toggleTrace': function(el) { toggleTrace(el); },
+});
+}());
+</script>
+{% endblock %}

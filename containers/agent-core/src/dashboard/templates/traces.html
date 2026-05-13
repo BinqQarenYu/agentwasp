@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Decision Traces — Agent Wasp{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">Decision Traces</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">{{ total }} traces · last 200 retained · 7d TTL</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" action="/traces/" class="flex flex-wrap items-end gap-3 mb-4 p-3 bg-base-200/50 rounded-lg">
+    <div>
+        <label class="text-xs font-mono text-base-content/60 block mb-1">Path</label>
+        <select name="path" class="select select-sm select-bordered">
+            <option value="">all</option>
+            {% for p in distinct_paths %}
+            <option value="{{ p }}" {% if filter_path == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="text-xs font-mono text-base-content/60 block mb-1">Chat ID contains</label>
+        <input type="text" name="chat_id" value="{{ filter_chat_id }}"
+               class="input input-sm input-bordered" placeholder="any" />
+    </div>
+    <div class="form-control">
+        <label class="cursor-pointer label gap-2">
+            <input type="checkbox" name="has_guards" value="1" class="checkbox checkbox-sm checkbox-accent"
+                   {% if filter_has_guards %}checked{% endif %} />
+            <span class="label-text text-xs font-mono">only with guard actions</span>
+        </label>
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+    <a href="/traces/" class="btn btn-sm btn-ghost">Reset</a>
+</form>
+
+<!-- Trace list -->
+<div class="overflow-x-auto bg-base-100 rounded-lg border border-base-300">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-xs font-mono">When</th>
+                <th class="text-xs font-mono">Path</th>
+                <th class="text-xs font-mono">Chat</th>
+                <th class="text-xs font-mono">Tier</th>
+                <th class="text-xs font-mono">Lang</th>
+                <th class="text-xs font-mono">Guards</th>
+                <th class="text-xs font-mono">Latency</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in traces %}
+            <tr>
+                <td class="text-xs font-mono whitespace-nowrap">
+                    {{ t.start_ts | int | string }}
+                </td>
+                <td>
+                    <span class="badge badge-sm
+                        {% if t.path == 'telegram' %}badge-primary
+                        {% elif t.path == 'dashboard' %}badge-secondary
+                        {% elif t.path == 'autonomous' %}badge-accent
+                        {% elif t.path == 'goal_executor' %}badge-warning
+                        {% else %}badge-ghost{% endif %}">
+                        {{ t.path }}
+                    </span>
+                </td>
+                <td class="text-xs font-mono">{{ t.chat_id or '—' }}</td>
+                <td class="text-xs font-mono">{{ t.request_tier }}</td>
+                <td class="text-xs font-mono">{{ t.detected_language }}</td>
+                <td>
+                    {% if t.guard_actions %}
+                    <span class="badge badge-sm badge-warning">{{ t.guard_actions | length }}</span>
+                    <span class="text-xs font-mono ml-2 text-base-content/60">
+                        {{ t.guard_actions | join(', ') | truncate(60) }}
+                    </span>
+                    {% else %}
+                    <span class="text-xs text-base-content/30">—</span>
+                    {% endif %}
+                </td>
+                <td class="text-xs font-mono">{{ t.latency_ms or 0 }}ms</td>
+                <td>
+                    <a href="/traces/api/{{ t.request_id }}" target="_blank"
+                       class="btn btn-xs btn-ghost">json</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-base-content/40 text-sm py-6">No traces match the filters.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<p class="text-xs font-mono text-base-content/40 mt-3">
+    Each row is one user request. Click "json" for full payload (blocked skills, all guards, notes).
+    Operator answer to "why did WASP do this?" lives here.
+</p>
+
+{% endblock %}

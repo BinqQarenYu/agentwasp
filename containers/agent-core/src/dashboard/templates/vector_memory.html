@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+{% block title %}Vector Memory — Agent Dashboard{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { width:120px;height:120px; }
+[data-ds="2"] { width:120px;height:120px;transform:rotate(-90deg); }
+[data-ds="3"] { transition: stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1); }
+[data-ds="4"] { transition: stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1), stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1); }
+[data-ds="5"] { }
+[data-ds="6"] { background:oklch(var(--b2));color:oklch(var(--bc)/0.4); }
+[data-ds="7"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">Vector Semantic Memory</h1>
+      <p class="text-sm text-base-content/45 mt-0.5">Embedding index, semantic search, and growth analytics</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="refresh-indicator" class="text-xs text-base-content/30 hidden">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse mr-1"></span>live
+      </span>
+      <button id="btn-vm-refresh" class="btn btn-sm btn-ghost gap-1.5 text-base-content/50 hover:text-base-content" data-action="vmem:vmRefresh">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+      <button id="btn-vm-index" class="btn btn-sm btn-ghost gap-1.5 text-accent hover:bg-accent/10" data-action="vmem:vmIndex">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Trigger Index
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats bar ──────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-2">
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Total</div>
+        <div id="stat-total" class="text-base font-bold tabular-nums leading-tight text-accent">{{ stats.total }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Semantic</div>
+        <div id="stat-semantic" class="text-base font-bold tabular-nums leading-tight text-success">{{ stats.semantic_count }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-base-content/35" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Hash Fallback</div>
+        <div id="stat-hash" class="text-base font-bold tabular-nums leading-tight text-base-content/50">{{ stats.hash_count }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 {% if stats.semantic_pct >= 70 %}text-success{% elif stats.semantic_pct >= 40 %}text-warning{% else %}text-error{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Quality</div>
+        <div id="stat-quality" class="text-base font-bold tabular-nums leading-tight {% if stats.semantic_pct >= 70 %}text-success{% elif stats.semantic_pct >= 40 %}text-warning{% else %}text-error{% endif %}">{{ stats.semantic_pct }}%</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Provider</div>
+        <div class="text-base font-bold leading-tight text-info">{{ stats.provider }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <div class="w-2 h-2 rounded-full {% if stats.enabled %}bg-success animate-pulse{% else %}bg-error{% endif %}"></div>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Status</div>
+        <div class="text-base font-bold leading-tight {% if stats.enabled %}text-success{% else %}text-error{% endif %}">{% if stats.enabled %}Active{% else %}Disabled{% endif %}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-base-content/35" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Avg / week</div>
+        <div id="stat-avg-week" class="text-base font-bold tabular-nums leading-tight text-base-content/60">—</div>
+      </div>
+    </div>
+  </div>
+
+  {% if stats.semantic_pct < 50 and stats.total > 0 %}
+  <!-- ── Health warning ────────────────────────────────────────────────── -->
+  <div class="flex items-start gap-3 bg-warning/8 border border-warning/25 rounded-xl px-4 py-3">
+    <svg class="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <div>
+      <p class="text-sm font-semibold text-warning">Low semantic quality — {{ stats.semantic_pct }}% real embeddings</p>
+      <p class="text-xs text-base-content/50 mt-0.5">{{ stats.hash_count }} embeddings are hash-based fallbacks. Set <code>VECTOR_MEMORY_ENABLED=true</code> and ensure the Ollama provider is reachable to improve quality.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Tab bar ────────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-1 border-b border-base-200">
+    <button class="tab-btn tab-active px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-overview" data-tab="overview">
+      Overview
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-search" data-tab="search">
+      Semantic Search
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-recent" data-tab="recent">
+      Recent
+      {% if stats.recent %}<span class="pill pill-xs pill-ghost ml-1">{{ stats.recent|length }}</span>{% endif %}
+    </button>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: OVERVIEW                                                      -->
+  <!-- ================================================================ -->
+  <div id="pane-overview" class="space-y-5">
+
+    <!-- Charts row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- Weekly growth bar chart (2/3 width) -->
+      <div class="lg:col-span-2 card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <h3 class="font-semibold text-sm">Weekly Growth</h3>
+              <span id="week-delta" class="hidden text-xs font-semibold tabular-nums"></span>
+            </div>
+            <span class="text-xs text-base-content/35">last 8 weeks</span>
+          </div>
+          <div id="growth-chart" class="w-full">
+            <!-- SSR chart rendered below by JS on load -->
+            <svg id="growth-svg" viewBox="0 0 480 130" xmlns="http://www.w3.org/2000/svg" class="w-full"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quality ring chart (1/3 width) -->
+      <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5 items-center justify-center">
+          <h3 class="font-semibold text-sm mb-4 self-start">Embedding Quality</h3>
+          <div class="relative flex items-center justify-center" data-ds="1">
+            <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-ds="2">
+              <!-- background track -->
+              <circle cx="60" cy="60" r="45" fill="none" stroke="oklch(var(--b2))" stroke-width="10"/>
+              <!-- semantic arc — starts at 0, animated to real value on load -->
+              <circle id="ring-semantic" cx="60" cy="60" r="45" fill="none"
+                stroke="{% if stats.semantic_pct >= 70 %}#4ade80{% elif stats.semantic_pct >= 40 %}#fbbf24{% else %}#f87171{% endif %}"
+                stroke-width="10"
+                stroke-linecap="round"
+                stroke-dasharray="0 282.74"
+                stroke-dashoffset="0"
+                data-ds="3"/>
+              <!-- hash arc — starts at 0, animated on load -->
+              <circle id="ring-hash" cx="60" cy="60" r="45" fill="none"
+                stroke="oklch(var(--b3)/0.6)"
+                stroke-width="10"
+                stroke-linecap="round"
+                stroke-dasharray="0 282.74"
+                stroke-dashoffset="0"
+                data-ds="4"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="ring-pct" class="text-2xl font-bold tabular-nums">{{ stats.semantic_pct }}</span>
+              <span class="text-[10px] text-base-content/40 uppercase tracking-wide">semantic</span>
+            </div>
+          </div>
+          <div class="mt-4 space-y-1.5 w-full">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full {% if stats.semantic_pct >= 70 %}bg-success{% elif stats.semantic_pct >= 40 %}bg-warning{% else %}bg-error{% endif %}"></div>
+                <span class="text-base-content/60">Semantic</span>
+              </div>
+              <span id="legend-semantic" class="font-semibold tabular-nums">{{ stats.semantic_count }}</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-base-content/20"></div>
+                <span class="text-base-content/60">Hash fallback</span>
+              </div>
+              <span id="legend-hash" class="font-semibold tabular-nums text-base-content/50">{{ stats.hash_count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model breakdown -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body p-5">
+        <h3 class="font-semibold text-sm mb-4">By Embed Model</h3>
+        <div id="model-breakdown" class="space-y-2.5">
+          {% if stats.by_model %}
+            {% for model, count in stats.by_model.items() %}
+            {% set pct = ((count / stats.total * 100)|round(1)) if stats.total > 0 else 0 %}
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-mono text-base-content/70 truncate max-w-xs">{{ model }}</span>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-base-content/40">{{ pct }}%</span>
+                  <span class="text-xs font-semibold tabular-nums">{{ count }}</span>
+                </div>
+              </div>
+              <div class="w-full bg-base-200 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full transition-all duration-700 {% if 'hash' in model.lower() %}bg-base-content/25{% else %}bg-accent{% endif %}"
+                     data-ds="5" data-dv="width:{{ pct}}%"></div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="text-sm text-base-content/35 py-2">No model data yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Type breakdown -->
+    {% if stats.by_type %}
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body p-5">
+        <h3 class="font-semibold text-sm mb-3">By Source Type</h3>
+        <div class="flex flex-wrap gap-2">
+          {% for stype, count in stats.by_type.items() %}
+          <div class="bg-base-200 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span class="text-xs font-mono text-base-content/60">{{ stype }}</span>
+            <span class="pill pill-xs pill-accent">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: SEMANTIC SEARCH                                               -->
+  <!-- ================================================================ -->
+  <div id="pane-search" class="hidden space-y-4">
+    <p class="text-xs text-base-content/35 -mt-1">Cosine similarity search across all indexed embeddings. Results below {{ '30' }}% similarity are filtered out.</p>
+
+    <!-- Search input row -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body p-4 gap-3">
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="search-input" type="text" placeholder="Search memories semantically..."
+            class="input input-bordered flex-1 text-sm" />
+          <select id="search-type-filter" class="select select-bordered select-sm self-end sm:self-auto w-full sm:w-36 text-xs">
+            <option value="">All types</option>
+            {% for stype in stats.by_type.keys() %}
+            <option value="{{ stype }}">{{ stype }}</option>
+            {% endfor %}
+          </select>
+          <button id="search-btn" class="btn btn-primary btn-sm gap-1.5" data-action="vmem:vmRunSearch">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Search
+          </button>
+        </div>
+        <!-- Search history chips -->
+        <div id="search-history" class="hidden flex-wrap gap-1.5 items-center">
+          <span class="text-[10px] text-base-content/30 uppercase tracking-widest mr-1">Recent:</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="search-results" class="space-y-2.5 hidden">
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-base-content/40" id="search-meta"></p>
+      </div>
+      <div id="results-list" class="space-y-2"></div>
+    </div>
+    <div id="search-empty" class="hidden card bg-base-100 shadow-sm wasp-accent">
+      <div class="card-body items-center py-10 text-center">
+        <svg class="w-8 h-8 text-base-content/20 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <p class="text-base-content/40">No results found.</p>
+        <p class="text-xs text-base-content/30 mt-1">Try a broader query or check that embeddings are indexed.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: RECENT                                                        -->
+  <!-- ================================================================ -->
+  <div id="pane-recent" class="hidden space-y-4">
+    <p class="text-xs text-base-content/35 -mt-1">Last 20 embeddings added to the index, newest first.</p>
+
+    <div class="card bg-base-100 shadow-sm wasp-accent overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr class="text-xs text-base-content/40 uppercase tracking-widest">
+            <th>ID</th>
+            <th>Type</th>
+            <th>Model</th>
+            <th>Kind</th>
+            <th>Preview</th>
+            <th>Indexed</th>
+          </tr>
+        </thead>
+        <tbody id="recent-tbody">
+          {% if stats.recent %}
+            {% for e in stats.recent %}
+            <tr class="hover:bg-base-200/40 transition-colors">
+              <td class="font-mono text-xs text-base-content/40">{{ e.source_id }}</td>
+              <td><span class="pill pill-xs pill-ghost">{{ e.source_type }}</span></td>
+              <td class="text-xs font-mono text-base-content/50 max-w-[140px] truncate">{{ e.embed_model }}</td>
+              <td>
+                {% if e.is_semantic %}
+                <span class="pill pill-xs pill-success">semantic</span>
+                {% else %}
+                <span class="pill pill-xs" data-ds="6">hash</span>
+                {% endif %}
+              </td>
+              <td class="text-xs text-base-content/60 max-w-xs truncate">{{ e.preview }}</td>
+              <td class="text-xs text-base-content/35" data-ts="{{ e.created_at }}">{{ e.created_at[:16]|replace("T"," ") if e.created_at else "—" }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+          <tr><td colspan="6" class="text-center py-10 text-base-content/30 text-sm">No embeddings yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+<script nonce="{{ request.state.csp_nonce }}">
+// ── SSR data ─────────────────────────────────────────────────────────────
+const GROWTH_DATA = {{ stats.growth | tojson }};
+const STATS_SSR   = {
+  total:          {{ stats.total }},
+  semantic_count: {{ stats.semantic_count }},
+  hash_count:     {{ stats.hash_count }},
+  semantic_pct:   {{ stats.semantic_pct }},
+  enabled:        {{ 'true' if stats.enabled else 'false' }},
+  by_model:       {{ stats.by_model | tojson }},
+  by_type:        {{ stats.by_type | tojson }},
+};
+
+// ── Tab system ────────────────────────────────────────────────────────────
+const TABS = ['overview', 'search', 'recent'];
+let _activeTab = 'overview';
+
+function switchTab(name) {
+  _activeTab = name;
+  TABS.forEach(t => {
+    document.getElementById('pane-' + t).classList.toggle('hidden', t !== name);
+    document.getElementById('tab-' + t).classList.toggle('tab-active', t === name);
+  });
+  if (name === 'recent') loadRecent();
+}
+
+// ── Growth bar chart ──────────────────────────────────────────────────────
+function renderGrowthChart(data) {
+  const svg = document.getElementById('growth-svg');
+  if (!svg || !data || !data.length) return;
+
+  const W = 480, H = 130, padL = 8, padR = 8, padT = 10, padB = 28;
+  const chartH = H - padT - padB;
+  const barW = Math.floor((W - padL - padR) / data.length);
+  const gap = Math.max(2, Math.floor(barW * 0.15));
+  const maxVal = Math.max(...data.map(d => d.count), 1);
+
+  let html = '';
+
+  // Gridlines
+  for (let i = 0; i <= 3; i++) {
+    const y = padT + chartH - (i / 3) * chartH;
+    html += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
+      stroke="oklch(var(--bc)/0.06)" stroke-width="1"/>`;
+  }
+
+  data.forEach((d, i) => {
+    const barH = d.count > 0 ? Math.max(3, (d.count / maxVal) * chartH) : 0;
+    const x = padL + i * barW + gap / 2;
+    const y = padT + chartH - barH;
+    const w = barW - gap;
+    const isRecent = d.week_ago <= 1;
+    const fillId = 'bf' + i;
+
+    // Bar gradient
+    const colorTop = isRecent ? 'oklch(var(--a))' : 'oklch(var(--a)/0.55)';
+    const colorBot = isRecent ? 'oklch(var(--a)/0.7)' : 'oklch(var(--a)/0.35)';
+    html += `<defs><linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${colorTop}"/>
+      <stop offset="100%" stop-color="${colorBot}"/>
+    </linearGradient></defs>`;
+
+    if (d.count > 0) {
+      html += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${barH.toFixed(1)}"
+        rx="3" fill="url(#${fillId})">
+        <title>${d.label}: ${d.count} embeddings</title>
+      </rect>`;
+      // Count label on top
+      if (barH > 18) {
+        html += `<text x="${(x + w / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}"
+          text-anchor="middle" font-size="9" fill="oklch(var(--bc)/0.55)" font-weight="600">${d.count}</text>`;
+      }
+    } else {
+      // Empty bar placeholder
+      html += `<rect x="${x.toFixed(1)}" y="${(padT + chartH - 2).toFixed(1)}" width="${w}" height="2"
+        rx="1" fill="oklch(var(--b2))"/>`;
+    }
+
+    // X-axis label
+    html += `<text x="${(x + w / 2).toFixed(1)}" y="${(padT + chartH + 14).toFixed(1)}"
+      text-anchor="middle" font-size="9" fill="oklch(var(--bc)/0.35)">${d.label}</text>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+// ── Update stats bar ──────────────────────────────────────────────────────
+function updateStatsBar(d) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('stat-total',    d.total);
+  set('stat-semantic', d.semantic_count);
+  set('stat-hash',     d.hash_count);
+  set('stat-quality',  d.semantic_pct + '%');
+  set('ring-pct',      d.semantic_pct);
+  set('legend-semantic', d.semantic_count);
+  set('legend-hash',   d.hash_count);
+
+  // Update ring arcs
+  const circ = 282.74;
+  const semArc = document.getElementById('ring-semantic');
+  const hashArc = document.getElementById('ring-hash');
+  if (semArc) {
+    const sem = (d.semantic_pct / 100 * circ).toFixed(2);
+    semArc.setAttribute('stroke-dasharray', sem + ' ' + circ);
+    const color = d.semantic_pct >= 70 ? '#4ade80' : d.semantic_pct >= 40 ? '#fbbf24' : '#f87171';
+    semArc.setAttribute('stroke', color);
+  }
+  if (hashArc) {
+    const hsh = d.total > 0 ? (d.hash_count / d.total * circ).toFixed(2) : 0;
+    const offset = -(d.semantic_pct / 100 * circ).toFixed(2);
+    hashArc.setAttribute('stroke-dasharray', hsh + ' ' + circ);
+    hashArc.setAttribute('stroke-dashoffset', offset);
+  }
+}
+
+// ── Refresh stats from API ────────────────────────────────────────────────
+async function refreshStats() {
+  try {
+    const r = await fetch('/vector-memory/api/stats');
+    const d = await r.json();
+    if (!d.ok) return;
+    updateStatsBar(d);
+    if (_activeTab === 'overview') renderGrowthChart(d.growth);
+    // Update avg/week from refreshed growth data
+    if (d.growth && d.growth.length) {
+      const avg = Math.round(d.growth.reduce((s, x) => s + x.count, 0) / d.growth.length);
+      const el = document.getElementById('stat-avg-week');
+      if (el) el.textContent = avg.toLocaleString();
+    }
+  } catch (e) { console.warn('[vector-memory] Background stats refresh failed:', e.message); }
+}
+
+// ── Escape helper ─────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CSRF helper ───────────────────────────────────────────────────────────
+function csrfHeaders() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? { 'X-CSRF-Token': meta.content, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+}
+
+// ── Trigger index job ─────────────────────────────────────────────────────
+async function triggerIndex(btn) {
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Indexing...`;
+  try {
+    const r = await fetch('/vector-memory/api/index-trigger', { method: 'POST', headers: csrfHeaders() });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('Index job triggered successfully', 'success');
+      setTimeout(() => refreshStats(), 3000);
+    } else {
+      showToast(d.error || 'Failed to trigger index', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Trigger Index`;
+  }
+}
+
+// ── Semantic search — SPA-safe: run immediately; guard binding to prevent duplicate on re-entry ──
+(function() {
+  const inp = document.getElementById('search-input');
+  if (inp && inp.dataset.vmBound !== '1') {
+    inp.dataset.vmBound = '1';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+  }
+})();
+
+async function runSearch() {
+  const query  = (document.getElementById('search-input')?.value || '').trim();
+  const stype  = document.getElementById('search-type-filter')?.value || '';
+  const btn    = document.getElementById('search-btn');
+  const meta   = document.getElementById('search-meta');
+  const results = document.getElementById('search-results');
+  const empty  = document.getElementById('search-empty');
+  const list   = document.getElementById('results-list');
+
+  if (!query) return;
+  saveToHistory(query);
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span>`;
+  results.classList.add('hidden');
+  empty.classList.add('hidden');
+
+  try {
+    const r = await fetch('/vector-memory/api/search', {
+      method: 'POST',
+      headers: csrfHeaders(),
+      body: JSON.stringify({ query, source_type: stype || null }),
+    });
+    const d = await r.json();
+
+    if (!d.ok) throw new Error(d.error || 'Search failed');
+
+    if (!d.results || !d.results.length) {
+      empty.classList.remove('hidden');
+    } else {
+      results.classList.remove('hidden');
+      if (meta) meta.textContent = `${d.results.length} result${d.results.length !== 1 ? 's' : ''} · ${d.latency_ms}ms`;
+
+      list.innerHTML = d.results.map((res, idx) => {
+        const score = Math.round((res.score || 0) * 100);
+        const scoreColor = score >= 75 ? 'bg-success' : score >= 50 ? 'bg-warning' : 'bg-error';
+        const scoreText  = score >= 75 ? 'text-success' : score >= 50 ? 'text-warning' : 'text-error';
+        const preview = res.preview || '';
+        const truncated = preview.length > 120;
+        const shortText = truncated ? preview.substring(0, 120) + '…' : preview;
+        return `
+          <div class="card bg-base-100 shadow-sm wasp-accent cursor-pointer" data-action="vmem:toggleExpand">
+            <div class="card-body p-4 gap-2">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <span class="pill pill-xs pill-ghost">${escHtml(res.source_type || '—')}</span>
+                  <span class="font-mono text-xs text-base-content/35">${escHtml(res.source_id ? res.source_id.substring(0, 8) : '')}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <div class="w-20 bg-base-200 rounded-full h-1.5">
+                    <div class="h-1.5 rounded-full ${scoreColor} transition-all duration-500" style="width:${score}%"></div>
+                  </div>
+                  <span class="text-xs font-bold ${scoreText} tabular-nums w-8 text-right">${score}%</span>
+                </div>
+              </div>
+              <p class="res-preview text-sm text-base-content/75 leading-relaxed">${escHtml(shortText)}</p>
+              ${truncated ? `<p class="res-full text-sm text-base-content/75 leading-relaxed hidden">${escHtml(preview)}</p>` : ''}
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-base-content/30">${escHtml(res.embed_model || '')}</span>
+                ${truncated ? `<span class="res-toggle text-[10px] text-accent/60 hover:text-accent">expand</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+      if (window.applyDynStyles) applyDynStyles(list);
+    }
+  } catch (err) {
+    list.innerHTML = `<div class="text-sm text-error p-3">${escHtml(err.message)}</div>`;
+    results.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Search`;
+  }
+}
+
+// ── Load recent (for tab switch) ──────────────────────────────────────────
+async function loadRecent() {
+  // Recent is SSR'd; refresh only if explicitly needed
+  try {
+    const r = await fetch('/vector-memory/api/stats');
+    const d = await r.json();
+    if (!d.ok || !d.recent) return;
+    const tbody = document.getElementById('recent-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = d.recent.map(e => {
+      const kind = e.is_semantic
+        ? `<span class="pill pill-xs pill-success">semantic</span>`
+        : `<span class="pill pill-xs pill-hash">hash</span>`;
+      const ts = e.created_at ? new Date(e.created_at).toLocaleString() : '—';
+      return `<tr class="hover:bg-base-200/40 transition-colors">
+        <td class="font-mono text-xs text-base-content/40">${escHtml(e.source_id)}</td>
+        <td><span class="pill pill-xs pill-ghost">${escHtml(e.source_type)}</span></td>
+        <td class="text-xs font-mono text-base-content/50 max-w-[140px] truncate">${escHtml(e.embed_model)}</td>
+        <td>${kind}</td>
+        <td class="text-xs text-base-content/60 max-w-xs truncate">${escHtml(e.preview)}</td>
+        <td class="text-xs text-base-content/35">${escHtml(ts)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.warn('[vector-memory] Recent embeddings load failed:', e.message); }
+}
+
+// ── Expand/collapse search result ────────────────────────────────────────
+function toggleExpand(card) {
+  const preview = card.querySelector('.res-preview');
+  const full    = card.querySelector('.res-full');
+  const toggle  = card.querySelector('.res-toggle');
+  if (!full) return;
+  const expanded = !full.classList.contains('hidden');
+  full.classList.toggle('hidden', expanded);
+  preview.classList.toggle('hidden', !expanded);
+  if (toggle) toggle.textContent = expanded ? 'expand' : 'collapse';
+}
+
+// ── Search history ────────────────────────────────────────────────────────
+const HISTORY_KEY = 'vm_search_history';
+
+function saveToHistory(query) {
+  let hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  hist = [query, ...hist.filter(q => q !== query)].slice(0, 5);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  renderHistory();
+}
+
+function renderHistory() {
+  const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const container = document.getElementById('search-history');
+  if (!container || !hist.length) return;
+  container.classList.remove('hidden');
+  container.classList.add('flex');
+  const chips = hist.map(q =>
+    `<button data-action="vmem:setSearch" data-query="${q.replace(/"/g,'&quot;')}"
+      class="px-2 py-0.5 rounded-full bg-base-200 hover:bg-accent/15 hover:text-accent text-xs text-base-content/55 transition-colors">${q}</button>`
+  ).join('');
+  container.innerHTML = `<span class="text-[10px] text-base-content/30 uppercase tracking-widest mr-1">Recent:</span>${chips}`;
+}
+
+function setSearch(q) {
+  const inp = document.getElementById('search-input');
+  if (inp) { inp.value = q; inp.focus(); }
+  runSearch();
+}
+
+// ── Trigger full refresh ──────────────────────────────────────────────────
+function triggerRefresh() {
+  refreshStats();
+  if (_activeTab === 'recent') loadRecent();
+  const ind = document.getElementById('refresh-indicator');
+  ind.classList.remove('hidden');
+  setTimeout(() => ind.classList.add('hidden'), 2000);
+}
+
+// ── Time-ago for SSR timestamps ───────────────────────────────────────────
+function timeAgo(isoStr) {
+  if (!isoStr) return '—';
+  const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+document.querySelectorAll('[data-ts]').forEach(el => {
+  const ts = el.getAttribute('data-ts');
+  if (ts) el.textContent = timeAgo(ts);
+});
+
+// ── Auto-refresh every 60s ────────────────────────────────────────────────
+if (window._vmAutoRefresh) clearInterval(window._vmAutoRefresh);
+window._vmAutoRefresh = setInterval(() => {
+  refreshStats();
+  if (_activeTab === 'recent') loadRecent();
+}, 60000);
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderGrowthChart(GROWTH_DATA);
+renderHistory();
+
+// Avg/week from growth data
+if (GROWTH_DATA && GROWTH_DATA.length) {
+  const total = GROWTH_DATA.reduce((s, d) => s + d.count, 0);
+  const avg   = Math.round(total / GROWTH_DATA.length);
+  const el = document.getElementById('stat-avg-week');
+  if (el) el.textContent = avg.toLocaleString();
+}
+
+// Week-over-week delta
+if (GROWTH_DATA && GROWTH_DATA.length >= 2) {
+  const thisWeek = GROWTH_DATA[GROWTH_DATA.length - 1].count;
+  const lastWeek = GROWTH_DATA[GROWTH_DATA.length - 2].count;
+  const deltaEl  = document.getElementById('week-delta');
+  if (deltaEl && lastWeek > 0) {
+    const pct = Math.round((thisWeek - lastWeek) / lastWeek * 100);
+    deltaEl.textContent = (pct >= 0 ? '+' : '') + pct + '% vs last week';
+    deltaEl.className   = 'text-xs font-semibold tabular-nums ' + (pct >= 0 ? 'text-success' : 'text-error');
+    deltaEl.classList.remove('hidden');
+  } else if (deltaEl && lastWeek === 0 && thisWeek > 0) {
+    deltaEl.textContent = 'new this week';
+    deltaEl.className   = 'text-xs font-semibold text-accent';
+    deltaEl.classList.remove('hidden');
+  }
+}
+
+// Animate ring in after paint
+requestAnimationFrame(() => {
+  setTimeout(() => {
+    const circ = 282.74;
+    const pct  = STATS_SSR.semantic_pct;
+    const semArc  = document.getElementById('ring-semantic');
+    const hashArc = document.getElementById('ring-hash');
+    if (semArc) {
+      semArc.setAttribute('stroke-dasharray', (pct / 100 * circ).toFixed(2) + ' ' + circ);
+    }
+    if (hashArc && STATS_SSR.total > 0) {
+      const hsh    = (STATS_SSR.hash_count / STATS_SSR.total * circ).toFixed(2);
+      const offset = -(pct / 100 * circ).toFixed(2);
+      hashArc.setAttribute('stroke-dasharray',  hsh + ' ' + circ);
+      hashArc.setAttribute('stroke-dashoffset', offset);
+    }
+  }, 150);
+});
+
+const ind = document.getElementById('refresh-indicator');
+ind.classList.remove('hidden');
+setTimeout(() => ind.classList.add('hidden'), 2500);
+// data-tab delegation (kept separate — per-page tab switching)
+if (!window._vmTabBound) {
+  window._vmTabBound = true;
+  document.addEventListener('click', function(e) {
+    var tb = e.target.closest('[data-tab]');
+    if (tb) { switchTab(tb.getAttribute('data-tab')); }
+  });
+}
+registerWaspActions('vmem', {
+  'toggleExpand': function(el) { toggleExpand(el); },
+  'setSearch':    function(el) { setSearch(el.dataset.query); },
+  'vmRefresh':    function()   { triggerRefresh(); },
+  'vmIndex':      function(el) { triggerIndex(el); },
+  'vmRunSearch':  function()   { runSearch(); },
+});
+</script>
+{% endblock %}

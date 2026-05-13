@@ -1,0 +1,544 @@
+/* WASP Docs — colores idénticos al dashboard */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Override Docusaurus layer defaults with higher specificity ── */
+html {
+  --ifm-color-primary:            #C98F10;
+  --ifm-color-primary-dark:       #B07D0E;
+  --ifm-color-primary-darker:     #9A6D0C;
+  --ifm-color-primary-darkest:    #7A5609;
+  --ifm-color-primary-light:      #F0B429;
+  --ifm-color-primary-lighter:    #F5C24A;
+  --ifm-color-primary-lightest:   #F9D47A;
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', monospace;
+  --ifm-code-font-size: 88%;
+  --ifm-heading-font-weight: 600;
+  --ifm-navbar-height: 62px;
+  --ifm-sidebar-width: 272px;
+  --docusaurus-highlighted-code-line-bg: rgba(240, 180, 41, 0.12);
+  /* Kill all Docusaurus blue link defaults */
+  --ifm-link-color:               #C98F10;
+  --ifm-link-hover-color:         #F0B429;
+  --ifm-menu-color-active:        #C98F10;
+}
+
+/* ── Dark mode — colores exactos del dashboard ── */
+html[data-theme='dark'] {
+  --clr-bg:        #0A0A0A;
+  --clr-surface:   #111111;
+  --clr-surface2:  #1A1A1A;
+  --clr-border:    #222222;
+  --clr-border2:   #2A2A2A;
+  --clr-txt:       #E2E2E2;
+  --clr-txt-2:     #888888;
+  --clr-txt-3:     #555555;
+  --clr-accent:    #F0B429;
+  --clr-accent-dk: #C98F10;
+  --clr-grey:      #555555;
+  --clr-green:     #3ECF8E;
+  --clr-red:       #F06060;
+
+  --ifm-color-primary:            #F0B429;
+  --ifm-color-primary-dark:       #C98F10;
+  --ifm-color-primary-darker:     #B07D0E;
+  --ifm-color-primary-darkest:    #7A5609;
+  --ifm-color-primary-light:      #F5C24A;
+  --ifm-color-primary-lighter:    #F9D47A;
+  --ifm-color-primary-lightest:   #FDE8A8;
+
+  --ifm-background-color:         var(--clr-bg);
+  --ifm-background-surface-color: var(--clr-surface);
+  --ifm-navbar-background-color:  rgba(10, 10, 10, 0.92);
+  --ifm-footer-background-color:  var(--clr-surface);
+  --ifm-code-background:          var(--clr-surface2);
+  --ifm-toc-border-color:         var(--clr-border);
+  --ifm-color-content:            var(--clr-txt);
+  --ifm-color-content-secondary:  var(--clr-txt-2);
+  --ifm-heading-color:            var(--clr-txt);
+  --ifm-link-color:               var(--clr-accent);
+  --ifm-link-hover-color:         var(--clr-accent-dk);
+  --ifm-menu-color:               var(--clr-txt-2);
+  --ifm-menu-color-active:        var(--clr-accent);
+  --docusaurus-highlighted-code-line-bg: rgba(240, 180, 41, 0.10);
+
+  /* Completely suppress any leftover blue in IFM */
+  --ifm-color-info:               var(--clr-grey);
+  --ifm-color-info-dark:          var(--clr-txt-3);
+  --ifm-alert-color:              var(--clr-txt);
+}
+
+/* ── Force-kill any blue that leaks through (belt + suspenders) ── */
+html[data-theme='dark'] a,
+html[data-theme='dark'] a:link,
+html[data-theme='dark'] a:visited {
+  color: var(--clr-accent) !important;
+}
+html[data-theme='dark'] a:hover {
+  color: var(--clr-accent-dk) !important;
+}
+
+/* Exceptions: buttons, badges — don't color those with !important */
+html[data-theme='dark'] .navbar__link,
+html[data-theme='dark'] .navbar__link:link,
+html[data-theme='dark'] .navbar__link:visited {
+  color: var(--clr-txt-2) !important;
+}
+html[data-theme='dark'] .navbar__link:hover,
+html[data-theme='dark'] .navbar__link--active {
+  color: var(--clr-accent) !important;
+}
+
+/* ── Navbar ── */
+.navbar {
+  border-bottom: 1px solid var(--clr-border, #1E1E32);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-theme='dark'] .navbar {
+  background: rgba(10, 10, 10, 0.92);
+}
+
+/* On mobile/tablet, kill backdrop-filter — it creates a stacking context
+   that traps the navbar-sidebar below page content. Use solid background. */
+@media (max-width: 996px) {
+  .navbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html[data-theme='dark'] .navbar {
+    background: var(--clr-bg);
+  }
+}
+
+/* Force mobile sidebar above all content */
+.navbar-sidebar,
+.navbar-sidebar__backdrop {
+  z-index: 9999 !important;
+}
+html[data-theme='dark'] .navbar-sidebar {
+  background: var(--clr-bg) !important;
+}
+html[data-theme='dark'] .navbar-sidebar__brand {
+  background: var(--clr-bg) !important;
+  border-bottom: 1px solid var(--clr-border) !important;
+}
+
+.navbar__logo img {
+  height: 26px;
+  width: auto;
+}
+
+.navbar__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+/* ── Sidebar ── */
+html[data-theme='dark'] .theme-doc-sidebar-container {
+  background: var(--clr-bg) !important;
+  border-right: 1px solid var(--clr-border) !important;
+}
+
+.menu__link {
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  transition: background 0.15s, color 0.15s;
+}
+
+html[data-theme='dark'] .menu__link {
+  color: var(--clr-txt-2) !important;
+}
+
+html[data-theme='dark'] .menu__link:hover {
+  background: var(--clr-surface2);
+  color: var(--clr-txt) !important;
+}
+
+html[data-theme='dark'] .menu__link--active,
+html[data-theme='dark'] .menu__link--active:hover {
+  background: rgba(240, 180, 41, 0.10);
+  color: var(--clr-accent) !important;
+  font-weight: 500;
+}
+
+/* Sidebar category toggles */
+html[data-theme='dark'] .menu__caret::before,
+html[data-theme='dark'] .menu__link--sublist-caret::after {
+  filter: invert(60%) sepia(10%) saturate(400%) hue-rotate(200deg) brightness(90%);
+}
+
+/* ── Main content ── */
+html[data-theme='dark'] .main-wrapper {
+  background: var(--clr-bg);
+}
+
+.markdown h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.markdown h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  margin-top: 2rem;
+}
+
+.markdown h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+html[data-theme='dark'] .markdown a {
+  color: var(--clr-accent) !important;
+}
+
+html[data-theme='dark'] .markdown a:hover {
+  color: var(--clr-accent-dk) !important;
+}
+
+/* ── Code blocks ── */
+.prism-code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+}
+
+html[data-theme='dark'] div[class*='codeBlockContainer'] {
+  background: var(--clr-surface2) !important;
+  border: 1px solid var(--clr-border) !important;
+  border-radius: 8px !important;
+}
+
+html[data-theme='dark'] div[class*='codeBlockTitle'] {
+  background: var(--clr-surface) !important;
+  border-bottom: 1px solid var(--clr-border) !important;
+  color: var(--clr-txt-2) !important;
+}
+
+html[data-theme='dark'] button[class*='copyButton'] {
+  color: var(--clr-txt-3);
+}
+
+html[data-theme='dark'] button[class*='copyButton']:hover {
+  color: var(--clr-accent);
+  background: var(--clr-border);
+}
+
+/* inline code */
+html[data-theme='dark'] :not(pre) > code {
+  background: var(--clr-surface2) !important;
+  border: 1px solid var(--clr-border) !important;
+  color: var(--clr-accent) !important;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+/* Kill any blue Prism token colors */
+html[data-theme='dark'] .token.keyword,
+html[data-theme='dark'] .token.builtin,
+html[data-theme='dark'] .token.important,
+html[data-theme='dark'] .token.selector,
+html[data-theme='dark'] .token.doctype {
+  color: #F0B429 !important;  /* amber for keywords */
+}
+
+html[data-theme='dark'] .token.function,
+html[data-theme='dark'] .token.function-definition,
+html[data-theme='dark'] .token.class-name {
+  color: #3ECF8E !important;  /* green for functions */
+}
+
+html[data-theme='dark'] .token.string,
+html[data-theme='dark'] .token.char,
+html[data-theme='dark'] .token.attr-value,
+html[data-theme='dark'] .token.regex,
+html[data-theme='dark'] .token.variable {
+  color: #F9D47A !important;  /* light amber for strings */
+}
+
+html[data-theme='dark'] .token.comment,
+html[data-theme='dark'] .token.prolog,
+html[data-theme='dark'] .token.doccomment {
+  color: #555570 !important;  /* dark grey for comments */
+  font-style: italic;
+}
+
+html[data-theme='dark'] .token.number,
+html[data-theme='dark'] .token.boolean,
+html[data-theme='dark'] .token.constant,
+html[data-theme='dark'] .token.atrule,
+html[data-theme='dark'] .token.attr-name,
+html[data-theme='dark'] .token.property {
+  color: #F5C24A !important;  /* mid amber */
+}
+
+html[data-theme='dark'] .token.operator,
+html[data-theme='dark'] .token.entity,
+html[data-theme='dark'] .token.url,
+html[data-theme='dark'] .token.punctuation {
+  color: #8A8AAA !important;  /* muted grey */
+}
+
+html[data-theme='dark'] .token.tag,
+html[data-theme='dark'] .token.deleted {
+  color: #F06060 !important;  /* red for tags/deleted */
+}
+
+html[data-theme='dark'] .token.inserted {
+  color: #3ECF8E !important;  /* green for inserted */
+}
+
+/* Prevent any blue from Prism theme bleeding in */
+html[data-theme='dark'] .prism-code,
+html[data-theme='dark'] .prism-code * {
+  text-shadow: none !important;
+}
+
+/* ── TOC ── */
+html[data-theme='dark'] .table-of-contents__link {
+  color: var(--clr-txt-3);
+  font-size: 0.8rem;
+}
+
+html[data-theme='dark'] .table-of-contents__link:hover,
+html[data-theme='dark'] .table-of-contents__link--active {
+  color: var(--clr-accent) !important;
+}
+
+html[data-theme='dark'] .table-of-contents {
+  border-left: 2px solid var(--clr-border);
+}
+
+/* ── Admonitions ── */
+.alert { border-radius: 8px; border-left-width: 3px; }
+
+html[data-theme='dark'] .alert--info    { background: rgba(85,85,112,0.12) !important; border-left-color: var(--clr-grey) !important; }
+html[data-theme='dark'] .alert--success { background: rgba(62,207,142,0.08) !important; border-left-color: var(--clr-green) !important; }
+html[data-theme='dark'] .alert--warning { background: rgba(240,180,41,0.08) !important; border-left-color: var(--clr-accent) !important; }
+html[data-theme='dark'] .alert--danger  { background: rgba(240,96,96,0.08) !important;  border-left-color: var(--clr-red) !important; }
+
+/* Alert title icons — replace blue with grey */
+html[data-theme='dark'] .alert--info .admonitionHeading_node_modules,
+html[data-theme='dark'] .alert--info [class*='admonitionHeading'] {
+  color: var(--clr-grey) !important;
+}
+
+/* ── Tablas ── */
+html[data-theme='dark'] th {
+  background: var(--clr-surface2);
+  border: 1px solid var(--clr-border);
+  font-weight: 600;
+}
+
+html[data-theme='dark'] td {
+  border: 1px solid var(--clr-border);
+  color: var(--clr-txt-2);
+}
+
+html[data-theme='dark'] tr:hover td {
+  background: var(--clr-surface2);
+}
+
+/* ── Breadcrumbs ── */
+html[data-theme='dark'] .breadcrumbs__link {
+  color: var(--clr-txt-3) !important;
+}
+html[data-theme='dark'] .breadcrumbs__link:hover {
+  color: var(--clr-accent) !important;
+  background: var(--clr-surface2);
+}
+html[data-theme='dark'] .breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--clr-txt-2) !important;
+  background: var(--clr-surface2);
+}
+
+/* ── Footer ── */
+html[data-theme='dark'] .footer {
+  background: var(--clr-surface);
+  border-top: 1px solid var(--clr-border);
+}
+
+html[data-theme='dark'] .footer__link-item {
+  color: var(--clr-txt-3) !important;
+}
+
+html[data-theme='dark'] .footer__link-item:hover {
+  color: var(--clr-accent) !important;
+}
+
+html[data-theme='dark'] .footer__title {
+  color: var(--clr-txt-2);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+html[data-theme='dark'] .footer__copyright {
+  color: var(--clr-txt-3);
+}
+
+/* ── Paginación ── */
+html[data-theme='dark'] .pagination-nav__link {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 8px;
+}
+
+html[data-theme='dark'] .pagination-nav__link:hover {
+  border-color: var(--clr-accent);
+}
+
+html[data-theme='dark'] .pagination-nav__label {
+  color: var(--clr-accent) !important;
+}
+
+html[data-theme='dark'] .pagination-nav__sublabel {
+  color: var(--clr-txt-3);
+}
+
+/* ── Search / DocSearch ── */
+html[data-theme='dark'] .DocSearch-Button {
+  background: var(--clr-surface2) !important;
+  border: 1px solid var(--clr-border) !important;
+  color: var(--clr-txt-3) !important;
+}
+html[data-theme='dark'] .DocSearch-Button:hover {
+  border-color: var(--clr-accent) !important;
+}
+
+/* ── Badges / version chips ── */
+html[data-theme='dark'] .badge--secondary {
+  background: var(--clr-surface2) !important;
+  border-color: var(--clr-border) !important;
+  color: var(--clr-txt-2) !important;
+}
+html[data-theme='dark'] .badge--primary {
+  background: rgba(240,180,41,0.15) !important;
+  border-color: var(--clr-accent) !important;
+  color: var(--clr-accent) !important;
+}
+html[data-theme='dark'] .badge--info {
+  background: rgba(85,85,112,0.20) !important;
+  border-color: var(--clr-grey) !important;
+  color: var(--clr-txt-2) !important;
+}
+
+/* ── Scrollbar ── */
+html[data-theme='dark'] ::-webkit-scrollbar { width: 6px; height: 6px; }
+html[data-theme='dark'] ::-webkit-scrollbar-track { background: var(--clr-bg); }
+html[data-theme='dark'] ::-webkit-scrollbar-thumb { background: var(--clr-border2); border-radius: 3px; }
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: var(--clr-txt-3); }
+
+/* ── Selección ── */
+html[data-theme='dark'] ::selection {
+  background: rgba(240, 180, 41, 0.2);
+  color: var(--clr-txt);
+}
+
+/* ── Navbar version pill ── */
+.navbar-version-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: rgba(240, 180, 41, 0.12);
+  color: #F0B429 !important;
+  border: 1px solid rgba(240, 180, 41, 0.35);
+  text-decoration: none !important;
+  line-height: 1.6;
+  transition: background 0.15s, border-color 0.15s;
+  margin-left: 2px;
+}
+
+.navbar-version-pill:hover {
+  background: rgba(240, 180, 41, 0.2) !important;
+  border-color: rgba(240, 180, 41, 0.6) !important;
+  color: #F0B429 !important;
+  text-decoration: none !important;
+}
+
+/* ── Theme toggle button ── */
+html[data-theme='dark'] .navbar__items .clean-btn:hover {
+  color: var(--clr-accent);
+}
+
+/* ── Mermaid — rounded corners 8px ── */
+.docusaurus-mermaid-container svg .node rect,
+.docusaurus-mermaid-container svg .cluster rect,
+.docusaurus-mermaid-container svg rect.actor {
+  rx: 8px !important;
+  ry: 8px !important;
+}
+
+/* ── Mermaid — yellow/amber accent (dark mode) ── */
+
+/* Node borders — primary yellow */
+html[data-theme='dark'] .docusaurus-mermaid-container svg .node rect,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .node circle,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .node ellipse,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .node polygon {
+  stroke: #F0B429 !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Subgraph / cluster borders — amber semitransparente para no competir */
+html[data-theme='dark'] .docusaurus-mermaid-container svg .cluster rect {
+  stroke: rgba(240, 180, 41, 0.35) !important;
+  stroke-width: 1.5px !important;
+  fill: rgba(17, 17, 17, 0.6) !important;
+}
+
+/* Cluster label text — amber */
+html[data-theme='dark'] .docusaurus-mermaid-container svg .cluster .nodeLabel,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .cluster span,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .cluster text {
+  fill: #F0B429 !important;
+  color: #F0B429 !important;
+  font-weight: 600;
+}
+
+/* Edges / arrows — darker amber so they're distinct from node borders */
+html[data-theme='dark'] .docusaurus-mermaid-container svg .flowchart-link,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .edgePath path,
+html[data-theme='dark'] .docusaurus-mermaid-container svg path.transition {
+  stroke: #C98F10 !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Arrowhead fill — same darker amber */
+html[data-theme='dark'] .docusaurus-mermaid-container svg marker path,
+html[data-theme='dark'] .docusaurus-mermaid-container svg .marker path {
+  fill: #C98F10 !important;
+  stroke: none !important;
+}
+
+/* State diagram transitions */
+html[data-theme='dark'] .docusaurus-mermaid-container svg .transition {
+  stroke: #C98F10 !important;
+}
+
+/* Transparent container bg */
+html[data-theme='dark'] .docusaurus-mermaid-container svg,
+html[data-theme='dark'] .docusaurus-mermaid-container {
+  background: transparent;
+}
+
+/* Make all Mermaid diagrams fill the available width */
+.docusaurus-mermaid-container {
+  width: 100%;
+}
+.docusaurus-mermaid-container svg {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
+}

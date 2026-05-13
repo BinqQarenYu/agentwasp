@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+{% block title %}World Model — Agent Dashboard{% endblock %}
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">World Model</h1>
+      <p class="text-sm text-base-content/45 mt-0.5">Structured real-world state tracking across entities, trends, and forecasts</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="refresh-indicator" class="text-xs text-base-content/30 hidden">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse mr-1"></span>live
+      </span>
+      <button id="btn-wm-refresh" class="btn btn-sm btn-ghost gap-1.5 text-base-content/50 hover:text-base-content" data-action="world:wmRefresh">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats bar ──────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-2">
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Entities</div>
+        <div id="stat-entities" class="text-base font-bold tabular-nums leading-tight text-accent">{{ entity_count }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Predictions</div>
+        <div id="stat-predictions" class="text-base font-bold tabular-nums leading-tight text-info">{{ prediction_count }}</div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Last Sync</div>
+        <div id="stat-last-sync" class="text-base font-bold leading-tight text-base-content/60" data-ts="{{ last_sync }}">
+          {% if last_sync %}{{ last_sync[:16]|replace("T"," ") }}{% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      <div>
+        <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none">Job Interval</div>
+        <div class="text-base font-bold leading-tight text-success">15 min</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab bar ────────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap gap-1 border-b border-base-200">
+    <button class="tab-btn tab-active px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-entities" data-tab="entities">
+      Entity States
+      {% if entity_count > 0 %}<span class="pill pill-sm pill-accent ml-1">{{ entity_count }}</span>{% endif %}
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-insights" data-tab="insights">
+      Temporal Insights
+    </button>
+    <button class="tab-btn px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all" id="tab-predictions" data-tab="predictions">
+      Predictions
+      {% if prediction_count > 0 %}<span class="pill pill-sm pill-info ml-1" id="pred-badge">{{ prediction_count }}</span>{% endif %}
+    </button>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: ENTITY STATES                                                -->
+  <!-- ================================================================ -->
+  <div id="pane-entities" class="space-y-4">
+    <div id="entities-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {% if entities %}
+        {% for e in entities %}
+        <div class="card bg-base-100 shadow-sm wasp-accent" data-entity="{{ e.entity }}">
+          <div class="card-body p-4">
+            <div class="flex items-start justify-between gap-2">
+              <span class="font-semibold text-sm truncate">{{ e.entity }}</span>
+              <span class="pill pill-xs flex-shrink-0
+                {% if e.entity_type == 'crypto' %}pill-warning
+                {% elif e.entity_type == 'metric' %}pill-info
+                {% elif e.entity_type == 'system' %}pill-secondary
+                {% else %}pill-ghost{% endif %}">{{ e.entity_type }}</span>
+            </div>
+            <div class="flex items-end gap-1.5 mt-1">
+              <span class="text-xl font-bold tabular-nums leading-none">{{ e.current_value[:30] }}</span>
+              {% if e.change_pct is not none %}
+              <span class="text-sm font-semibold tabular-nums pb-0.5 {% if e.change_pct >= 0 %}text-success{% else %}text-error{% endif %}">
+                {{ '%+.1f'|format(e.change_pct) }}%
+              </span>
+              {% endif %}
+            </div>
+            {% if e.previous_value and e.previous_value != e.current_value %}
+            <div class="text-xs text-base-content/30 mt-0.5">prev: {{ e.previous_value[:30] }}</div>
+            {% endif %}
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-base-200/60">
+              <span class="pill pill-xs
+                {% if e.trend == 'up' %}pill-success
+                {% elif e.trend == 'down' %}pill-danger
+                {% elif e.trend == 'volatile' %}pill-warning
+                {% elif e.trend == 'stable' %}pill-info
+                {% else %}pill-ghost{% endif %}">
+                {% if e.trend == 'up' %}↑ up{% elif e.trend == 'down' %}↓ down{% elif e.trend == 'volatile' %}⚡ volatile{% elif e.trend == 'stable' %}→ stable{% else %}? unknown{% endif %}
+              </span>
+              <span class="text-[10px] text-base-content/30" data-ts="{{ e.last_updated }}">{{ e.last_updated[:16]|replace("T"," ") if e.last_updated else "" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="col-span-full card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body items-center py-12 text-center">
+          <svg class="w-10 h-10 text-base-content/20 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-base-content/40">No entity states yet.</p>
+          <p class="text-xs text-base-content/30 mt-1">The World Model updates every 15 minutes from <code>world_timeline</code> observations.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: TEMPORAL INSIGHTS                                            -->
+  <!-- ================================================================ -->
+  <div id="pane-insights" class="hidden space-y-4">
+    <p class="text-xs text-base-content/35 -mt-1">Trends computed from observations in the last 24 hours. Ranked by rate of change.</p>
+    <div id="insights-list" class="space-y-2">
+      <div class="flex items-center gap-2 text-base-content/40 text-sm py-4">
+        <span class="loading loading-spinner loading-xs"></span> Computing trends...
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: PREDICTIONS                                                  -->
+  <!-- ================================================================ -->
+  <div id="pane-predictions" class="hidden space-y-4">
+    <p class="text-xs text-base-content/35 -mt-1">LLM-generated short-horizon forecasts. Generate one per entity using the button on each entity card.</p>
+    <div id="predictions-list" class="space-y-3">
+      <div class="flex items-center gap-2 text-base-content/40 text-sm py-4">
+        <span class="loading loading-spinner loading-xs"></span> Loading...
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script nonce="{{ request.state.csp_nonce }}">
+const TABS = ['entities', 'insights', 'predictions'];
+let _activeTab = 'entities';
+
+function switchTab(name) {
+  _activeTab = name;
+  TABS.forEach(t => {
+    document.getElementById('pane-' + t).classList.toggle('hidden', t !== name);
+    document.getElementById('tab-' + t).classList.toggle('tab-active', t === name);
+  });
+  if (name === 'insights') loadInsights();
+  else if (name === 'predictions') loadPredictions();
+}
+
+// ── Sparkline SVG ────────────────────────────────────────────────────────
+function sparklineSVG(values, W = 80, H = 32) {
+  const nums = values
+    .map(v => parseFloat(String(v).replace(/[$,]/g, '')))
+    .filter(n => !isNaN(n));
+  if (nums.length < 2) return '';
+
+  const min = Math.min(...nums), max = Math.max(...nums);
+  const range = max - min || 1;
+  const pad = 2;
+
+  const pts = nums.map((v, i) => {
+    const x = (i / (nums.length - 1)) * (W - pad * 2) + pad;
+    const y = H - pad - ((v - min) / range) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const first = nums[0], last = nums[nums.length - 1];
+  const stroke = last > first ? '#4ade80' : last < first ? '#f87171' : '#94a3b8';
+  const fillId = 'sg' + Math.random().toString(36).slice(2, 7);
+
+  // Area fill under the line
+  const areapts = `${pad},${H - pad} ` + pts.join(' ') + ` ${(W - pad).toFixed(1)},${H - pad}`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" overflow="visible">
+    <defs>
+      <linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${stroke}" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="${stroke}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${areapts}" fill="url(#${fillId})"/>
+    <polyline points="${pts.join(' ')}" fill="none" stroke="${stroke}" stroke-width="1.5"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${pts[pts.length-1].split(',')[0]}" cy="${pts[pts.length-1].split(',')[1]}"
+      r="2" fill="${stroke}"/>
+  </svg>`;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function timeAgo(isoStr) {
+  if (!isoStr) return '—';
+  const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+
+function freshnessEl(latestObs) {
+  if (!latestObs) return `<span class="text-[10px] text-base-content/25">no history</span>`;
+  const hours = (Date.now() - new Date(latestObs).getTime()) / 3600000;
+  if (hours < 1)  return `<span class="text-[10px] text-success font-medium">● live</span>`;
+  if (hours < 24) return `<span class="text-[10px] text-success">${Math.round(hours)}h ago</span>`;
+  if (hours < 72) return `<span class="text-[10px] text-warning">${Math.round(hours / 24)}d ago</span>`;
+  return `<span class="text-[10px] text-error" title="Stale data — perception job hasn't run recently">${Math.round(hours / 24)}d ago ⚠</span>`;
+}
+
+function entityTypePill(type) {
+  const map = { crypto: 'pill-warning', metric: 'pill-info', system: 'pill-secondary', generic: 'pill-ghost' };
+  return `<span class="pill pill-xs ${map[type] || 'pill-ghost'}">${type}</span>`;
+}
+
+function trendPill(trend) {
+  const map = {
+    up:       ['pill-success', '↑ up'],
+    down:     ['pill-danger',  '↓ down'],
+    volatile: ['pill-warning', '⚡ volatile'],
+    stable:   ['pill-info',    '→ stable'],
+    unknown:  ['pill-ghost',   '? unknown'],
+  };
+  const [cls, label] = map[trend] || map.unknown;
+  return `<span class="pill pill-xs ${cls}">${label}</span>`;
+}
+
+// ── Entity card HTML ──────────────────────────────────────────────────────
+function entityCardHTML(e) {
+  const chg = e.change_pct != null
+    ? `<span class="text-sm font-semibold tabular-nums ${e.change_pct >= 0 ? 'text-success' : 'text-error'}">${e.change_pct >= 0 ? '+' : ''}${e.change_pct.toFixed(1)}%</span>`
+    : '';
+  const prev = e.previous_value && e.previous_value !== e.current_value
+    ? `<div class="text-xs text-base-content/30 mt-0.5">prev: ${e.previous_value.substring(0, 30)}</div>`
+    : '';
+  const spark = e.sparkline && e.sparkline.length >= 2
+    ? `<div class="sparkline-wrap mt-2 opacity-80">${sparklineSVG(e.sparkline, 80, 32)}</div>`
+    : '';
+  const obsCount = e.observation_count > 0
+    ? `<span class="text-[10px] text-base-content/30">${e.observation_count} obs</span>`
+    : '';
+
+  return `
+    <div class="card bg-base-100 shadow-sm wasp-accent" data-entity="${e.entity}">
+      <div class="card-body p-4">
+        <!-- Header row -->
+        <div class="flex items-start justify-between gap-2">
+          <span class="font-semibold text-sm truncate">${e.entity}</span>
+          ${entityTypePill(e.entity_type)}
+        </div>
+
+        <!-- Value + sparkline -->
+        <div class="flex items-end justify-between gap-2 mt-1">
+          <div>
+            <div class="flex items-end gap-1.5">
+              <span class="text-xl font-bold tabular-nums leading-none">${e.current_value.substring(0, 30)}</span>
+              ${chg}
+            </div>
+            ${prev}
+          </div>
+          ${spark ? `<div class="shrink-0">${spark}</div>` : ''}
+        </div>
+
+        <!-- Footer row -->
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-base-200/60">
+          <div class="flex items-center gap-2">
+            ${trendPill(e.trend)}
+            ${obsCount}
+          </div>
+          <div class="flex items-center gap-2">
+            ${freshnessEl(e.latest_obs)}
+            <button
+              data-action="world:generateForecast" data-entity="${e.entity}"
+              class="btn btn-xs btn-ghost text-base-content/40 hover:text-accent px-1.5 py-0.5 h-auto min-h-0"
+              title="Generate LLM forecast for ${e.entity}">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Load entities ─────────────────────────────────────────────────────────
+async function loadEntities() {
+  const container = document.getElementById('entities-grid');
+  try {
+    const r = await fetch('/world-model/api/entities');
+    const d = await r.json();
+    if (!d.entities || !d.entities.length) {
+      container.innerHTML = `
+        <div class="col-span-full card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body items-center py-12 text-center">
+            <p class="text-base-content/40">No entity states yet.</p>
+            <p class="text-xs text-base-content/30 mt-1">The World Model updates every 15 minutes from world_timeline observations.</p>
+          </div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = d.entities.map(entityCardHTML).join('');
+    if (window.applyDynStyles) applyDynStyles(container);
+  } catch (err) {
+    container.innerHTML = `<div class="col-span-full text-sm text-error p-4">${err.message}</div>`;
+  }
+}
+
+// ── Generate Forecast ─────────────────────────────────────────────────────
+async function generateForecast(entity, btn) {
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span>`;
+  try {
+    const r = await fetch(`/world-model/api/entities/${encodeURIComponent(entity)}/forecast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed');
+    showToast(`Forecast generated for ${entity}`, 'success');
+    // Switch to predictions tab and reload
+    switchTab('predictions');
+    loadPredictions();
+    // Update prediction count badge
+    refreshStats();
+  } catch (err) {
+    showToast(`Forecast failed: ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>`;
+  }
+}
+
+// ── Temporal Insights ─────────────────────────────────────────────────────
+async function loadInsights() {
+  const container = document.getElementById('insights-list');
+  try {
+    const r = await fetch('/world-model/api/temporal-insights');
+    const d = await r.json();
+    if (!d.insights || !d.insights.length) {
+      // Fallback: show last known entity states
+      const er = await fetch('/world-model/api/entities');
+      const ed = await er.json();
+      if (ed.entities && ed.entities.length) {
+        container.innerHTML = `
+          <div class="text-xs text-warning/70 bg-warning/5 border border-warning/20 rounded-lg px-3 py-2 mb-3">
+            No observations in the last 24h — showing last known entity states.
+            <span class="opacity-60">The perception job records data every 15 minutes when active.</span>
+          </div>` +
+          ed.entities.map(e => `
+            <div class="flex items-center gap-4 p-3 bg-base-100 rounded-xl wasp-accent shadow-sm">
+              ${trendPill(e.trend)}
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-sm">${e.entity}</span>
+                <span class="ml-2 text-sm text-base-content/70">${e.current_value.substring(0, 40)}</span>
+              </div>
+              ${e.change_pct != null ? `<span class="font-semibold text-sm ${e.change_pct >= 0 ? 'text-success' : 'text-error'}">${e.change_pct >= 0 ? '+' : ''}${e.change_pct.toFixed(1)}%</span>` : ''}
+              <div class="text-right shrink-0">
+                ${freshnessEl(e.latest_obs)}
+              </div>
+            </div>`).join('');
+      } else {
+        container.innerHTML = `<div class="text-sm text-base-content/40 py-6 text-center">No trend data available. The perception job records observations every 15 minutes.</div>`;
+      }
+      return;
+    }
+    container.innerHTML = d.insights.map(s => {
+      const chg = s.change_pct != null
+        ? `<span class="font-semibold ${s.change_pct >= 0 ? 'text-success' : 'text-error'}">${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(1)}%</span>`
+        : '';
+      return `
+        <div class="flex items-center gap-4 p-3 bg-base-100 rounded-xl wasp-accent shadow-sm">
+          ${trendPill(s.trend)}
+          <div class="flex-1 min-w-0">
+            <span class="font-semibold text-sm">${s.entity}</span>
+            <span class="ml-2 text-sm text-base-content/70">${s.current_value.substring(0, 40)}</span>
+          </div>
+          ${chg}
+          <span class="text-xs text-base-content/30 shrink-0">${s.observations} obs · ${s.time_window_hours}h</span>
+        </div>`;
+    }).join('');
+    if (window.applyDynStyles) applyDynStyles(container);
+  } catch (err) {
+    container.innerHTML = `<div class="text-sm text-error p-3">${err.message}</div>`;
+  }
+}
+
+// ── Predictions ────────────────────────────────────────────────────────────
+async function loadPredictions() {
+  const container = document.getElementById('predictions-list');
+  try {
+    const r = await fetch('/world-model/api/predictions');
+    const d = await r.json();
+    if (!d.predictions || !d.predictions.length) {
+      container.innerHTML = `
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body items-center py-10 text-center">
+            <svg class="w-8 h-8 text-base-content/20 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <p class="text-base-content/40">No active predictions.</p>
+            <p class="text-xs text-base-content/30 mt-1">Click the <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> button on any entity card to generate a forecast.</p>
+          </div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = d.predictions.map(p => {
+      const conf = Math.round(p.confidence * 100);
+      const confColor = conf >= 70 ? 'bg-success' : conf >= 45 ? 'bg-warning' : 'bg-error';
+      const confText = conf >= 70 ? 'text-success' : conf >= 45 ? 'text-warning' : 'text-error';
+      const horizonMap = { '1h': 'pill-info', '24h': 'pill-primary', '7d': 'pill-accent', '30d': 'pill-secondary' };
+      return `
+        <div class="card bg-base-100 shadow-sm wasp-accent">
+          <div class="card-body p-4">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="font-semibold">${p.entity}</span>
+              <div class="flex items-center gap-2">
+                <span class="pill pill-xs ${horizonMap[p.horizon] || 'pill-ghost'}">${p.horizon}</span>
+                <span class="text-xs font-semibold ${confText}">${conf}%</span>
+              </div>
+            </div>
+            <div class="w-full bg-base-200 rounded-full h-1 mb-3">
+              <div class="h-1 rounded-full transition-all duration-700 ${confColor}" style="width:${conf}%"></div>
+            </div>
+            <p class="text-sm text-base-content/75 leading-relaxed">${p.prediction_text}</p>
+            <div class="text-[10px] text-base-content/30 mt-2 flex justify-between">
+              <span>${p.model_used || 'unknown model'}</span>
+              <span>${new Date(p.created_at).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+    if (window.applyDynStyles) applyDynStyles(container);
+  } catch (err) {
+    container.innerHTML = `<div class="text-sm text-error p-3">${err.message}</div>`;
+  }
+}
+
+// ── Stats bar refresh ─────────────────────────────────────────────────────
+async function refreshStats() {
+  try {
+    const r = await fetch('/world-model/api/stats');
+    const d = await r.json();
+    if (!d.ok) return;
+    document.getElementById('stat-entities').textContent = d.entity_count;
+    document.getElementById('stat-predictions').textContent = d.prediction_count;
+    const syncEl = document.getElementById('stat-last-sync');
+    if (d.last_sync) {
+      syncEl.textContent = timeAgo(d.last_sync);
+      syncEl.title = d.last_sync;
+    }
+  } catch (e) { console.warn('[world-model] Background refresh failed:', e.message); }
+}
+
+function triggerRefresh() {
+  refreshStats();
+  if (_activeTab === 'entities') loadEntities();
+  else if (_activeTab === 'insights') loadInsights();
+  else if (_activeTab === 'predictions') loadPredictions();
+  const ind = document.getElementById('refresh-indicator');
+  ind.classList.remove('hidden');
+  setTimeout(() => ind.classList.add('hidden'), 2000);
+}
+
+// ── Time-ago for SSR elements ──────────────────────────────────────────────
+document.querySelectorAll('[data-ts]').forEach(el => {
+  const ts = el.getAttribute('data-ts');
+  if (ts) el.textContent = timeAgo(ts);
+});
+
+// ── Auto-refresh every 60s ─────────────────────────────────────────────────
+if (window._wmAutoRefresh) clearInterval(window._wmAutoRefresh);
+window._wmAutoRefresh = setInterval(() => {
+  refreshStats();
+  if (_activeTab === 'entities') loadEntities();
+}, 60000);
+
+// ── Init ──────────────────────────────────────────────────────────────────
+// Entities are SSR'd — replace cards with JS versions that include sparklines
+loadEntities();
+
+const ind = document.getElementById('refresh-indicator');
+ind.classList.remove('hidden');
+setTimeout(() => ind.classList.add('hidden'), 2500);
+// data-tab delegation (kept separate — per-page tab switching)
+if (!window._wmTabBound) {
+  window._wmTabBound = true;
+  document.addEventListener('click', function(e) {
+    var tb = e.target.closest('[data-tab]');
+    if (tb) { switchTab(tb.getAttribute('data-tab')); }
+  });
+}
+registerWaspActions('world', {
+  'generateForecast': function(el) { generateForecast(el.dataset.entity, el); },
+  'wmRefresh':        function()   { triggerRefresh(); },
+});
+</script>
+{% endblock %}

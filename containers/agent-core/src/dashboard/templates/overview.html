@@ -1,0 +1,1288 @@
+{% extends "base.html" %}
+{% from "macros.html" import pill %}
+{% block title %}Overview — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { min-height:380px;background:#050508;position:relative; }
+[data-ds="2"] { position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab; }
+[data-ds="3"] { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;pointer-events:none; }
+[data-ds="4"] { width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.08);border-top-color:#a78bfa;animation:spin 1s linear infinite; }
+[data-ds="5"] { font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:1px;font-family:monospace; }
+[data-ds="6"] { position:absolute;top:16px;left:16px;z-index:10;pointer-events:none; }
+[data-ds="7"] { font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.3); }
+[data-ds="8"] { font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px; }
+[data-ds="9"] { position:absolute;top:16px;right:16px;z-index:10;text-align:right;pointer-events:none; }
+[data-ds="10"] { font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.3); }
+[data-ds="11"] { font-size:12px;font-weight:600;color:#a78bfa;margin-top:2px; }
+[data-ds="12"] { position:absolute;bottom:0;left:0;right:0;height:56px;pointer-events:none;background:linear-gradient(to top,#050508 0%,transparent 100%); }
+[data-ds="13"] { position:absolute;bottom:12px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none;z-index:10; }
+[data-ds="14"] { display:flex;align-items:center;gap:6px; }
+[data-ds="15"] { width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite; }
+[data-ds="16"] { font-size:11px;font-family:monospace;color:rgba(255,255,255,0.35); }
+[data-ds="17"] { font-size:11px;font-family:monospace;color:rgba(255,255,255,0.25); }
+[data-ds="18"] { min-height:380px;border-top:2px solid #f4bf2a55;border-bottom:2px solid #f97316aa; }
+[data-ds="19"] { background:linear-gradient(90deg,#f4bf2a,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+[data-ds="20"] { color:#f4bf2a; }
+[data-ds="21"] { position:absolute;width:7px;height:7px;border-radius:50%;background:#f4bf2a;box-shadow:0 0 10px #f4bf2a,0 0 20px #f97316;top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 2s infinite; }
+[data-ds="22"] { background:linear-gradient(90deg,#f4bf2a,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+[data-ds="23"] { font-size:10px; }
+[data-ds="24"] { color:#f97316; }
+[data-ds="25"] { height:10px;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2); }
+[data-ds="26"] { background:linear-gradient(90deg,#f59e0b,#f97316,#fb923c); transition:width 1.2s ease; box-shadow:0 0 8px rgba(249,115,22,0.6); }
+[data-ds="27"] { background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);animation:xp-shimmer 2s linear infinite; }
+[data-ds="28"] { height:18px; }
+[data-ds="29"] { height:18px; }
+[data-ds="30"] { height:72px; }
+[data-ds="31"] { }
+[data-ds="32"] { stop-color:oklch(var(--p));stop-opacity:0; }
+[data-ds="33"] { stop-color:oklch(var(--p));stop-opacity:0.4; }
+[data-ds="34"] { stop-color:oklch(var(--p));stop-opacity:0.4; }
+[data-ds="35"] { stop-color:oklch(var(--p));stop-opacity:0; }
+[data-ds="36"] { width:var(--ov-bar-w,0%); }
+.ov-hidden { display:none !important; }
+.ov-grabbing { cursor:grabbing !important; }
+[data-ds="37"] { max-height:220px; }
+[data-ds="38"] { border-left:3px solid oklch(var(--p)/.4); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight leading-tight">System Overview</h1>
+            <p class="text-xs text-base-content/40 font-mono mt-0.5">Agent Wasp · WASP v2.7 · <span id="ov-tz">{{ timezone }}</span></p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <div class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center" id="ov-clock">{{ now }}</div>
+        <a href="/brain" class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center hover:bg-primary/10 transition-colors">
+            Full Brain
+        </a>
+    </div>
+</div>
+
+<!-- ── Hero grid: Neural Brain + Life Orb + KPIs ───────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_340px_340px] gap-4 mb-4">
+
+    <!-- Neural Brain — Three.js display-only (same renderer as /brain, no interaction) -->
+    <div class="card overflow-hidden" id="ov-brain-wrap" data-ds="1">
+        <!-- Three.js canvas — pointer-events:none so overlays stay clickable -->
+        <canvas id="ov-brain-canvas" data-ds="2"></canvas>
+
+        <!-- Loading spinner -->
+        <div id="ov-brain-loading" data-ds="3">
+            <div data-ds="4"></div>
+            <div data-ds="5">Loading neural data…</div>
+        </div>
+
+        <!-- Top-left label -->
+        <div data-ds="6">
+            <div data-ds="7">Neural Brain</div>
+            <div id="ov-brain-nodecnt" data-ds="8">— nodes</div>
+        </div>
+
+        <!-- Top-right: model (no link) -->
+        <div data-ds="9">
+            <div data-ds="10">{{ model_status.active_provider or "—" }}</div>
+            <div data-ds="11">{{ model_status.active_model or "No model" }}</div>
+        </div>
+
+        <!-- Bottom gradient + stats -->
+        <div data-ds="12"></div>
+        <div data-ds="13">
+            <div data-ds="14">
+                <span data-ds="15"></span>
+                <span data-ds="16">{{ skills_enabled }} skills · {{ stats.total }} memories</span>
+            </div>
+            <span id="ov-brain-edges" data-ds="17">— edges</span>
+        </div>
+    </div>
+
+    <!-- ── Life Orb — middle column ──────────────────────────────────────── -->
+    {%- set ai   = agent_identity -%}
+    {%- set xp   = ai.total_xp   | default(0) -%}
+    {%- set lv   = ai.lv         | default({"level":1,"xp_progress":0,"xp_needed":100,"xp_next":100,"pct":0}) -%}
+    {%- set age  = ai.age        | default({"years":0,"months":0,"days":0,"mode":"d","total_days":0}) -%}
+    {# SVG ring: r=80, cx=cy=96, circ=2*pi*80≈502.7 #}
+    {%- set circ = 502.7 -%}
+    {%- set dash = (lv.pct * circ / 100) | round(1) -%}
+    {%- set gap  = (circ - dash) | round(1) -%}
+
+    <div class="card bg-base-100 shadow-sm wasp-accent flex flex-col items-center justify-between gap-0 py-7 px-4"
+         data-ds="18">
+
+        <!-- Header label -->
+        <div class="flex items-center gap-2 self-start w-full mb-1">
+            <span class="text-xs font-bold uppercase tracking-widest" data-ds="19">Agent Life</span>
+            <span class="ml-auto text-xs font-mono text-base-content/30 uppercase tracking-wider">Lv <span class="font-bold" data-ds="20">{{ lv.level }}</span></span>
+        </div>
+
+        <!-- Circular XP ring with age inside — r=80, viewBox 192x192 -->
+        <div class="relative flex items-center justify-center flex-1 my-2">
+            <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="orb-glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="4" result="blur"/>
+                        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                    <linearGradient id="orb-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%"   stop-color="#f4bf2a"/>
+                        <stop offset="55%"  stop-color="#f59e0b"/>
+                        <stop offset="100%" stop-color="#f97316"/>
+                    </linearGradient>
+                    <radialGradient id="orb-center-glow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%"   stop-color="#f4bf2a" stop-opacity="0.07"/>
+                        <stop offset="100%" stop-color="#f4bf2a" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <!-- Soft radial center glow -->
+                <circle cx="96" cy="96" r="72" fill="url(#orb-center-glow)"/>
+                <!-- Track ring -->
+                <circle cx="96" cy="96" r="80" stroke="#f4bf2a18" stroke-width="14" fill="none"/>
+                <!-- XP progress arc — starts at top -->
+                <circle cx="96" cy="96" r="80"
+                        stroke="url(#orb-ring-grad)" stroke-width="14"
+                        fill="none" stroke-linecap="round"
+                        filter="url(#orb-glow)"
+                        stroke-dasharray="{{ dash }} {{ gap }}"
+                        transform="rotate(-90 96 96)"/>
+                <!-- Age text — centered, size adapts to mode -->
+                {% if age.mode == "ymd" %}
+                <text x="96" y="76"  text-anchor="middle" font-family="monospace" font-size="28" font-weight="800" fill="#f4bf2a">{{ age.years }}<tspan font-size="13" font-weight="400" fill="rgba(255,255,255,0.45)"> yr</tspan></text>
+                <text x="96" y="101" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="rgba(255,255,255,0.8)">{{ age.months }}<tspan font-size="11" font-weight="400" fill="rgba(255,255,255,0.4)"> mo</tspan></text>
+                <text x="96" y="122" text-anchor="middle" font-family="monospace" font-size="16" font-weight="500" fill="rgba(255,255,255,0.5)">{{ age.days }}<tspan font-size="10" font-weight="400" fill="rgba(255,255,255,0.3)"> d</tspan></text>
+                {% elif age.mode == "md" %}
+                <text x="96" y="85"  text-anchor="middle" font-family="monospace" font-size="34" font-weight="800" fill="#f4bf2a">{{ age.months }}<tspan font-size="15" font-weight="400" fill="rgba(255,255,255,0.45)"> mo</tspan></text>
+                <text x="96" y="111" text-anchor="middle" font-family="monospace" font-size="20" font-weight="500" fill="rgba(255,255,255,0.6)">{{ age.days }}<tspan font-size="11" font-weight="400" fill="rgba(255,255,255,0.35)"> d</tspan></text>
+                {% else %}
+                <text x="96" y="88"  text-anchor="middle" font-family="monospace" font-size="46" font-weight="900" fill="#f4bf2a">{{ age.total_days }}</text>
+                <text x="96" y="112" text-anchor="middle" font-family="monospace" font-size="14" font-weight="400" letter-spacing="3" fill="rgba(255,255,255,0.35)">DAYS</text>
+                {% endif %}
+                <!-- ALIVE dot -->
+                <text x="96" y="142" text-anchor="middle" font-family="monospace" font-size="8" font-weight="400" letter-spacing="3" fill="rgba(255,255,255,0.18)">ALIVE</text>
+            </svg>
+            <!-- Pulsing center dot -->
+            <div data-ds="21"></div>
+        </div>
+
+        <!-- XP total -->
+        <div class="flex flex-col items-center gap-0.5 w-full mb-3">
+            <div class="flex items-baseline gap-1.5">
+                <span class="text-2xl font-bold font-mono tabular" data-ds="22">{{ "{:,}".format(xp) }}</span>
+                <span class="text-sm font-mono text-base-content/40">XP</span>
+            </div>
+            <div class="text-xs text-base-content/25 font-mono tracking-widest">next level at {{ "{:,}".format(lv.xp_next) }}</div>
+        </div>
+
+        <!-- XP bar — orange, thicker -->
+        <div class="w-full">
+            <div class="flex justify-between mb-1.5" data-ds="23">
+                <span class="font-mono text-base-content/30">{{ lv.xp_progress }} / {{ lv.xp_needed }}</span>
+                <span class="font-mono font-bold" data-ds="24">{{ lv.pct }}%</span>
+            </div>
+            <div class="w-full rounded-full overflow-hidden" data-ds="25">
+                <div class="h-full rounded-full relative overflow-hidden"
+                     data-ds="26" data-dv="width:{{ lv.pct}}%">
+                    <div class="absolute inset-0" data-ds="27"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- KPIs column -->
+    <div class="flex flex-col gap-3">
+
+        <!-- KPI: Events 24h — sparkline -->
+        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div class="min-w-0 flex-1 overflow-hidden">
+                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Events (24h)</div>
+                    <div class="text-2xl font-bold tabular text-primary ov-counter" data-target="{{ perf_summary.total_events | default(0) }}">0</div>
+                    {% if perf_summary and perf_summary.hourly and (perf_summary.hourly|length) > 1 %}
+                    {%- set H = perf_summary.hourly -%}
+                    {%- set ns = namespace(mx=1) -%}
+                    {%- for p in H %}{% if p.total > ns.mx %}{% set ns.mx = p.total %}{% endif %}{% endfor -%}
+                    {%- set n = H|length -%}
+                    <svg viewBox="0 0 80 18" preserveAspectRatio="none" class="w-full mt-1.5" data-ds="28">
+                        <polyline class="stroke-primary fill-none" stroke-width="1.5" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round"
+                            points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-(p.total-p.errors)*16/ns.mx)|round(1) }} {% endfor %}"/>
+                        <polyline class="stroke-error fill-none" stroke-width="1.2" stroke-opacity="0.9" stroke-linejoin="round" stroke-linecap="round"
+                            points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-p.errors*16/ns.mx)|round(1) }} {% endfor %}"/>
+                    </svg>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="inline-flex items-center gap-1 text-xs text-base-content/40"><span class="w-2.5 h-px bg-primary/70 inline-block"></span>ok</span>
+                        <span class="inline-flex items-center gap-1 text-xs text-base-content/40"><span class="w-2.5 h-px bg-error/80 inline-block"></span>err</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if perf_summary and perf_summary.errors > 0 %}
+                <span class="badge badge-error badge-sm shrink-0">{{ perf_summary.errors }} err</span>
+                {% else %}
+                <span class="badge badge-success badge-sm shrink-0">clean</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- KPI: Memory -->
+        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Memory</div>
+                    <div class="text-2xl font-bold tabular text-secondary ov-counter" data-target="{{ stats.total }}">0</div>
+                </div>
+                <a href="/memory" class="btn btn-xs btn-ghost text-secondary">View</a>
+            </div>
+        </div>
+
+        <!-- KPI: Skills -->
+        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Skills</div>
+                    <div class="text-2xl font-bold tabular text-success">
+                        <span class="ov-counter" data-target="{{ skills_enabled }}">0</span>
+                        <span class="text-base font-normal text-base-content/30">/{{ skills_count }}</span>
+                    </div>
+                </div>
+                <a href="/skills" class="btn btn-xs btn-ghost text-success">View</a>
+            </div>
+        </div>
+
+        <!-- KPI: Avg Latency — sparkline -->
+        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div class="min-w-0 flex-1 overflow-hidden">
+                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Avg Latency</div>
+                    <div class="text-2xl font-bold tabular text-warning">
+                        <span class="ov-counter" data-target="{{ perf_summary.avg_latency_ms | default(0) }}">0</span><span class="text-sm font-normal text-base-content/40">ms</span>
+                    </div>
+                    {% if perf_summary and perf_summary.hourly and (perf_summary.hourly|length) > 1 %}
+                    {%- set H = perf_summary.hourly -%}
+                    {%- set ns = namespace(mx=1) -%}
+                    {%- for p in H %}{% if p.avg_lat > ns.mx %}{% set ns.mx = p.avg_lat %}{% endif %}{% endfor -%}
+                    {%- set n = H|length -%}
+                    {%- set last = H[-1] -%}
+                    <svg viewBox="0 0 80 18" preserveAspectRatio="none" class="w-full mt-1.5" data-ds="29">
+                        <polyline class="stroke-warning fill-none" stroke-width="1.5" stroke-opacity="0.8" stroke-linejoin="round" stroke-linecap="round"
+                            points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-p.avg_lat*16/ns.mx)|round(1) }} {% endfor %}"/>
+                        <circle class="fill-warning" cx="80" cy="{{ (18-last.avg_lat*16/ns.mx)|round(1) }}" r="2"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                {% if econ_today %}
+                <div class="text-right shrink-0">
+                    <div class="text-xs text-base-content/40">cost</div>
+                    <div class="text-xs font-mono font-bold text-warning">${{ "%.4f"|format(econ_today.cost_usd | default(0)) }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div><!-- /KPIs column -->
+</div><!-- /Hero grid -->
+
+<!-- ── Pulse Wave ──────────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4 overflow-hidden">
+    <div class="relative" data-ds="30">
+        <!-- Wave label -->
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+            <span class="text-xs font-semibold text-base-content/50 uppercase tracking-widest">System Pulse</span>
+            <span class="inline-flex items-center gap-1 text-xs text-success font-mono">
+                <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>LIVE
+            </span>
+        </div>
+        <!-- Heatmap mini bars on right -->
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-0.5" title="30-day activity">
+            {% for cell in heatmap %}
+            {% set cnt = cell.count %}
+            {% if cnt == 0 %}{% set h = 4 %}{% set op = "opacity-10" %}
+            {% elif cnt <= 3 %}{% set h = 10 %}{% set op = "opacity-30" %}
+            {% elif cnt <= 10 %}{% set h = 20 %}{% set op = "opacity-50" %}
+            {% elif cnt <= 30 %}{% set h = 32 %}{% set op = "opacity-70" %}
+            {% else %}{% set h = 40 %}{% set op = "opacity-100" %}{% endif %}
+            <div class="w-1.5 rounded-sm bg-primary {{ op }} transition-all hover:opacity-100"
+                 data-ds="31" data-dv="height:{{ h}}px"
+                 title="{{ cell.date }}: {{ cnt }} events"></div>
+            {% endfor %}
+        </div>
+        <!-- Animated SVG wave -->
+        <svg id="ov-wave" class="absolute inset-0 w-full h-full" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" data-ds="32"/>
+                    <stop offset="20%" data-ds="33"/>
+                    <stop offset="80%" data-ds="34"/>
+                    <stop offset="100%" data-ds="35"/>
+                </linearGradient>
+            </defs>
+            <path id="ov-wave-path" fill="none" stroke="url(#waveGrad)" stroke-width="2"/>
+            <path id="ov-wave-path2" fill="none" stroke="url(#waveGrad)" stroke-width="1" opacity="0.4"/>
+        </svg>
+        {% if streak > 0 %}
+        <div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 text-xs text-warning font-semibold">
+            🔥 {{ streak }}-day streak
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ── Memory + Scheduler ──────────────────────────────────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+    <!-- Memory Breakdown -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title text-base">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                    Memory
+                </h2>
+                <span class="text-xs text-base-content/40 font-mono">{{ stats.total }} total</span>
+            </div>
+            {% set mem_items = [
+                ("facts",    stats.facts,    "--p",  "text-primary"),
+                ("episodic", stats.episodic, "--s",  "text-secondary"),
+                ("semantic", stats.semantic, "--a",  "text-accent"),
+                ("policy",   stats.policy,  "--in", "text-info"),
+                ("working",  stats.working, "--wa", "text-warning"),
+                ("meta",     stats.meta,    "--er", "text-error"),
+            ] %}
+            {% set total_safe = stats.total if stats.total > 0 else 1 %}
+            <div class="space-y-2.5">
+                {% for name, count, cssvar, color in mem_items %}
+                {% set pct = ((count / total_safe) * 100) | round(1) %}
+                <a href="/memory?type={{ name }}" class="block group">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-medium capitalize text-base-content/70 group-hover:text-base-content transition-colors">{{ name }}</span>
+                        <span class="text-xs font-mono {{ color }} font-bold">{{ count }}</span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full bg-base-300 overflow-hidden">
+                        <div class="h-full rounded-full ov-bar transition-all duration-700"
+                             data-ds="36" data-dv="background:oklch(var({{ cssvar}})/.7);"
+                             data-width="{{ pct }}"></div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            <div class="card-actions justify-end mt-3">
+                <a href="/memory" class="btn btn-sm btn-ghost text-primary gap-1">Browse
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scheduler Jobs -->
+    <div class="card bg-base-100 shadow-sm wasp-accent">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title text-base">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Scheduler
+                </h2>
+                <div class="flex items-center gap-2">
+                    {% set active_jobs = scheduler_jobs | selectattr("paused", "equalto", false) | list %}
+                    <span class="text-xs font-mono text-success">{{ active_jobs | length }} active</span>
+                    {% if scheduler_jobs | selectattr("paused") | list | length > 0 %}
+                    <span class="text-xs font-mono text-warning">{{ scheduler_jobs | selectattr("paused") | list | length }} paused</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="space-y-1 overflow-y-auto" data-ds="37">
+                {% for job in scheduler_jobs %}
+                <div class="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-base-200 transition-colors group">
+                    <div class="flex items-center gap-2 min-w-0">
+                        {% if job.paused %}
+                        <span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"></span>
+                        {% else %}
+                        <span class="relative flex w-1.5 h-1.5 shrink-0">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60"></span>
+                            <span class="relative inline-flex rounded-full w-1.5 h-1.5 bg-success"></span>
+                        </span>
+                        {% endif %}
+                        <span class="font-mono text-xs truncate text-base-content/70 group-hover:text-base-content transition-colors">{{ job.name }}</span>
+                    </div>
+                    <span class="text-xs text-base-content/30 tabular font-mono shrink-0">{{ job.run_count }}×</span>
+                </div>
+                {% else %}
+                <div class="text-xs text-base-content/30 text-center py-8">No jobs</div>
+                {% endfor %}
+            </div>
+            <div class="card-actions justify-end mt-3">
+                <a href="/scheduler" class="btn btn-sm btn-ghost text-primary gap-1">Manage
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Performance + Model ─────────────────────────────────────────────── -->
+{% if perf_summary %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Performance (24h)
+            </h2>
+            <a href="/metrics" class="text-xs text-primary/60 hover:text-primary transition-colors">Full metrics →</a>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {% set perf_items = [
+                ("Events",      perf_summary.total_events | default(0),    "text-primary",  ""),
+                ("Avg Latency", (perf_summary.avg_latency_ms | default(0)) ~ "ms", "text-warning", ""),
+                ("Errors",      perf_summary.errors | default(0),           "text-error" if perf_summary.errors | default(0) > 0 else "text-success", ""),
+                ("Cost Today",  "$" ~ "%.4f"|format(econ_today.cost_usd | default(0)) if econ_today else "—", "text-warning", ""),
+            ] %}
+            {% for label, val, color, _ in perf_items %}
+            <div class="bg-base-200 rounded-xl p-3 text-center">
+                <div class="text-xl font-bold tabular {{ color }}">{{ val }}</div>
+                <div class="text-xs text-base-content/50 mt-0.5">{{ label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if perf_summary.top_events %}
+        <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-base-300/50">
+            {% for ev in perf_summary.top_events[:6] %}
+            <span class="pill pill-neutral pill-xs font-mono">{{ ev.type }}: {{ ev.count }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Model & Fallback chain -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-5">
+        <h2 class="card-title text-base mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Active Model
+        </h2>
+        <div class="flex flex-wrap gap-3 items-center">
+            <div class="flex items-center gap-2 bg-primary/5 border border-primary/15 rounded-xl px-4 py-2.5">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="font-bold text-primary text-sm">{{ model_status.active_model or "None" }}</span>
+                <span class="text-xs text-base-content/40">via {{ model_status.active_provider or "—" }}</span>
+            </div>
+            {% if model_status.fallback_order %}
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs text-base-content/30 uppercase tracking-wider">fallback</span>
+                {% for m in model_status.fallback_order %}
+                <span class="pill pill-neutral pill-xs font-mono">{{ m }}</span>
+                {% if not loop.last %}<span class="text-base-content/20 text-xs">→</span>{% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            <a href="/models" class="ml-auto btn btn-sm btn-ghost text-primary gap-1">Manage
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ── Wasp Digest ─────────────────────────────────────────────────────── -->
+{% if digest %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4" data-ds="38">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <h2 class="card-title text-base">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Wasp Digest
+                {% if digest.stats and digest.stats.week_label %}<span class="badge badge-xs badge-primary normal-case font-normal ml-1">{{ digest.stats.week_label }}</span>{% endif %}
+            </h2>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-base-content/40 font-mono">{{ digest.generated_at[:16] | replace("T"," ") if digest.generated_at else "" }}</span>
+                <form method="post" action="/scheduler/trigger" class="contents">
+                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                    <input type="hidden" name="job" value="digest">
+                    <button type="submit" class="btn btn-xs btn-ghost text-primary/60 hover:text-primary">Regenerate</button>
+                </form>
+            </div>
+        </div>
+        <div class="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 text-sm leading-relaxed text-base-content/80 italic whitespace-pre-line">{{ digest.text }}</div>
+        {% set s = digest.stats if digest.stats else {} %}
+        <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-base-300/50">
+            {% if s.get('total_messages_7d') %}<span class="pill pill-neutral pill-xs">{{ s['total_messages_7d'] }} conversations (7d)</span>{% endif %}
+            {% if s.get('total_skill_calls_7d') %}<span class="pill pill-neutral pill-xs">{{ s['total_skill_calls_7d'] }} skill calls</span>{% endif %}
+            {% if s.get('dream_count') %}<span class="pill pill-neutral pill-xs">{{ s['dream_count'] }} dream cycles</span>{% endif %}
+            {% if s.get('procedures_count') %}<span class="pill pill-neutral pill-xs">{{ s['procedures_count'] }} procedures</span>{% endif %}
+            {% if s.get('epistemic_top_domain') %}<span class="pill pill-primary pill-xs">{{ s['epistemic_top_domain'] }} {{ s.get('epistemic_top_confidence',0) }}%</span>{% endif %}
+            {% if s.get('best_skill') %}<span class="pill pill-success pill-xs">Best: {{ s['best_skill'] }} {{ s.get('best_skill_pct',0) }}%</span>{% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+                <h2 class="card-title text-base">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Wasp Digest
+                </h2>
+                <p class="text-xs text-base-content/40 mt-1">Auto-generated weekly narrative. Click Generate to trigger now.</p>
+            </div>
+            <form method="post" action="/scheduler/trigger" data-confirm="Generate the weekly digest?" class="contents js-confirm-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <input type="hidden" name="job" value="digest">
+                <button type="submit" class="btn btn-sm btn-primary gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Generate
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Quick Actions ───────────────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
+    <div class="card-body p-5">
+        <h2 class="card-title text-base mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Quick Actions
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {% set actions = [
+                ("health_check", "Health Check", "btn-success",  "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", "Run health check?"),
+                ("reflection",   "Reflect",      "btn-info",     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01", "Run reflection?"),
+                ("proactive",    "Proactive",    "btn-primary",  "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z", "Send a proactive Telegram message?"),
+                ("memory_cleanup","Cleanup",     "btn-warning",  "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16", "Run memory cleanup?"),
+            ] %}
+            {% for job, label, cls, icon_path, confirm_msg in actions %}
+            <form method="post" action="/scheduler/trigger" data-confirm="{{ confirm_msg }}" class="contents js-confirm-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <input type="hidden" name="job" value="{{ job }}">
+                <input type="hidden" name="from_overview" value="1">
+                <button type="submit" class="btn btn-sm btn-outline {{ cls }} gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon_path }}"/></svg>
+                    {{ label }}
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+        <p class="text-xs text-base-content/30 mt-3">All actions are CSRF-gated and audited in the log.</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+
+(function () {
+    'use strict';
+
+    // ── Cancel any previous instance of this script ────────────────────
+    if (window._ovWaveActive !== undefined) window._ovWaveActive = false;
+    if (window._ovPollInterval)  { clearInterval(window._ovPollInterval);  window._ovPollInterval  = null; }
+    if (window._ovClockInterval) { clearInterval(window._ovClockInterval); window._ovClockInterval = null; }
+
+    // ── Activity level (0=idle → 1=high load) shared by wave + canvas ──
+    // Smoothly interpolated — never jumps.
+    var _actLevel = 0.0;   // current displayed level
+    var _actTarget = 0.0;  // target from last poll
+
+    // State → target activity level mapping
+    var _STATE_LEVELS = { IDLE: 0.0, DREAM: 0.05, EXECUTING: 0.35, SKILL: 0.55, LIGHT: 0.85 };
+
+    // Color stops: [R,G,B] for act=0.0, 0.5, 1.0
+    // idle=violet-green, working=amber, high=red
+    var _COL_STOPS = [
+        [110, 210, 170],   // 0.0 — idle: teal-green
+        [245, 175,  45],   // 0.5 — working: amber
+        [255,  65,  55],   // 1.0 — high: red
+    ];
+
+    function _lerpColor(t) {
+        // Map t (0-1) across two segments: [0→0.5] and [0.5→1]
+        var c0, c1, f;
+        if (t <= 0.5) { c0 = _COL_STOPS[0]; c1 = _COL_STOPS[1]; f = t * 2; }
+        else          { c0 = _COL_STOPS[1]; c1 = _COL_STOPS[2]; f = (t - 0.5) * 2; }
+        return [
+            Math.round(c0[0] + (c1[0] - c0[0]) * f),
+            Math.round(c0[1] + (c1[1] - c0[1]) * f),
+            Math.round(c0[2] + (c1[2] - c0[2]) * f),
+        ];
+    }
+
+    // Expose for canvas + wave to read
+    window._waspActLevel  = function () { return _actLevel; };
+    window._waspActColor  = function () { return _lerpColor(_actLevel); };
+
+    // Poll /state/json every 10s — credentials: same-origin sends session cookie
+    function pollState() {
+        fetch('/state/json', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                if (!d) return;
+                var base = _STATE_LEVELS[d.state] || 0;
+                // CPI 0-100 adds up to +0.15 on top
+                var cpiBoost = Math.min(0.15, (d.cpi || 0) / 100 * 0.15);
+                _actTarget = Math.min(1, base + cpiBoost);
+            })
+            .catch(function () {});
+    }
+    pollState();
+    window._ovPollInterval = setInterval(pollState, 10000);
+
+    // Smoothly close gap between _actLevel and _actTarget (called each rAF)
+    window._waspTickAct = function () {
+        var diff = _actTarget - _actLevel;
+        if (Math.abs(diff) > 0.001) _actLevel += diff * 0.025;
+    };
+
+    // ── Live clock ─────────────────────────────────────────────────────
+    var clockEl = document.getElementById('ov-clock');
+    if (clockEl) {
+        function updateClock() {
+            var d = new Date();
+            var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            clockEl.textContent = days[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + ' ' +
+                months[d.getMonth()] + ' ' + d.getFullYear() + ' · ' +
+                String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        }
+        updateClock();
+        window._ovClockInterval = setInterval(updateClock, 30000);
+    }
+
+    // ── Counter animation ──────────────────────────────────────────────
+    document.querySelectorAll('.ov-counter').forEach(function (el) {
+        var target = parseInt(el.dataset.target, 10) || 0;
+        if (target === 0) { el.textContent = '0'; return; }
+        var start = 0, duration = 900, step = 16;
+        var inc = target / (duration / step);
+        var timer = setInterval(function () {
+            start = Math.min(start + inc, target);
+            el.textContent = Math.round(start).toLocaleString();
+            if (start >= target) clearInterval(timer);
+        }, step);
+    });
+
+    // ── Memory bars animate in ─────────────────────────────────────────
+    setTimeout(function () {
+        document.querySelectorAll('.ov-bar').forEach(function (bar) {
+            bar.style.setProperty('--ov-bar-w', bar.dataset.width + '%');
+        });
+    }, 200);
+
+    // ── Pulse wave — organic, never repeats exactly ────────────────────
+    var wavePath  = document.getElementById('ov-wave-path');
+    var wavePath2 = document.getElementById('ov-wave-path2');
+    var waveEl    = document.getElementById('ov-wave');
+    if (wavePath && waveEl) {
+        var t = 0;
+        window._ovWaveActive = true;
+        function drawWave() {
+            if (!window._ovWaveActive) return;
+            var W = waveEl.clientWidth || 800;
+            var H = waveEl.clientHeight || 72;
+            var mid = H / 2;
+            // Slowly drifting amplitude (0.55–1.0) and freq modifier (0.8–1.2)
+            // using two very low-frequency oscillators — period ~40s and ~27s
+            // so they only realign every ~1800s → wave never looks the same twice
+            var ampMod  = 0.75 + 0.25 * Math.sin(t * 0.007);
+            var ampMod2 = 0.60 + 0.40 * Math.sin(t * 0.011 + 1.2);
+            var fMod    = 1.0  + 0.18 * Math.sin(t * 0.009 + 2.5);
+            var pts = [], pts2 = [];
+            for (var x = 0; x <= W; x += 3) {
+                var nx = x / W;
+                var y  = mid
+                    + Math.sin(nx * Math.PI * 5 * fMod + t) * (H * 0.26 * ampMod)
+                    + Math.sin(nx * Math.PI * 3 * fMod + t * 0.73) * (H * 0.10 * ampMod)
+                    + Math.sin(nx * Math.PI * 9 + t * 0.31) * (H * 0.04);
+                var y2 = mid
+                    + Math.sin(nx * Math.PI * 4 * fMod + t * 1.3 + 1) * (H * 0.18 * ampMod2)
+                    + Math.sin(nx * Math.PI * 7 + t * 0.5) * (H * 0.06 * ampMod2)
+                    + Math.sin(nx * Math.PI * 11 + t * 0.19 + 3) * (H * 0.03);
+                pts.push((pts.length ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1));
+                pts2.push((pts2.length ? 'L' : 'M') + x.toFixed(1) + ',' + y2.toFixed(1));
+            }
+            wavePath.setAttribute('d', pts.join(' '));
+            wavePath2.setAttribute('d', pts2.join(' '));
+            // Update gradient color based on activity level
+            if (window._waspActColor) {
+                var c = window._waspActColor();
+                var cStr = 'rgb(' + c.join(',') + ')';
+                var stops = document.querySelectorAll('#waveGrad stop');
+                if (stops[1]) stops[1].setAttribute('stop-color', cStr);
+                if (stops[2]) stops[2].setAttribute('stop-color', cStr);
+            }
+            t += 0.022;
+            requestAnimationFrame(drawWave);
+        }
+        drawWave();
+    }
+
+    // ── (2D neural canvas removed — Three.js brain below) ─────────────
+    (function () {
+        var canvas = document.getElementById('ov-neural-REMOVED');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var W, H, nodes, edges;
+        var time = 0;
+
+        // Node layer definitions — mirrors brain.html layer concept
+        var LAYERS = [
+            { name: 'core',      count: 1,  r: 7,   col: [167,139,250] },  // violet center
+            { name: 'goal',      count: 4,  r: 5,   col: [139,92,246]  },
+            { name: 'skill',     count: 8,  r: 4,   col: [99,102,241]  },
+            { name: 'memory',    count: 12, r: 3.5, col: [79,70,229]   },
+            { name: 'epistemic', count: 10, r: 3,   col: [124,58,237]  },
+            { name: 'ambient',   count: 20, r: 2,   col: [139,92,246]  },
+        ];
+
+        // Signals travelling along edges
+        var signals = [];
+        // Global pulse event (network-wide burst)
+        var globalPulse = 0;   // 0-1 intensity, decays over time
+        var nextBurst   = 3 + Math.random() * 6;  // seconds until next burst
+
+        function resize() {
+            W = canvas.offsetWidth;
+            H = canvas.offsetHeight;
+            canvas.width  = W * (window.devicePixelRatio || 1);
+            canvas.height = H * (window.devicePixelRatio || 1);
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+            build();
+        }
+
+        function rand(min, max) { return min + Math.random() * (max - min); }
+
+        function build() {
+            nodes = [];
+            var cx = W / 2, cy = H / 2;
+            var maxR = Math.min(W, H) * 0.44;
+
+            LAYERS.forEach(function (layer, li) {
+                var ring = li === 0 ? 0 : maxR * (0.12 + li * 0.16);
+                for (var i = 0; i < layer.count; i++) {
+                    var angle = li === 0 ? 0 : (i / layer.count) * Math.PI * 2 + li * 0.4;
+                    var jitter = li === 0 ? 0 : rand(-ring * 0.22, ring * 0.22);
+                    nodes.push({
+                        x: cx + Math.cos(angle) * (ring + jitter),
+                        y: cy + Math.sin(angle) * (ring + jitter * 0.7),
+                        r: layer.r,
+                        col: layer.col,
+                        phase:     rand(0, Math.PI * 2),
+                        speed:     rand(0.4, 1.2),
+                        // Each node drifts slightly — gives organic feel
+                        driftAx:   rand(-0.18, 0.18),
+                        driftAy:   rand(-0.12, 0.12),
+                        driftFx:   rand(0.3, 0.8),
+                        driftFy:   rand(0.25, 0.7),
+                        layer: li,
+                    });
+                }
+            });
+
+            // Build edges: each node connects to nearest nodes in same/adjacent layers
+            edges = [];
+            var seen = {};
+            nodes.forEach(function (n, i) {
+                var dists = nodes.map(function (m, j) {
+                    return { j: j, d: Math.hypot(m.x - n.x, m.y - n.y) };
+                }).filter(function (e) { return e.j !== i; })
+                  .sort(function (a, b) { return a.d - b.d })
+                  .slice(0, 4);
+                dists.forEach(function (e) {
+                    var key = Math.min(i, e.j) + '_' + Math.max(i, e.j);
+                    if (!seen[key] && e.d < maxR * 0.55) {
+                        seen[key] = true;
+                        edges.push({ a: i, b: e.j, len: e.d });
+                    }
+                });
+            });
+        }
+
+        function spawnSignal(fast) {
+            if (edges.length === 0) return;
+            var e = edges[Math.floor(Math.random() * edges.length)];
+            var hue = rand(0, 1);
+            // Vary signal color: violet/indigo/pink spectrum
+            var cols = hue < 0.4 ? [167,139,250] : hue < 0.7 ? [99,102,241] : [240,130,255];
+            signals.push({
+                edge: e, t: 0,
+                speed: fast ? rand(0.015, 0.025) : rand(0.004, 0.012),
+                col: cols,
+                size: fast ? rand(4, 7) : rand(3, 5.5),
+            });
+        }
+
+        function triggerBurst() {
+            // Spawn 8-14 fast signals from the core outward
+            var count = 8 + Math.floor(Math.random() * 7);
+            for (var i = 0; i < count; i++) spawnSignal(true);
+            globalPulse = 1.0;
+        }
+
+        function frame() {
+            ctx.clearRect(0, 0, W, H);
+            time += 0.012;
+
+            // Tick shared activity level interpolation
+            if (window._waspTickAct) window._waspTickAct();
+            var act = window._waspActLevel ? window._waspActLevel() : 0;
+
+            // Current theme color — interpolated from idle(teal) → working(amber) → high(red)
+            var themeCol = window._waspActColor ? window._waspActColor() : [139, 92, 246];
+
+            // Burst timer — fires more frequently at high activity
+            var burstInterval = 12 - act * 9;   // 12s idle → 3s high load
+            nextBurst -= 0.012;
+            if (nextBurst <= 0) {
+                triggerBurst();
+                nextBurst = burstInterval * (0.7 + Math.random() * 0.6);
+            }
+            // Decay global pulse
+            if (globalPulse > 0) globalPulse = Math.max(0, globalPulse - 0.018);
+
+            // Signal spawn rate scales with activity (0.04 idle → 0.22 high)
+            var spawnRate = 0.04 + act * 0.18 + 0.05 * Math.sin(time * 0.04);
+            if (Math.random() < spawnRate) spawnSignal(false);
+
+            // Draw edges — brighter during global pulse, color follows activity
+            var edgeCol = themeCol.join(',');
+            edges.forEach(function (e) {
+                var na = nodes[e.a], nb = nodes[e.b];
+                var baseAlpha = 0.05 + 0.03 * act + 0.03 * Math.sin(time * 0.5 + e.a);
+                var alpha = baseAlpha + globalPulse * 0.14;
+                ctx.beginPath();
+                ctx.moveTo(na.x, na.y);
+                ctx.lineTo(nb.x, nb.y);
+                ctx.strokeStyle = 'rgba(' + edgeCol + ',' + alpha.toFixed(3) + ')';
+                ctx.lineWidth = 0.5 + act * 0.4 + globalPulse * 0.5;
+                ctx.stroke();
+            });
+
+            // Draw + advance signals
+            signals = signals.filter(function (s) {
+                s.t += s.speed;
+                if (s.t > 1) return false;
+                var na = nodes[s.edge.a], nb = nodes[s.edge.b];
+                var px = na.x + (nb.x - na.x) * s.t;
+                var py = na.y + (nb.y - na.y) * s.t;
+                var sz = s.size * (1 + globalPulse * 0.4);
+                var grd = ctx.createRadialGradient(px, py, 0, px, py, sz);
+                grd.addColorStop(0, 'rgba(' + s.col.join(',') + ',0.95)');
+                grd.addColorStop(0.4, 'rgba(' + s.col.join(',') + ',0.4)');
+                grd.addColorStop(1, 'rgba(' + s.col.join(',') + ',0)');
+                ctx.beginPath();
+                ctx.arc(px, py, sz, 0, Math.PI * 2);
+                ctx.fillStyle = grd;
+                ctx.fill();
+                return true;
+            });
+
+            // Draw nodes — drift + activity-aware color
+            nodes.forEach(function (n) {
+                var dx = n.driftAx * Math.sin(time * n.driftFx + n.phase);
+                var dy = n.driftAy * Math.cos(time * n.driftFy + n.phase + 1);
+                var nx = n.x + dx, ny = n.y + dy;
+
+                var breathe = 0.7 + 0.3 * Math.sin(time * n.speed + n.phase);
+                var burstScale = 1 + globalPulse * (n.layer === 0 ? 0.8 : 0.4);
+                var r = n.r * breathe * burstScale;
+                var alpha = (0.5 + 0.5 * breathe) * Math.min(1, 0.6 + globalPulse * 0.5);
+
+                // Blend base violet with theme color based on activity
+                var baseCol = n.col;
+                var blended = [
+                    Math.round(baseCol[0] + (themeCol[0] - baseCol[0]) * act),
+                    Math.round(baseCol[1] + (themeCol[1] - baseCol[1]) * act),
+                    Math.round(baseCol[2] + (themeCol[2] - baseCol[2]) * act),
+                ];
+                var bStr = blended.join(',');
+
+                var glowR = r * (3.5 + globalPulse * 2 + act * 1.5);
+                var grd = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowR);
+                grd.addColorStop(0, 'rgba(' + bStr + ',' + (alpha * 0.38 + globalPulse * 0.15) + ')');
+                grd.addColorStop(1, 'rgba(' + bStr + ',0)');
+                ctx.beginPath();
+                ctx.arc(nx, ny, glowR, 0, Math.PI * 2);
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(nx, ny, r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(' + bStr + ',' + alpha + ')';
+                ctx.fill();
+            });
+
+            requestAnimationFrame(frame);
+        }
+
+        resize();
+        window.addEventListener('resize', resize);
+        frame();
+    }());
+}());
+</script>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+'use strict';
+
+// ── Cancel any previous instance of this script ────────────────────
+if (window._brainLoopActive !== undefined) window._brainLoopActive = false;
+if (window._brainFetchInterval) { clearInterval(window._brainFetchInterval); window._brainFetchInterval = null; }
+if (window._brainMouseMove)  { window.removeEventListener('mousemove', window._brainMouseMove); window._brainMouseMove = null; }
+if (window._brainMouseUp)    { window.removeEventListener('mouseup',   window._brainMouseUp);   window._brainMouseUp   = null; }
+if (window._brainResizeFn)   { window.removeEventListener('resize',    window._brainResizeFn);  window._brainResizeFn  = null; }
+if (window._brainObserver)   { window._brainObserver.disconnect(); window._brainObserver = null; }
+
+var CAT_COLOR={ core:'#ffffff',skill:'#F97316',knowledge:'#8B5CF6',memory:'#3B82F6',epistemic:'#10B981',goal:'#EF4444',self_model:'#FBBF24' };
+var CAT_R3D  ={ core:0,self_model:40,goal:65,skill:95,epistemic:130,memory:155,knowledge:185 };
+
+var wrap    = document.getElementById('ov-brain-wrap');
+var canvas  = document.getElementById('ov-brain-canvas');
+var loading = document.getElementById('ov-brain-loading');
+var nodeCnt = document.getElementById('ov-brain-nodecnt');
+var edgeCnt = document.getElementById('ov-brain-edges');
+if(!wrap||!canvas) return;
+
+var ctx=canvas.getContext('2d');
+var W=0,H=0,CX=0,CY=0,SCALE=1;
+var neurons=[],connections=[],signals=[],particles=[];
+var time=0,rawData=null;
+var rotY=0,rotX=0.18,zoom=1.35;
+var dragging=false,dragX=0,dragY=0,dragRY=0,dragRX=0;
+
+function resize(){
+    var dpr=window.devicePixelRatio||1;
+    W=wrap.clientWidth||600; H=wrap.clientHeight||400;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    ctx.scale(dpr,dpr);
+    CX=W/2; CY=H/2;
+    SCALE=Math.min(W,H)*0.0024;
+    if(rawData) buildFromData(rawData);
+}
+
+function fibSphere(idx,total,r){
+    if(total<=1) return {x:r,y:0,z:0};
+    var phi=Math.acos(1-2*(idx+0.5)/total);
+    var theta=Math.PI*(1+Math.sqrt(5))*idx;
+    return {x:r*Math.sin(phi)*Math.cos(theta),y:r*Math.sin(phi)*Math.sin(theta),z:r*Math.cos(phi)};
+}
+
+function project(ox,oy,oz){
+    var cosX=Math.cos(rotX),sinX=Math.sin(rotX);
+    var ry1=oy*cosX-oz*sinX,rz1=oy*sinX+oz*cosX;
+    var cosY=Math.cos(rotY),sinY=Math.sin(rotY);
+    var rx2=ox*cosY+rz1*sinY,rz2=-ox*sinY+rz1*cosY;
+    var fov=320*SCALE*zoom; var maxR=200;
+    var pz=rz2+maxR+fov; if(pz<1) pz=1;
+    var sc=fov/pz*SCALE*zoom;
+    return {sx:CX+rx2*sc,sy:CY-ry1*sc,depth:Math.max(0,Math.min(1,(rz2+maxR)/(maxR*2))),sc:sc};
+}
+
+function buildFromData(data){
+    rawData=data; neurons=[]; connections=[]; signals=[]; particles=[];
+    var byCat={};
+    data.nodes.forEach(function(n){
+        var c=n.category||'knowledge';
+        if(!byCat[c]) byCat[c]=[];
+        byCat[c].push(n);
+    });
+    var idMap={};
+    Object.keys(byCat).forEach(function(cat){
+        var arr=byCat[cat];
+        var r3=CAT_R3D[cat]!==undefined?CAT_R3D[cat]:160;
+        arr.forEach(function(n,i){
+            var p3=cat==='core'?{x:0,y:0,z:0}:fibSphere(i,arr.length,r3);
+            var jit=r3*0.06;
+            var ox=p3.x+(cat==='core'?0:(Math.random()-.5)*jit);
+            var oy=p3.y+(cat==='core'?0:(Math.random()-.5)*jit);
+            var oz=p3.z+(cat==='core'?0:(Math.random()-.5)*jit);
+            var idx=neurons.length;
+            idMap[n.id]=idx;
+            neurons.push({
+                ox:ox,oy:oy,oz:oz,x:CX,y:CY,depth:0.5,sc:1,
+                r:cat==='core'?5:1.8+(n.size||0.8)*1.4,
+                color:CAT_COLOR[cat]||'#888',
+                energy:0,baseEnergy:cat==='core'?.4:.05,
+                pulsePhase:Math.random()*Math.PI*2,
+                pulseSpeed:.012+Math.random()*.012,
+                category:cat,lastFired:0
+            });
+        });
+    });
+    data.edges.forEach(function(e){
+        var fi=idMap[e.source],ti=idMap[e.target];
+        if(fi===undefined||ti===undefined) return;
+        connections.push({from:fi,to:ti,weight:e.strength||.5,activity:0,offFrac:(Math.random()-.5)*.3});
+    });
+    if(nodeCnt) nodeCnt.textContent=neurons.length+' nodes';
+    if(edgeCnt) edgeCnt.textContent=connections.length+' edges';
+    if(loading) loading.classList.add('ov-hidden');
+}
+
+function fireNeuron(idx){
+    var n=neurons[idx];
+    if(!n||time-(n.lastFired||0)<10) return;
+    n.energy=1; n.lastFired=time;
+    for(var p=0;p<(n.r>4?8:3);p++){
+        var spd=1+Math.random()*2,ang=Math.random()*Math.PI*2;
+        particles.push({x:n.x,y:n.y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:1,decay:.022+Math.random()*.02,color:n.color,size:1.2+Math.random()*1.5});
+    }
+    for(var i=0;i<connections.length;i++){
+        var c=connections[i];
+        if(c.from===idx&&Math.random()<c.weight*.65)
+            signals.push({ci:i,progress:0,speed:.007+Math.random()*.006,color:n.color});
+    }
+}
+
+function getMid(nF,nT,offFrac){
+    var mx=(nF.x+nT.x)/2,my=(nF.y+nT.y)/2;
+    var dx=nT.x-nF.x,dy=nT.y-nF.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+    return {x:mx+(-dy/len)*offFrac*len,y:my+(dx/len)*offFrac*len};
+}
+function bzPt(t,x0,y0,cx2,cy2,x1,y1){
+    var it=1-t;
+    return {x:it*it*x0+2*it*t*cx2+t*t*x1,y:it*it*y0+2*it*t*cy2+t*t*y1};
+}
+
+function update(){
+    time++;
+    if(!dragging) rotY+=.0022;
+    for(var i=0;i<neurons.length;i++){
+        var n=neurons[i];
+        var p=project(n.ox,n.oy,n.oz);
+        n.x=p.sx; n.y=p.sy; n.depth=p.depth; n.sc=p.sc;
+        n.pulsePhase+=n.pulseSpeed;
+        n.energy*=.96; if(n.energy<n.baseEnergy) n.energy=n.baseEnergy;
+    }
+    if(time%30===0&&neurons.length>0) fireNeuron(Math.floor(Math.random()*neurons.length));
+    if(time%100===0&&neurons.length>0) fireNeuron(0);
+    for(var i=signals.length-1;i>=0;i--){
+        var s=signals[i]; s.progress+=s.speed;
+        if(s.progress>=1){
+            var c=connections[s.ci];
+            connections[s.ci].activity=1;
+            if(!s.reverse){
+                var tgt=c.to;
+                var returnColor=s.color;
+                if(tgt<neurons.length){
+                    neurons[tgt].energy=Math.min(1,neurons[tgt].energy+.45);
+                    neurons[tgt].flash=(neurons[tgt].flash||0)+1;
+                    returnColor=neurons[tgt].color;
+                }
+                signals.splice(i,1);
+                signals.push({ci:s.ci,progress:0,speed:s.speed*.85,color:returnColor,reverse:true});
+            } else {
+                var src=c.from;
+                if(src<neurons.length) neurons[src].energy=Math.min(1,neurons[src].energy+.3);
+                signals.splice(i,1);
+            }
+        }
+    }
+    for(var i=0;i<connections.length;i++) connections[i].activity*=.94;
+    for(var i=particles.length-1;i>=0;i--){
+        var p=particles[i];
+        p.x+=p.vx; p.y+=p.vy; p.vx*=.96; p.vy*=.96; p.life-=p.decay;
+        if(p.life<=0) particles.splice(i,1);
+    }
+}
+
+function render(){
+    ctx.fillStyle='#050508'; ctx.fillRect(0,0,W,H);
+    // Subtle radial lines from core to every node
+    for(var i=0;i<neurons.length;i++){
+        if(neurons[i].category!=='core') continue;
+        var nC=neurons[i];
+        for(var j=0;j<neurons.length;j++){
+            if(neurons[j].category==='core') continue;
+            var nJ=neurons[j];
+            var avgD=(nC.depth+nJ.depth)*.5;
+            ctx.beginPath(); ctx.moveTo(nC.x,nC.y); ctx.lineTo(nJ.x,nJ.y);
+            ctx.strokeStyle='rgba(255,255,255,'+(0.22+avgD*0.18).toFixed(3)+')';
+            ctx.lineWidth=0.7; ctx.stroke();
+        }
+    }
+    // Connections sorted back-to-front
+    var cs=connections.slice().sort(function(a,b){return (neurons[a.from].depth+neurons[a.to].depth)-(neurons[b.from].depth+neurons[b.to].depth);});
+    for(var i=0;i<cs.length;i++){
+        var c=cs[i]; var nF=neurons[c.from],nT=neurons[c.to];
+        var avgD=(nF.depth+nT.depth)*.5;
+        var alpha=(.12+c.activity*.85)*(.4+avgD*.8);
+        var m=getMid(nF,nT,c.offFrac);
+        ctx.beginPath(); ctx.moveTo(nF.x,nF.y);
+        ctx.quadraticCurveTo(m.x,m.y,nT.x,nT.y);
+        ctx.strokeStyle='rgba(0,191,255,'+alpha.toFixed(3)+')';
+        ctx.lineWidth=(.7+c.activity*2.2)*(.4+avgD*.8); ctx.stroke();
+    }
+    // Signals (forward + return)
+    for(var i=0;i<signals.length;i++){
+        var s=signals[i],c=connections[s.ci];
+        var nF=s.reverse?neurons[c.to]:neurons[c.from];
+        var nT=s.reverse?neurons[c.from]:neurons[c.to];
+        var m=getMid(nF,nT,c.offFrac);
+        var pt=bzPt(s.progress,nF.x,nF.y,m.x,m.y,nT.x,nT.y);
+        var avgD=(nF.depth+nT.depth)*.5;
+        var drawColor=s.color;
+        var drawBlur=s.reverse?10:14;
+        var drawSize=s.reverse?1.8:2.5;
+        ctx.beginPath(); ctx.arc(pt.x,pt.y,drawSize*(.4+avgD*.6)+.5,0,Math.PI*2);
+        ctx.fillStyle=drawColor; ctx.shadowColor=drawColor; ctx.shadowBlur=drawBlur;
+        ctx.globalAlpha=s.reverse?0.7:1;
+        ctx.fill(); ctx.shadowBlur=0; ctx.globalAlpha=1;
+    }
+    // Neurons sorted back-to-front
+    var ns=neurons.slice().sort(function(a,b){return a.depth-b.depth;});
+    for(var i=0;i<ns.length;i++){
+        var n=ns[i];
+        var pulse=Math.sin(n.pulsePhase)*.22+.78;
+        var r=n.r*(.85+n.energy*.4)*pulse*(.3+n.depth*.7);
+        if(n.flash>0){
+            ctx.beginPath(); ctx.arc(n.x,n.y,r*4.5,0,Math.PI*2);
+            ctx.strokeStyle='rgba(244,191,42,'+(n.flash*.18)+')';
+            ctx.lineWidth=2; ctx.stroke(); ctx.lineWidth=1;
+            n.flash=Math.max(0,n.flash-.06);
+        }
+        if(n.energy>.18){
+            ctx.beginPath(); ctx.arc(n.x,n.y,r*3.0,0,Math.PI*2);
+            ctx.fillStyle='rgba(255,255,255,'+(n.energy*.12)+')';
+            ctx.shadowColor=n.color; ctx.shadowBlur=28*n.energy*n.depth;
+            ctx.fill(); ctx.shadowBlur=0;
+        }
+        ctx.beginPath(); ctx.arc(n.x,n.y,r,0,Math.PI*2);
+        ctx.fillStyle=n.color;
+        ctx.globalAlpha=(.4+n.depth*.8)*(.55+n.energy*.65); ctx.fill(); ctx.globalAlpha=1;
+        if(n.energy>.4){
+            ctx.beginPath(); ctx.arc(n.x,n.y,r*.4,0,Math.PI*2);
+            ctx.fillStyle='#fff'; ctx.globalAlpha=Math.min(1,n.energy*.95); ctx.fill(); ctx.globalAlpha=1;
+        }
+    }
+    // Particles
+    for(var i=0;i<particles.length;i++){
+        var p=particles[i];
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+        ctx.fillStyle=p.color; ctx.globalAlpha=p.life*.85; ctx.fill(); ctx.globalAlpha=1;
+    }
+}
+
+window._brainLoopActive = true;
+function loop(){
+    if (!window._brainLoopActive) return;
+    requestAnimationFrame(loop); update(); render();
+}
+
+async function fetchData(){
+    try{
+        var data=await fetch('/brain/data',{credentials:'same-origin'}).then(function(r){return r.json();});
+        buildFromData(data);
+    }catch(e){ if(loading) loading.setAttribute('hidden', ''); }
+}
+
+canvas.addEventListener('mousedown',function(e){ dragging=true; dragX=e.clientX; dragY=e.clientY; dragRY=rotY; dragRX=rotX; canvas.classList.add('ov-grabbing'); });
+window._brainMouseMove = function(e){ if(dragging){ rotY=dragRY+(e.clientX-dragX)*.005; rotX=dragRX+(e.clientY-dragY)*.004; } };
+window._brainMouseUp   = function(){ dragging=false; canvas.classList.remove('ov-grabbing'); };
+window.addEventListener('mousemove', window._brainMouseMove);
+window.addEventListener('mouseup',   window._brainMouseUp);
+canvas.addEventListener('wheel',function(e){ e.preventDefault(); zoom=Math.max(.5,Math.min(3,zoom*(1-e.deltaY*.001))); },{passive:false});
+var _pinchDist0=0, _pinchZoom0=1;
+function _touchDist(tt){ var dx=tt[0].clientX-tt[1].clientX,dy=tt[0].clientY-tt[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+canvas.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+        dragging=false; _pinchDist0=_touchDist(e.touches); _pinchZoom0=zoom;
+    } else {
+        var t=e.touches[0]; dragging=true; dragX=t.clientX; dragY=t.clientY; dragRY=rotY; dragRX=rotX;
+    }
+},{passive:true});
+canvas.addEventListener('touchmove',function(e){
+    if(e.touches.length===2&&_pinchDist0>0){
+        zoom=Math.max(.5,Math.min(3,_pinchZoom0*(_touchDist(e.touches)/_pinchDist0)));
+    } else if(dragging&&e.touches.length===1){
+        var t=e.touches[0]; rotY=dragRY+(t.clientX-dragX)*.005; rotX=dragRX+(t.clientY-dragY)*.004;
+    }
+},{passive:true});
+canvas.addEventListener('touchend',function(){ dragging=false; _pinchDist0=0; });
+
+var _rt;
+window._brainResizeFn = function(){ clearTimeout(_rt); _rt=setTimeout(resize,150); };
+window.addEventListener('resize', window._brainResizeFn);
+
+// Defer initial resize until after browser layout is complete.
+// Double rAF ensures the container has its final dimensions before we
+// measure clientWidth/clientHeight (fixes deformed canvas on SPA re-entry).
+function _startBrain(){
+    resize();
+    // If dimensions were not ready yet (e.g. container still at 0), retry once
+    if(W<10||H<10){ setTimeout(function(){ resize(); },100); }
+    loop();
+    fetchData();
+    window._brainFetchInterval = setInterval(fetchData,60000);
+}
+
+// ResizeObserver keeps canvas in sync whenever the container changes size
+// (sidebar open/close, window resize, SPA reflow)
+if(window.ResizeObserver){
+    window._brainObserver = new ResizeObserver(function(){ clearTimeout(_rt); _rt=setTimeout(resize,80); });
+    window._brainObserver.observe(wrap);
+}
+
+requestAnimationFrame(function(){
+    requestAnimationFrame(_startBrain);
+});
+// ── Toast for quick-action results ────────────────────────────────────────
+(function () {
+    var params = new URLSearchParams(window.location.search);
+    var triggered = params.get('triggered');
+    if (!triggered) return;
+    var ok  = params.get('ok') !== '0';
+    var raw = params.get('msg') || 'Job triggered';
+    var msg;
+    try { msg = decodeURIComponent(raw); } catch(e) { msg = raw; }
+    try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
+    if (window.WaspToast) {
+        WaspToast.show(msg, ok ? 'success' : 'error');
+    }
+})();
+
+// Bind confirm forms — guard ensures only one listener exists across SPA re-entries
+if (!window._ovSubmitBound) {
+    window._ovSubmitBound = true;
+    document.addEventListener('submit', function(e) {
+        var form = e.target.closest('.js-confirm-form');
+        if (!form) return;
+        var msg = form.getAttribute('data-confirm');
+        if (!msg) return;
+        if (form.dataset.ovConfirmed === '1') { form.dataset.ovConfirmed = ''; return; }
+        e.preventDefault();
+        showConfirmModal({ title: 'Confirm Action', message: msg, confirmText: 'Confirm' }).then(function(confirmed) {
+            if (!confirmed) return;
+            form.dataset.ovConfirmed = '1';
+            if (form.requestSubmit) { form.requestSubmit(); }
+            else { form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true})); }
+        });
+    });
+}
+})();
+</script>
+
+
+{% endblock %}

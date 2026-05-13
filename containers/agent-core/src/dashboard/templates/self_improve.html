@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Self-Improve — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+[data-ds="1"] { background:#a78bfa; }
+[data-ds="2"] { background:#a78bfa; }
+[data-ds="3"] { background:#a78bfa20;color:#a78bfa;border:1px solid #a78bfa40; }
+[data-ds="4"] { color:#a78bfa; }
+[data-ds="5"] { background:#a78bfa15;color:#a78bfa; }
+[data-ds="6"] { border-left:3px solid #a78bfa50; }
+[data-ds="7"] { background:#a78bfa15;border:1px solid #a78bfa30; }
+[data-ds="8"] { color:#a78bfa; }
+[data-ds="9"] { background:#F59E0B15;color:#F59E0B; }
+[data-ds="10"] { background:#0d1117;color:#c9d1d9;border:1px solid rgba(255,255,255,0.06);max-height:300px;overflow-y:auto; }
+[data-ds="11"] { background:#10B98118;color:#10B981;border:1px solid #10B98140; }
+[data-ds="12"] { background:#a78bfa10;border:1px solid #a78bfa20; }
+[data-ds="13"] { color:#a78bfa; }
+[data-ds="14"] { background:#10B98115;color:#10B981; }
+[data-ds="15"] { background:#EF444415;color:#EF4444; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <div class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" data-ds="1"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3" data-ds="2"></span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight leading-tight">Self-Improve</h1>
+      <p class="text-xs text-base-content/40 font-mono mt-0.5">Agent-proposed code patches — review before applying</p>
+    </div>
+  </div>
+  <div class="flex gap-2 items-center">
+    {% if proposal_count > 0 %}
+    <span class="text-xs px-2 py-1 rounded-full font-mono font-semibold animate-pulse" data-ds="3">
+      {{ proposal_count }} pending
+    </span>
+    {% endif %}
+    <button id="btn-si-reload" class="btn btn-sm btn-ghost gap-1.5 opacity-60 hover:opacity-100" data-action="wasp:reload">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<!-- Pending Proposals -->
+<div class="mb-5">
+  <div class="flex items-center gap-2 mb-3 px-1">
+    <svg class="h-4 w-4" data-ds="4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    <span class="text-xs font-semibold text-base-content/50 uppercase tracking-widest">Pending Review</span>
+    <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="5">{{ proposal_count }}</span>
+  </div>
+
+  {% if proposals %}
+  <div class="flex flex-col gap-3">
+    {% for p in proposals %}
+    <div class="card bg-base-100 shadow-sm wasp-accent wasp-event-enter" id="proposal-{{ p.id }}"
+         data-ds="6" data-dv="animation-delay:{{ loop.index0*40}}ms">
+      <div class="card-body p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" data-ds="7">
+            <svg class="h-4 w-4" data-ds="8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="font-mono text-sm font-semibold text-base-content/80">{{ p.file or "unknown file" }}</span>
+              <span class="text-xs text-base-content/30 font-mono">{{ p.created_at }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="9">pending</span>
+            </div>
+            <p class="text-xs text-base-content/55 mb-2 leading-relaxed">{{ p.change }}</p>
+            {% if p.diff %}
+            <details class="mt-1">
+              <summary class="text-xs text-base-content/40 cursor-pointer hover:text-base-content/70 font-mono select-none">
+                View diff ({{ p.diff|length }} chars)
+              </summary>
+              <pre class="mt-2 text-xs font-mono p-3 rounded-lg overflow-x-auto leading-relaxed"
+                   data-ds="10">{{ p.diff }}</pre>
+            </details>
+            {% endif %}
+          </div>
+          <div class="flex flex-col gap-1.5 shrink-0">
+            <button class="btn btn-xs gap-1 font-semibold"
+                    data-ds="11"
+                    data-action="si:applyProposal" data-id="{{ p.id }}">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Apply
+            </button>
+            <button class="btn btn-xs btn-ghost text-error opacity-60 hover:opacity-100 gap-1"
+                    data-action="si:rejectProposal" data-id="{{ p.id }}">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-8 text-center">
+      <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" data-ds="12">
+        <svg class="h-6 w-6 opacity-30" data-ds="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <p class="text-sm text-base-content/40">No pending proposals</p>
+      <p class="text-xs text-base-content/25 mt-1">The agent will propose patches here when it detects improvements</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Applied History -->
+<div>
+  <div class="flex items-center gap-2 mb-3 px-1">
+    <svg class="h-4 w-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span class="text-xs font-semibold text-base-content/40 uppercase tracking-widest">Apply History</span>
+    <span class="text-xs text-base-content/20 font-mono">last 25</span>
+  </div>
+  {% if applied_history %}
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-0">
+      <div class="overflow-x-auto">
+        <table class="table table-xs table-dense">
+          <thead>
+            <tr class="bg-base-200/30">
+              <th class="text-xs">Time</th>
+              <th class="text-xs">Action</th>
+              <th class="text-xs">Result</th>
+              <th class="text-xs">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in applied_history %}
+            <tr class="hover:bg-base-200/20">
+              <td class="font-mono text-xs text-base-content/40 whitespace-nowrap">{{ h.timestamp }}</td>
+              <td class="text-xs text-base-content/60 max-w-xs truncate">{{ h.input }}</td>
+              <td class="text-xs text-base-content/50 max-w-xs truncate">{{ h.output }}</td>
+              <td>
+                {% if h.ok %}
+                <span class="text-xs px-1.5 py-0.5 rounded-full" data-ds="14">ok</span>
+                {% else %}
+                <span class="text-xs px-1.5 py-0.5 rounded-full" data-ds="15" title="{{ h.error }}">error</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-xs text-base-content/25 px-1">No history yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function(){
+'use strict';
+
+window.applyProposal = async function(id) {
+  if (!await showConfirmModal({ title: 'Apply Patch', message: 'Apply this patch to the codebase?', confirmText: 'Apply', danger: true })) return;
+  const card = document.getElementById('proposal-' + id);
+  if (card) card.style.opacity = '0.5';
+  try {
+    const r = await fetch('/self-improve/api/' + encodeURIComponent(id) + '/apply', {method:'POST', headers:{'X-CSRF-Token':getCsrf()}});
+    const d = await r.json();
+    if (d.ok) {
+      if (card) { card.style.transition='all 0.4s'; card.style.opacity='0'; setTimeout(()=>card.remove(),400); }
+      showToast('Patch applied to ' + (d.file||'file'), 'success');
+    } else {
+      if (card) card.style.opacity = '1';
+      showToast(d.error || 'Apply failed', 'error');
+    }
+  } catch(e) {
+    if (card) card.style.opacity = '1';
+    showToast('Request failed', 'error');
+  }
+};
+
+window.rejectProposal = async function(id) {
+  if (!await showConfirmModal({ title: 'Reject Proposal', message: 'Reject and discard this proposal?', confirmText: 'Reject', danger: true })) return;
+  const card = document.getElementById('proposal-' + id);
+  if (card) card.style.opacity = '0.5';
+  try {
+    const r = await fetch('/self-improve/api/' + encodeURIComponent(id) + '/reject', {method:'POST', headers:{'X-CSRF-Token':getCsrf()}});
+    const d = await r.json();
+    if (d.ok) {
+      if (card) { card.style.transition='all 0.4s'; card.style.opacity='0'; setTimeout(()=>card.remove(),400); }
+      showToast('Proposal rejected', 'success');
+    } else {
+      if (card) card.style.opacity = '1';
+      showToast(d.error || 'Reject failed', 'error');
+    }
+  } catch(e) {
+    if (card) card.style.opacity = '1';
+    showToast('Request failed', 'error');
+  }
+};
+
+registerWaspActions('si', {
+  'applyProposal':  function(el) { window.applyProposal(el.dataset.id); },
+  'rejectProposal': function(el) { window.rejectProposal(el.dataset.id); },
+});
+})();
+</script>
+{% endblock %}
