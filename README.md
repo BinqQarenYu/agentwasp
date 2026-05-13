@@ -155,6 +155,7 @@ This is a one-paragraph summary, not legal advice — read the full license befo
 
 - Bug reports & feature requests: GitHub issues (use the templates).
 - Security: see [docs/SECURITY.md](docs/SECURITY.md) for responsible disclosure.
+- Other inquiries: **lab@agentwasp.com**
 
 ---
 

@@ -49,7 +49,7 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers at **security@agentwasp.com**. All
+reported to the project maintainers at **lab@agentwasp.com**. All
 complaints will be reviewed and investigated promptly and fairly. Reporter
 identity is kept confidential.
 

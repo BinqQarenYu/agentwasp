@@ -56,7 +56,7 @@ The agent's policy layer (`agent/context.py`, `policy/*`) limits when these run,
 
 ## Responsible disclosure
 
-If you find a vulnerability, please **do not open a public GitHub issue**. Email the maintainer (contact in repo metadata) with:
+If you find a vulnerability, please **do not open a public GitHub issue**. Email **lab@agentwasp.com** with:
 - A description of the issue.
 - Steps to reproduce.
 - The affected commit/version.
