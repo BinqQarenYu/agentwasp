@@ -18,21 +18,30 @@
 
 $ErrorActionPreference = "Stop"
 
+# Force UTF-8 console output so the box-drawing logo (██╗ ╚═╝ etc.) renders
+# correctly on Windows PowerShell 5.1, which defaults to legacy code pages.
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
+
 $WaspInstallUrl = if ($env:WASP_INSTALL_URL) { $env:WASP_INSTALL_URL } else { "https://agentwasp.com/install.sh" }
 $WslDistro       = if ($env:WASP_WSL_DISTRO) { $env:WASP_WSL_DISTRO } else { "Ubuntu" }
 
 # ── UI helpers ────────────────────────────────────────────────────────
 function Write-Logo {
     $logo = @(
-        "       ##    ##  #####  #######  ######",
-        "       ##    ## ##   ## ##       ##   ##",
-        "       ## ## ## ####### #######  ######",
-        "       ######## ##   ## ##   ##  ##",
-        "        ##  ##  ##   ## #######  ##"
+        "       ██╗    ██╗  █████╗  ███████╗ ██████╗ ",
+        "       ██║    ██║ ██╔══██╗ ██╔════╝ ██╔══██╗",
+        "       ██║ █╗ ██║ ███████║ ███████╗ ██████╔╝",
+        "       ██║███╗██║ ██╔══██║ ╚════██║ ██╔═══╝ ",
+        "       ╚███╔███╔╝ ██║  ██║ ███████║ ██║     ",
+        "        ╚══╝╚══╝  ╚═╝  ╚═╝ ╚══════╝ ╚═╝     "
     )
     Write-Host ""
     foreach ($l in $logo) { Write-Host $l -ForegroundColor Yellow }
-    Write-Host "              autonomous agent - self-hosted" -ForegroundColor DarkGray
+    Write-Host "       🐝  autonomous agent · self-hosted" -ForegroundColor DarkGray
+    Write-Host "       🌐  agentwasp.com" -ForegroundColor DarkGray
     Write-Host ""
 }
 function Step($n, $total, $msg) { Write-Host "" ; Write-Host ("[{0}/{1}] {2}" -f $n, $total, $msg) -ForegroundColor Cyan }
