@@ -4,7 +4,7 @@
 
 **A serious agent. Built to evolve.**
 
-Self-hosted autonomous AI agent. Plans, executes, and improves itself — running on infrastructure you own.
+Self-hosted autonomous AI agent. Plans, executes, and improves itself running on infrastructure you own.
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-F5C542?style=flat-square)](LICENSE.md)
 [![Version](https://img.shields.io/badge/version-2.7-F5C542?style=flat-square)](CHANGELOG.md)
