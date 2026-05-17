@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import signal
 
 import structlog
 from telegram import Update
