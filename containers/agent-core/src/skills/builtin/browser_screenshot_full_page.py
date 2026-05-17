@@ -75,7 +75,7 @@ def _capture_frame(driver, session_name: str, chat_id: str = "") -> tuple[str, b
                 raw_bytes = f.read()
             import shutil
             shutil.copy2(saved_path, shared_path)
-        except Exception as e:
+        except Exception:
             return "", b""
 
     # Visual memory: enqueue metadata for the async consumer to process.
@@ -98,7 +98,7 @@ def _capture_frame(driver, session_name: str, chat_id: str = "") -> tuple[str, b
     return saved_path, raw_bytes
 
 
-def _do_screenshot_full_page(
+async def _do_screenshot_full_page(
     url: str,
     session: str,
     wait_ms: int,
@@ -106,7 +106,7 @@ def _do_screenshot_full_page(
     chat_id: str,
     user_id: str,
 ) -> str:
-    """Blocking implementation (runs in thread via asyncio.to_thread)."""
+    """Async implementation without blocking event loop or threads."""
     url = _normalize_url(url)
     if not url:
         return "error: url is required"
@@ -116,26 +116,26 @@ def _do_screenshot_full_page(
 
     # ── Navigation ────────────────────────────────────────────────────────────
     try:
-        driver = _get_driver(session)
-        driver.get(url)
+        driver = await asyncio.to_thread(_get_driver, session)
+        await asyncio.to_thread(driver.get, url)
     except Exception as e:
         return f"error: navigation failed — {e}"
 
-    _wait_for_page(driver)
-    time.sleep(0.8)
+    await asyncio.to_thread(_wait_for_page, driver)
+    await asyncio.sleep(0.8)
 
     # ── Overlay dismissal ─────────────────────────────────────────────────────
-    accepted = _dismiss_overlays(session)
+    accepted = await asyncio.to_thread(_dismiss_overlays, session)
     if accepted:
-        time.sleep(0.8)
+        await asyncio.sleep(0.8)
     # Second pass — some overlays appear after initial JS render
-    _dismiss_overlays(session)
-    time.sleep(0.3)
+    await asyncio.to_thread(_dismiss_overlays, session)
+    await asyncio.sleep(0.3)
 
     # ── Get page title + reset to top ─────────────────────────────────────────
     try:
-        page_title = driver.title or ""
-        page_url = driver.current_url
+        page_title = await asyncio.to_thread(getattr, driver, 'title') or ""
+        page_url = await asyncio.to_thread(getattr, driver, 'current_url')
     except Exception:
         page_title = ""
         page_url = url
@@ -144,14 +144,14 @@ def _do_screenshot_full_page(
         return f"error: browser blocked by anti-bot at {url}"
 
     try:
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(0.3)
+        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
+        await asyncio.sleep(0.3)
     except Exception:
         pass
 
     # ── Determine scroll step ─────────────────────────────────────────────────
     try:
-        vh = driver.execute_script("return window.innerHeight") or 768
+        vh = await asyncio.to_thread(driver.execute_script, "return window.innerHeight") or 768
     except Exception:
         vh = 768
 
@@ -167,15 +167,15 @@ def _do_screenshot_full_page(
         target_y = i * step
 
         try:
-            driver.execute_script(f"window.scrollTo(0, {target_y});")
+            await asyncio.to_thread(driver.execute_script, f"window.scrollTo(0, {target_y});")
         except Exception:
             notes.append(f"scroll failed at position {i}")
             break
 
-        time.sleep(wait_s)  # Wait for lazy-load content (300–800ms)
+        await asyncio.sleep(wait_s)  # Wait for lazy-load content (300–800ms)
 
         # Capture frame
-        saved_path, raw_bytes = _capture_frame(driver, session, chat_id)
+        saved_path, raw_bytes = await asyncio.to_thread(_capture_frame, driver, session, chat_id)
         if not saved_path or not raw_bytes:
             notes.append(f"frame capture failed at position {i}")
             if screenshots:
@@ -197,11 +197,11 @@ def _do_screenshot_full_page(
 
         # Check if we've reached the real page bottom
         try:
-            scroll_top_after = driver.execute_script(
-                "return window.pageYOffset + window.innerHeight"
+            scroll_top_after = await asyncio.to_thread(
+                driver.execute_script, "return window.pageYOffset + window.innerHeight"
             ) or 0
-            current_scroll_h = driver.execute_script(
-                "return document.documentElement.scrollHeight"
+            current_scroll_h = await asyncio.to_thread(
+                driver.execute_script, "return document.documentElement.scrollHeight"
             ) or vh
             if scroll_top_after >= current_scroll_h - 10:
                 break  # Reached bottom — done
@@ -210,7 +210,7 @@ def _do_screenshot_full_page(
 
     # Scroll back to top when done
     try:
-        driver.execute_script("window.scrollTo(0, 0);")
+        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
     except Exception:
         pass
 
@@ -314,8 +314,7 @@ class BrowserScreenshotFullPageSkill(SkillBase):
             scroll_step = 0
 
         try:
-            result = await asyncio.to_thread(
-                _do_screenshot_full_page,
+            result = await _do_screenshot_full_page(
                 url, session, wait_ms, scroll_step, chat_id, user_id,
             )
             # Drain visual-memory queue (filled by sync producer in worker thread)
