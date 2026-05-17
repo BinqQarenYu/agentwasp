@@ -279,7 +279,7 @@
                 <h3 class="font-bold text-base" id="modal-details-title">Configure</h3>
                 <p class="text-xs text-base-content/40 mt-0.5 truncate" id="modal-details-desc">Loading…</p>
             </div>
-            <button data-dialog-close="modal-details" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 flex-shrink-0">✕</button>
+            <button data-dialog-close="modal-details" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 flex-shrink-0" aria-label="Close details modal">✕</button>
         </div>
 
         <!-- Secrets -->
@@ -318,7 +318,7 @@
             <button class="btn btn-sm btn-ghost opacity-60" data-dialog-close="modal-details">Close</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- ── Failures Modal ─────────────────────────────────────────────────────── -->
@@ -329,7 +329,7 @@
                 <h3 class="font-bold text-sm" id="failures-modal-title">Failure Log</h3>
                 <p class="text-xs text-base-content/40 mt-0.5" id="failures-modal-subtitle"></p>
             </div>
-            <button data-dialog-close="modal-failures" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80">✕</button>
+            <button data-dialog-close="modal-failures" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80" aria-label="Close failures modal">✕</button>
         </div>
         <div id="failures-modal-content" class="space-y-2 max-h-72 overflow-y-auto">
             <div class="flex items-center gap-2 text-sm text-base-content/40">
@@ -340,7 +340,7 @@
             <button data-dialog-close="modal-failures" class="btn btn-sm btn-ghost opacity-60">Close</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- ── Delete Secret Confirm Modal ───────────────────────────────────────── -->
@@ -361,7 +361,7 @@
             <button class="btn btn-sm font-semibold" id="btn-confirm-delete-secret" data-action="integrations:doDeleteSecret" data-ds="31">Delete</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <script nonce="{{ request.state.csp_nonce }}">

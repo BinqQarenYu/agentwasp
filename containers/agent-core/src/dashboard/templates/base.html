@@ -517,7 +517,7 @@ setInterval(load,30000);
     <div class="modal-box max-w-sm">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-base">Keyboard Shortcuts</h3>
-            <button class="btn btn-ghost btn-xs btn-circle" id="btn-shortcuts-close" data-action="wasp:closeShortcutsModal">✕</button>
+            <button class="btn btn-ghost btn-xs btn-circle" id="btn-shortcuts-close" data-action="wasp:closeShortcutsModal" aria-label="Close shortcuts modal">✕</button>
         </div>
         <div class="space-y-3 text-sm">
             <div>
@@ -559,7 +559,7 @@ setInterval(load,30000);
             <button id="modal-cg-ok" class="btn btn-sm btn-primary">Confirm</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 <script nonce="{{ request.state.csp_nonce }}">
 window.showConfirmModal = function(opts) {

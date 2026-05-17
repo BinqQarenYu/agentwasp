@@ -377,7 +377,7 @@
                 <p id="ebi-subtitle" class="text-xs text-base-content/40 font-mono"></p>
             </div>
             <form method="dialog" class="ml-auto">
-                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100" aria-label="Close">✕</button>
             </form>
         </div>
         <form id="edit-builtin-form" data-action="skills:saveBuiltinSkill">
@@ -421,7 +421,7 @@
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- ── Reset Confirm Modal ────────────────────────────────────────────────── -->
@@ -452,7 +452,7 @@
             </button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- ── Edit Custom Skill Modal ────────────────────────────────────────────── -->
@@ -470,7 +470,7 @@
                 <p id="ecs-subtitle" class="text-xs text-base-content/40 font-mono"></p>
             </div>
             <form method="dialog" class="ml-auto">
-                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100" aria-label="Close">✕</button>
             </form>
         </div>
 
@@ -512,7 +512,7 @@
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- ── Create Skill Modal ─────────────────────────────────────────────────── -->
@@ -530,7 +530,7 @@
                 <p class="text-xs text-base-content/40">Teach the agent a new capability</p>
             </div>
             <form method="dialog" class="ml-auto">
-                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100">✕</button>
+                <button class="btn btn-sm btn-circle btn-ghost opacity-50 hover:opacity-100" aria-label="Close">✕</button>
             </form>
         </div>
         <form id="create-form" data-action="skills:createSkill">
@@ -564,7 +564,7 @@
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {% endblock %}
