@@ -2433,13 +2433,13 @@ def _detect_api_key(text: str) -> tuple[str, str] | None:
 # Patterns are intentionally strict to avoid false positives on complaint messages
 # (e.g. "el nuevo agente no funciona" should NOT create an agent)
 _AGENT_CREATE_PATTERNS = [
-    # Explicit create verb + "un/una" + agent/bot — requires all three parts
-    re.compile(r"\b(?:crea(?:r|me|lo)?|lanza(?:r)?)\s+(?:un|una)\s+(?:agente|bot|sub.agente|asistente\s+autónomo)\b", re.IGNORECASE),
-    re.compile(r"\b(?:create|spawn|make|launch)\s+(?:a|an)\s+(?:agent|bot|sub.?agent|autonomous\s+assistant)\b", re.IGNORECASE),
-    # "quiero/necesito un agente que..." — must have "que" to indicate purpose
-    re.compile(r"\b(?:quiero|necesito)\s+(?:un|una)\s+(?:agente|bot)\s+que\b", re.IGNORECASE),
+    # Explicit create verb + optional pronoun + optional article + agent/bot — matches "crear agente", "creame un agente", etc.
+    re.compile(r"\b(?:crea(?:r|me|lo|nos)?|lanza(?:r)?)\s+(?:un|una|el|la|mi|otro|otra|nuevo|nueva)?\s*(?:agente|bot|sub.agente|asistente\s+autónomo)\b", re.IGNORECASE),
+    re.compile(r"\b(?:create|spawn|make|launch|provide|give|get|set\s+up)(?:\s+(?:me|us|him|her))?\s+(?:a|an|the|my|our|new|another)?\s*(?:\w+\s+)?(?:agent|bot|sub.?agent|autonomous\s+assistant)\b", re.IGNORECASE),
+    # "quiero/necesito/want/need un agente que..." — must have "que/to/that" to indicate purpose
+    re.compile(r"\b(?:quiero|necesito|want|need)\s+(?:un|una|el|la|mi|otro|otra|a|an|the|my|our|another)?\s*(?:\w+\s+)?(?:agente|bot|agent)\s+(?:que|to|that)\b", re.IGNORECASE),
     # "start an agent" with explicit start intent
-    re.compile(r"\bstart\s+(?:a\s+)?new\s+(?:agent|bot)\b", re.IGNORECASE),
+    re.compile(r"\bstart\s+(?:a\s+|an\s+|the\s+|new\s+|another\s+)?(?:\w+\s+)?(?:agent|bot)\b", re.IGNORECASE),
 ]
 
 # Phrases that veto agent creation even if a pattern matched (complaint/question phrases)

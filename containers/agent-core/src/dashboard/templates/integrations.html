@@ -310,6 +310,20 @@
             </div>
         </div>
 
+        <!-- WhatsApp QR Code Scan -->
+        <div id="modal-whatsapp-qr" class="hidden mb-4 p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60 flex flex-col items-center justify-center text-center">
+            <h4 class="text-xs font-semibold uppercase tracking-widest text-base-content/40 mb-2.5">Link with WhatsApp</h4>
+            <div class="relative w-44 h-44 bg-white p-1.5 rounded-lg shadow-inner cursor-pointer flex items-center justify-center" onclick="reloadWhatsAppQR()" title="Click to refresh QR Code">
+                <img id="whatsapp-qr-image" src="" alt="WhatsApp QR Code" class="w-full h-full object-contain">
+                <div id="whatsapp-qr-loading" class="absolute inset-0 bg-black/75 rounded-lg flex flex-col items-center justify-center text-white text-[0.65rem] gap-1.5 hidden">
+                    <span class="loading loading-spinner loading-sm text-indigo-400"></span>
+                    <span>Pairing session...</span>
+                </div>
+            </div>
+            <p class="text-[0.65rem] text-base-content/40 mt-2.5">Go to WhatsApp Settings &rarr; Linked Devices &rarr; Link a Device to scan.</p>
+            <button class="btn btn-[10px] btn-outline btn-xs mt-3 h-6 min-h-6 px-3" onclick="reloadWhatsAppQR()">Refresh QR Code</button>
+        </div>
+
         <!-- Actions -->
         <div>
             <h4 class="text-xs font-semibold uppercase tracking-widest text-base-content/40 mb-2">Actions</h4>
@@ -493,6 +507,21 @@ async function resetCB(id) {
     } catch(e) { WaspToast.show('Network error', 'error'); }
 }
 
+/* ── WhatsApp QR code reloader ───────────────────────────────────────────── */
+window.reloadWhatsAppQR = function() {
+    var img = document.getElementById('whatsapp-qr-image');
+    var loader = document.getElementById('whatsapp-qr-loading');
+    if (!img) return;
+    if (loader) loader.classList.remove('hidden');
+    img.src = '/integrations/whatsapp-baileys/qr?t=' + Date.now();
+    img.onload = function() {
+        if (loader) loader.classList.add('hidden');
+    };
+    img.onerror = function() {
+        if (loader) loader.classList.add('hidden');
+    };
+};
+
 /* ── Open details modal ──────────────────────────────────────────────────── */
 async function openDetails(id) {
     _currentIntgId = id;
@@ -551,6 +580,17 @@ async function openDetails(id) {
 
         // Google OAuth button
         document.getElementById('modal-oauth-btn').classList.toggle('hidden', id !== 'google-calendar');
+
+        // WhatsApp QR Code Section
+        var qrWrap = document.getElementById('modal-whatsapp-qr');
+        if (qrWrap) {
+            if (id === 'whatsapp-baileys') {
+                qrWrap.classList.remove('hidden');
+                reloadWhatsAppQR();
+            } else {
+                qrWrap.classList.add('hidden');
+            }
+        }
     } catch(e) {
         document.getElementById('modal-details-desc').textContent = 'Failed to load manifest';
     }

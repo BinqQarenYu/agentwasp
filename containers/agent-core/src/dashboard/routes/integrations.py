@@ -475,3 +475,103 @@ async def google_calendar_oauth_callback(request: Request, code: str = "", error
 </body>
 </html>
 """)
+
+
+# ── WhatsApp QR code scan helper ──────────────────────────────────────────
+
+@router.get("/whatsapp-baileys/qr")
+async def get_whatsapp_qr(request: Request):
+    """Fetch the live WhatsApp QR code directly from the self-hosted WAHA bridge."""
+    import httpx
+    from fastapi.responses import Response
+
+    reg = _registry(request)
+    if not reg:
+        return Response("Integration registry not available", status_code=500)
+
+    vault = getattr(reg, "_vault", None) or getattr(reg, "vault", None)
+    if not vault:
+        return Response("Secret vault not available", status_code=500)
+
+    try:
+        secrets = await vault.get_all("whatsapp-baileys")
+    except Exception as exc:
+        return Response(f"Failed to read vault: {exc}", status_code=500)
+
+    api_url = secrets.get("api_url", "").rstrip("/")
+    api_key = secrets.get("api_key", "")
+    session_id = secrets.get("session_id", "")
+
+    if not api_url or not session_id:
+        # User hasn't configured it yet
+        no_config_svg = """
+        <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="24" height="24" rx="3" fill="#18181B" stroke="#27272A" stroke-width="0.5"/>
+            <path d="M12 9V13M12 16H12.01" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+            <text x="12" y="18" font-family="sans-serif" font-size="1.4" fill="#F59E0B" text-anchor="middle">Credentials Required</text>
+            <text x="12" y="20.5" font-family="sans-serif" font-size="1" fill="rgba(255,255,255,0.3)" text-anchor="middle">Enter and save api_url &amp; session_id first</text>
+        </svg>
+        """
+        return Response(no_config_svg, media_type="image/svg+xml")
+
+    headers = {}
+    if api_key:
+        headers["apikey"] = api_key
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # 1. Start the session (idempotent, harmless if already running)
+            try:
+                await client.post(f"{api_url}/api/sessions/{session_id}/start", headers=headers)
+            except Exception:
+                pass
+
+            # 2. Check session status
+            status_r = await client.get(f"{api_url}/api/sessions", headers=headers)
+            status_r.raise_for_status()
+            sessions_list = status_r.json()
+
+            session_data = next((s for s in sessions_list if s.get("name") == session_id), None)
+            if session_data and session_data.get("status") == "CONNECTED":
+                # Session is already paired and linked successfully!
+                connected_svg = """
+                <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="24" height="24" rx="3" fill="#18181B" stroke="#10B981" stroke-width="0.5"/>
+                    <circle cx="12" cy="10" r="4" fill="#10B981" fill-opacity="0.15"/>
+                    <circle cx="12" cy="10" r="3" stroke="#10B981" stroke-width="1.5"/>
+                    <path d="M10.5 10L11.5 11L13.5 9" stroke="#10B981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <text x="12" y="17" font-family="sans-serif" font-size="1.6" font-weight="bold" fill="#10B981" text-anchor="middle">CONNECTED</text>
+                    <text x="12" y="20" font-family="sans-serif" font-size="1" fill="rgba(255,255,255,0.3)" text-anchor="middle">Your WhatsApp is fully linked</text>
+                </svg>
+                """
+                return Response(connected_svg, media_type="image/svg+xml")
+
+            # 3. Retrieve the QR code
+            qr_headers = {**headers, "Accept": "image/png"}
+            qr_r = await client.get(f"{api_url}/api/{session_id}/auth/qr", headers=qr_headers)
+
+            if qr_r.status_code == 200:
+                return Response(qr_r.content, media_type="image/png")
+            else:
+                # If WAHA is still starting the headless browser, return a loading indicator
+                loading_svg = """
+                <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="24" height="24" rx="3" fill="#18181B" stroke="#27272A" stroke-width="0.5"/>
+                    <circle cx="12" cy="11" r="3" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4 2"/>
+                    <text x="12" y="18" font-family="sans-serif" font-size="1.4" fill="#F59E0B" text-anchor="middle">Connecting to WAHA...</text>
+                    <text x="12" y="20.5" font-family="sans-serif" font-size="1" fill="rgba(255,255,255,0.3)" text-anchor="middle">Headless browser starting. Click to reload.</text>
+                </svg>
+                """
+                return Response(loading_svg, media_type="image/svg+xml")
+
+    except Exception as e:
+        error_svg = f"""
+        <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="24" height="24" rx="3" fill="#18181B" stroke="#EF4444" stroke-width="0.5"/>
+            <path d="M12 8V13M12 16H12.01" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+            <text x="12" y="17.5" font-family="sans-serif" font-size="1.3" fill="#EF4444" text-anchor="middle">Connection Failed</text>
+            <text x="12" y="20" font-family="sans-serif" font-size="0.95" fill="rgba(255,255,255,0.3)" text-anchor="middle">Check api_url &amp; container status</text>
+        </svg>
+        """
+        return Response(error_svg, media_type="image/svg+xml")
+
