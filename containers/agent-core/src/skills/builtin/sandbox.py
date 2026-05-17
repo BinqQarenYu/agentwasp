@@ -134,34 +134,44 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
     _sys.meta_path.insert(0, _ImportBlocker())
 
     # ── Filesystem restriction ────────────────────────────────────────────────
-    _SANDBOX_DIR = {sandbox_dir!r}
+    _SANDBOX_DIR = _os.path.realpath({sandbox_dir!r})
     _orig_open = _bi.open
     def _restricted_open(path, *args, **kwargs):
+        if isinstance(path, int):
+            raise PermissionError("Sandbox: opening file descriptors directly is blocked.")
         try:
-            _resolved = _os.path.realpath(str(path))
+            _path_str = _os.fspath(path) if hasattr(_os, "fspath") else path
+            if isinstance(_path_str, bytes):
+                _path_str = _path_str.decode("utf-8")
+            _resolved = _os.path.realpath(str(_path_str))
         except Exception:
-            _resolved = str(path)
-        if not _resolved.startswith(_SANDBOX_DIR):
+            raise PermissionError(f"Sandbox: invalid path {{path!r}}")
+        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
             raise PermissionError(
                 f"Sandbox: file access outside sandbox dir is blocked: {{path!r}}"
             )
-        return _orig_open(path, *args, **kwargs)
+        return _orig_open(_path_str, *args, **kwargs)
     _bi.open = _restricted_open
 
     # Also patch io.open and os.open — both bypass builtins.open at the C level.
     import io as _io
     _io.open = _restricted_open
     _orig_os_open = _os.open
-    def _restricted_os_open(_path, *_a, **_kw):
+    def _restricted_os_open(path, *args, **kwargs):
+        if isinstance(path, int):
+            raise PermissionError("Sandbox: opening file descriptors directly is blocked.")
         try:
-            _resolved = _os.path.realpath(str(_path))
+            _path_str = _os.fspath(path) if hasattr(_os, "fspath") else path
+            if isinstance(_path_str, bytes):
+                _path_str = _path_str.decode("utf-8")
+            _resolved = _os.path.realpath(str(_path_str))
         except Exception:
-            _resolved = str(_path)
-        if not _resolved.startswith(_SANDBOX_DIR):
+            raise PermissionError(f"Sandbox: invalid path {{path!r}}")
+        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
             raise PermissionError(
-                f"Sandbox: os.open blocked outside sandbox dir: {{_path!r}}"
+                f"Sandbox: os.open blocked outside sandbox dir: {{path!r}}"
             )
-        return _orig_os_open(_path, *_a, **_kw)
+        return _orig_os_open(_path_str, *args, **kwargs)
     _os.open = _restricted_os_open
 
     # ── Runtime execution guard ──────────────────────────────────────────────
@@ -349,14 +359,14 @@ async def execute_sandboxed(
         exit_code = proc.returncode
         logger.info(
             "sandbox.exec_success",
-            exit_code=exit_code,
+            exit_code=exit_code if exit_code is not None else -1,
             output_len=len(output),
             mode=mode.value,
         )
         return SandboxResult(
             output=output.strip() if output.strip() else "(no output)",
             error="" if exit_code == 0 else f"Exit code: {exit_code}",
-            exit_code=exit_code,
+            exit_code=exit_code if exit_code is not None else -1,
             sandbox_mode=mode.value,
         )
 
