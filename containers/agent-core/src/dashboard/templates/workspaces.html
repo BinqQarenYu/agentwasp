@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Workspaces (Graphify) - Agent Wasp{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6 animate-fade-in pb-12">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-base-300 pb-4">
+        <div>
+            <h1 class="text-3xl font-bold font-mono tracking-tight text-base-content flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Codebases & Workspaces
+            </h1>
+            <p class="text-base-content/60 mt-2 text-sm max-w-2xl">
+                Manage codebase context natively utilizing Graphify AST extraction. 
+                AgentWasp natively queries this generated JSON graph for complex structural answers.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-primary btn-sm rounded gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Index New Repository
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Codebases -->
+    <div class="grid grid-cols-1 gap-6">
+        <div class="card bg-base-200 shadow-xl border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg font-mono">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    AgentWasp Source
+                    <span class="badge badge-success badge-sm ml-2">Active Context</span>
+                </h2>
+                <div class="flex items-center gap-4 text-xs text-base-content/60 mt-1 mb-4 font-mono">
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                        {% if graph_meta %}{{ graph_meta.root }}{% else %}/app{% endif %}
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        {% if graph_meta %}{{ '{:,}'.format(graph_meta.node_count) }}{% else %}0{% endif %} Nodes
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        {% if graph_meta %}{{ '{:,}'.format(graph_meta.edge_count) }}{% else %}0{% endif %} Edges
+                    </span>
+                </div>
+                
+                <div class="bg-base-300 rounded p-4 border border-base-content/10 font-mono text-sm">
+                    <p class="text-base-content/70 mb-2"><strong>Engine:</strong> AgentWasp Native AST Parser</p>
+                    <p class="text-base-content/70"><strong>Graph Size:</strong> {% if graph_size %}{{ graph_size }} MB{% else %}Not Indexed{% endif %} (JSON Structured Map)</p>
+                </div>
+
+                <div class="card-actions justify-end mt-4">
+                    <a href="/workspaces/visual" class="btn btn-outline btn-sm rounded nav-link">View Visual Graph</a>
+                    <button class="btn btn-secondary btn-sm rounded" onclick="alert('Feature coming soon: Ask a direct semantic question against this graph.')">Query Graph</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

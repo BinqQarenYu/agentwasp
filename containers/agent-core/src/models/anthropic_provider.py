@@ -100,11 +100,21 @@ class AnthropicProvider(LLMProvider):
             "messages": messages,
         }
         if system_text.strip():
-            payload["system"] = system_text.strip()
+            if len(system_text) > 1000:
+                payload["system"] = [
+                    {
+                        "type": "text",
+                        "text": system_text.strip(),
+                        "cache_control": {"type": "ephemeral"}
+                    }
+                ]
+            else:
+                payload["system"] = system_text.strip()
 
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": ANTHROPIC_VERSION,
+            "anthropic-beta": "prompt-caching-2024-07-31",
             "content-type": "application/json",
         }
 

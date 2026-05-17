@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # wasp — beginner-friendly CLI wrapping docker compose for the WASP stack
+
 set -Eeuo pipefail
 
 SCRIPT="$(readlink -f "$0" 2>/dev/null || realpath "$0")"
@@ -19,7 +20,7 @@ require_env() {
 
 cmd_help() {
     ui_logo "self-hosted autonomous agent"
-cat <<EOF
+    cat <<EOF
 ${C_BOLD}wasp${C_RESET} — control the WASP stack
 
   ${C_BOLD}wasp onboard${C_RESET}              Configure Telegram, provider keys, dashboard
@@ -45,9 +46,11 @@ cmd_start() {
     "${COMPOSE[@]}" up -d
     ui_ok "Started — try: ${C_BOLD}wasp status${C_RESET}"
 }
+
 cmd_stop()    { ui_info "Stopping services"; "${COMPOSE[@]}" stop; ui_ok "Stopped"; }
 cmd_restart() { ui_info "Restarting services"; "${COMPOSE[@]}" restart; ui_ok "Restarted"; }
 cmd_status()  { "${COMPOSE[@]}" ps; }
+
 cmd_logs() {
     local svc="${1:-}"
     if [[ -n "$svc" ]]; then
@@ -93,22 +96,20 @@ cmd_backup() {
     mkdir -p "${WASP_DIR}/backups"
     local archive="${WASP_DIR}/backups/wasp-${stamp}.tar.gz"
     local tmpdir; tmpdir="$(mktemp -d)"
-
     ui_info "Backing up to $archive"
-
+    
     # 1. .env (operator credentials + provider keys)
     cp "$ENV_FILE" "${tmpdir}/.env"
-
+    
     # 2. Postgres dump
     "${COMPOSE[@]}" exec -T agent-postgres pg_dump -U agent -d agent \
         --clean --if-exists > "${tmpdir}/postgres.sql" \
         || { ui_err "Postgres dump failed"; rm -rf "$tmpdir"; return 1; }
-
-    # 3. Each named volume → tar.gz inside the archive
-    #    Discover volume names from compose (project-prefixed)
+        
+    # 3. Each named volume — tar.gz inside the archive
     local project; project="$(basename "$WASP_DIR")"
     local -a volumes=("${project}_redis-data" "${project}_postgres-data")
-    # Optional volumes (may not exist on every deploy)
+    
     for v in "${project}_ollama-data" "${project}_core-memory" "${project}_core-logs" \
              "${project}_core-screenshots" "${project}_core-browser-sessions" \
              "${project}_core-uploads"; do
@@ -116,10 +117,10 @@ cmd_backup() {
             volumes+=("$v")
         fi
     done
-
+    
     for vol in "${volumes[@]}"; do
         if docker volume inspect "$vol" >/dev/null 2>&1; then
-            ui_info "  → volume: $vol"
+            ui_info "  — volume: $vol"
             docker run --rm \
                 -v "${vol}:/src:ro" \
                 -v "${tmpdir}:/dst" \
@@ -128,21 +129,21 @@ cmd_backup() {
                 2>/dev/null || ui_warn "  failed to snapshot $vol"
         fi
     done
-
+    
     # 4. Bundle + verify
     tar -czf "$archive" -C "$tmpdir" .
     rm -rf "$tmpdir"
-
-    # 5. Verify the archive is non-trivial and contains expected entries
+    
     if ! tar -tzf "$archive" >/dev/null 2>&1; then
         ui_err "Backup archive is corrupt — removed"; rm -f "$archive"; return 1
     fi
+    
     local entries; entries=$(tar -tzf "$archive" | wc -l)
     if (( entries < 2 )); then
         ui_warn "Backup looks empty ($entries entries)"
     fi
     local size; size=$(du -h "$archive" | cut -f1)
-    ui_ok "Backup → $archive ($size, $entries entries)"
+    ui_ok "Backup — $archive ($size, $entries entries)"
 }
 
 cmd_restore() {
@@ -151,29 +152,28 @@ cmd_restore() {
         ui_err "Usage: wasp restore <archive.tar.gz>"
         return 1
     fi
-    # NOTE: do NOT require_env first — restore must work on a fresh install.
-
+    
     local tmpdir; tmpdir="$(mktemp -d)"
     ui_info "Extracting $archive"
     tar -xzf "$archive" -C "$tmpdir" \
         || { ui_err "Extract failed"; rm -rf "$tmpdir"; return 1; }
-
-    # 1. .env (only if missing — never overwrite a populated .env)
+        
+    # 1. .env
     if [[ -f "${tmpdir}/.env" && ! -f "$ENV_FILE" ]]; then
         cp "${tmpdir}/.env" "$ENV_FILE"
         ui_ok "Restored .env"
     fi
-
+    
     ui_info "Stopping services for atomic restore"
     "${COMPOSE[@]}" stop agent-core agent-telegram agent-broker || true
-
+    
     # 2. Volume restore
     local project; project="$(basename "$WASP_DIR")"
     for tgz in "$tmpdir"/vol-*.tar.gz; do
         [[ -f "$tgz" ]] || continue
         local vol; vol=$(basename "$tgz" .tar.gz | sed 's/^vol-//')
         if docker volume inspect "$vol" >/dev/null 2>&1 || docker volume create "$vol" >/dev/null; then
-            ui_info "  ← volume: $vol"
+            ui_info "  — volume: $vol"
             docker run --rm \
                 -v "${vol}:/dst" \
                 -v "${tgz}:/src.tar.gz:ro" \
@@ -182,16 +182,16 @@ cmd_restore() {
                 2>/dev/null || ui_warn "  failed to restore $vol"
         fi
     done
-
-    # 3. Postgres restore (after agent-postgres comes up — make sure it's running)
+    
+    # 3. Postgres restore
     "${COMPOSE[@]}" up -d agent-postgres
     sleep 4
     if [[ -f "${tmpdir}/postgres.sql" ]]; then
-        ui_info "  ← postgres dump"
+        ui_info "  — postgres dump"
         "${COMPOSE[@]}" exec -T agent-postgres psql -U agent -d agent < "${tmpdir}/postgres.sql" \
             > /dev/null 2>&1 || ui_warn "Postgres restore had errors"
     fi
-
+    
     rm -rf "$tmpdir"
     cmd_restart
     ui_ok "Restore complete"
@@ -211,6 +211,7 @@ cmd_uninstall() {
     ui_warn "This removes containers and (optionally) the install directory."
     read -r -p "Delete data volumes (postgres, redis, /data)? [y/N]: " del_data
     read -r -p "Delete install dir ${WASP_DIR}? [y/N]: " del_dir
+    
     ui_info "Stopping services"
     if [[ "$del_data" =~ ^[Yy]$ ]]; then
         "${COMPOSE[@]}" down -v
@@ -218,6 +219,7 @@ cmd_uninstall() {
     else
         "${COMPOSE[@]}" down
     fi
+    
     sudo rm -f /usr/local/bin/wasp
     if [[ "$del_dir" =~ ^[Yy]$ ]]; then
         sudo rm -rf "$WASP_DIR"

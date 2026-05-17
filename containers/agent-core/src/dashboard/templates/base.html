@@ -171,6 +171,13 @@
                     Integrations
                 </a></li>
 
+                <!-- ── Workspace ───────────────────────────────────────── -->
+                <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">Workspace</span></li>
+                <li><a href="/workspaces" class="nav-link rounded gap-2 py-[1px] {% if '/workspaces' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                    Codebases (Graphify)
+                </a></li>
+
                 <!-- ── System ──────────────────────────────────────────── -->
                 <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">System</span></li>
                 <li><a href="/config" class="nav-link rounded gap-2 py-[1px] {% if request.url.path.startswith('/config') %}active bg-primary/10 text-primary font-semibold{% endif %}">

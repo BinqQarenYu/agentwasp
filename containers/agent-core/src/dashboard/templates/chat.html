@@ -277,7 +277,7 @@
 
     // ── sessionStorage history ────────────────────────────────────────────
     var HISTORY_KEY = 'wasp_chat_v2';
-    var MAX_HISTORY = 30;
+    var MAX_HISTORY = 100;
 
     function loadHistory() {
         try {
@@ -891,6 +891,8 @@
             return {name: a.name, type: a.type, data: data};
         });
 
+        var execMode = localStorage.getItem('wasp_execution_mode') || 'fast';
+
         // Generate unique request_id for this turn — propagated to backend + SSE events
         var _reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
         _currentReqId = _reqId;
@@ -907,7 +909,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': getCsrf(),
             },
-            body: JSON.stringify({text: text, attachments: attPayload, request_id: _reqId}),
+            body: JSON.stringify({text: text, attachments: attPayload, request_id: _reqId, execution_mode: execMode}),
             signal: controller.signal,
         })
         .then(function(response) {

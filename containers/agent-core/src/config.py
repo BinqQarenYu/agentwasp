@@ -1,13 +1,21 @@
 from zoneinfo import ZoneInfo
+import os
+
+from dotenv import load_dotenv
+_repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_env_path = os.path.join(_repo_root, '.env')
+if os.path.exists(_env_path):
+    load_dotenv(_env_path)
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    redis_url: str = "redis://agent-redis:6379/0"
-    database_url: str = ""
-    ollama_base_url: str = "http://agent-ollama:11434"
+    redis_url: str = "redis://localhost:6379/0" if "REDIS_URL" not in os.environ else os.environ["REDIS_URL"]
+    database_url: str = f"postgresql+asyncpg://agent:{os.environ.get('POSTGRES_PASSWORD', '')}@localhost:5432/agent" if "DATABASE_URL" not in os.environ else os.environ["DATABASE_URL"]
+    ollama_base_url: str = "http://localhost:11434" if "OLLAMA_BASE_URL" not in os.environ else os.environ["OLLAMA_BASE_URL"]
+    ollama_model: str = "llama3"
     timezone: str = "America/Santiago"
     openai_api_key: str = ""
     anthropic_api_key: str = ""

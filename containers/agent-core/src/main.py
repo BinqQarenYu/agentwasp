@@ -81,6 +81,8 @@ from .integrations.connectors.platform_ios import IOSBridgeConnector
 from .integrations.connectors.platform_android import AndroidBridgeConnector
 from .integrations.connectors.platform_windows import WindowsBridgeConnector
 from .integrations.connectors.platform_linux import LinuxBridgeConnector
+from .integrations.connectors.google_notebooklm import GoogleNotebookLMConnector
+
 from .health.repair import SelfHealer
 from .health.introspection import Introspector
 from .health.broker_client import BrokerClient
@@ -246,7 +248,11 @@ async def main():
         await seed_initial_memory(memory, session)
 
     # Initialize model manager (local-first with Ollama)
-    model_manager = ModelManager(ollama_base_url=settings.ollama_base_url)
+    model_manager = ModelManager(
+        ollama_base_url=settings.ollama_base_url,
+    )
+    if settings.ollama_model:
+        await model_manager.set_default_model(settings.ollama_model)
 
     # ── Option A: factory-reset symmetry — check NO_REHYDRATE sentinel ────
     # When set by the dashboard's factory reset, this sentinel suppresses
@@ -275,10 +281,19 @@ async def main():
     # When NO_REHYDRATE is set, this is the ONLY source of provider keys.
     try:
         stored_keys = await r.hgetall("apikeys")
+        
+        async def _register(p_name: str, p_key: str):
+            await model_manager.register_provider(p_name, p_key)
+            logger.info("agent_core.api_key_loaded_from_redis", provider=p_name)
+            
+        tasks = []
         for provider_name, api_key in stored_keys.items():
             if api_key:
-                await model_manager.register_provider(provider_name, api_key)
-                logger.info("agent_core.api_key_loaded_from_redis", provider=provider_name)
+                tasks.append(_register(provider_name, api_key))
+                
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            
     except Exception:
         logger.warning("agent_core.redis_apikeys_load_failed")
     finally:
@@ -371,7 +386,10 @@ async def main():
             # Phase 3 — platform bridges
             MacOSBridgeConnector(), IOSBridgeConnector(), AndroidBridgeConnector(),
             WindowsBridgeConnector(), LinuxBridgeConnector(),
+            # New Integrations
+            GoogleNotebookLMConnector(),
         ]:
+
             integration_registry.register(_connector)
         logger.info("agent_core.integrations_initialized", connectors=len(integration_registry.list_integrations()))
 

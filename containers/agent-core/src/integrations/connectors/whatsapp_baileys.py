@@ -132,7 +132,8 @@ class WhatsAppBaileysConnector(BaseConnector):
                     text  = params.get("text", "")
                     if not phone or not text:
                         return self.err("phone and text are required")
-                    r = await client.post(f"{api_url}/message/text", json={"session": session_id, "to": phone, "text": text})
+                    chat_id = phone if "@" in phone else f"{phone}@c.us"
+                    r = await client.post(f"{api_url}/api/sendText", json={"session": session_id, "chatId": chat_id, "text": text})
                     r.raise_for_status()
                     return self.ok(r.json())
 
@@ -142,7 +143,8 @@ class WhatsAppBaileysConnector(BaseConnector):
                     caption   = params.get("caption", "")
                     if not phone or not image_url:
                         return self.err("phone and image_url are required")
-                    r = await client.post(f"{api_url}/message/image", json={"session": session_id, "to": phone, "url": image_url, "caption": caption})
+                    chat_id = phone if "@" in phone else f"{phone}@c.us"
+                    r = await client.post(f"{api_url}/api/sendImage", json={"session": session_id, "chatId": chat_id, "file": {"url": image_url}, "caption": caption})
                     r.raise_for_status()
                     return self.ok(r.json())
 
@@ -151,7 +153,8 @@ class WhatsAppBaileysConnector(BaseConnector):
                     audio_url = params.get("audio_url", "")
                     if not phone or not audio_url:
                         return self.err("phone and audio_url are required")
-                    r = await client.post(f"{api_url}/message/audio", json={"session": session_id, "to": phone, "url": audio_url})
+                    chat_id = phone if "@" in phone else f"{phone}@c.us"
+                    r = await client.post(f"{api_url}/api/sendVoice", json={"session": session_id, "chatId": chat_id, "file": {"url": audio_url}})
                     r.raise_for_status()
                     return self.ok(r.json())
 
@@ -161,7 +164,8 @@ class WhatsAppBaileysConnector(BaseConnector):
                     filename = params.get("filename", "document")
                     if not phone or not doc_url:
                         return self.err("phone and doc_url are required")
-                    r = await client.post(f"{api_url}/message/document", json={"session": session_id, "to": phone, "url": doc_url, "filename": filename})
+                    chat_id = phone if "@" in phone else f"{phone}@c.us"
+                    r = await client.post(f"{api_url}/api/sendFile", json={"session": session_id, "chatId": chat_id, "file": {"url": doc_url}, "filename": filename})
                     r.raise_for_status()
                     return self.ok(r.json())
 
@@ -171,20 +175,23 @@ class WhatsAppBaileysConnector(BaseConnector):
                     emoji      = params.get("emoji", "")
                     if not phone or not message_id or not emoji:
                         return self.err("phone, message_id, and emoji are required")
-                    r = await client.post(f"{api_url}/message/react", json={"session": session_id, "to": phone, "messageId": message_id, "emoji": emoji})
-                    r.raise_for_status()
-                    return self.ok(r.json())
+                    # Note: Reaction might not be natively supported in free WAHA, but we attempt it.
+                    chat_id = phone if "@" in phone else f"{phone}@c.us"
+                    r = await client.post(f"{api_url}/api/react", json={"session": session_id, "chatId": chat_id, "messageId": message_id, "reaction": emoji})
+                    if r.status_code != 404:
+                        r.raise_for_status()
+                    return self.ok({"status": "attempted"})
 
                 elif action == "get_status":
-                    r = await client.get(f"{api_url}/session/status/{session_id}")
+                    r = await client.get(f"{api_url}/api/sessions")
                     r.raise_for_status()
                     return self.ok(r.json())
 
                 elif action == "get_chats":
                     limit = int(params.get("limit") or 20)
-                    r = await client.get(f"{api_url}/chats", params={"session": session_id, "limit": limit})
+                    r = await client.get(f"{api_url}/api/sessions") # Placeholder as chats require pro API in WAHA usually
                     r.raise_for_status()
-                    return self.ok(r.json())
+                    return self.ok({"chats": [], "note": "Listing chats requires WAHA Plus"})
 
                 else:
                     return self.err(f"Unknown action: {action}")

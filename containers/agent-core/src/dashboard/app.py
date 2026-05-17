@@ -159,7 +159,9 @@ def create_app(
     app.include_router(subscriptions_router, prefix="/subscriptions")
     app.include_router(config_center_router, prefix="/config")
     app.include_router(traces_router, prefix="/traces")
-
+    from .routes.workspaces import router as workspaces_router
+    app.include_router(workspaces_router, prefix="/workspaces")
+    
     # Panic Reset
     from .routes.reset import router as reset_router
     app.include_router(reset_router, prefix="/reset")

@@ -62,6 +62,34 @@
         </div>
     </div>
     <div class="flex items-center gap-2">
+        <div class="bg-base-200/50 p-1 rounded-lg border border-base-300 flex items-center">
+            <button id="btn-fast-path" class="btn btn-xs btn-ghost hover:bg-transparent text-success font-bold" onclick="setExecutionMode('fast')">
+                ⚡ Fast Path
+            </button>
+            <button id="btn-quality-path" class="btn btn-xs btn-ghost hover:bg-transparent text-base-content/40" onclick="setExecutionMode('quality')">
+                🏛️ Quality Path
+            </button>
+        </div>
+        <script nonce="{{ request.state.csp_nonce }}">
+            (function() {
+                var mode = localStorage.getItem('wasp_execution_mode') || 'fast';
+                window.setExecutionMode = function(m) {
+                    localStorage.setItem('wasp_execution_mode', m);
+                    var bFast = document.getElementById('btn-fast-path');
+                    var bQual = document.getElementById('btn-quality-path');
+                    if (!bFast || !bQual) return;
+                    if (m === 'quality') {
+                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-base-content/40';
+                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-primary font-bold';
+                    } else {
+                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-success font-bold';
+                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-base-content/40';
+                    }
+                };
+                // Must defer execution slightly until DOM has loaded
+                document.addEventListener('DOMContentLoaded', function() { setExecutionMode(mode); });
+            })();
+        </script>
         <div class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center" id="ov-clock">{{ now }}</div>
         <a href="/brain" class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center hover:bg-primary/10 transition-colors">
             Full Brain

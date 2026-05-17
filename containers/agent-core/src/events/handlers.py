@@ -10697,13 +10697,14 @@ class EventHandler:
         return response_text
 
 
-    async def chat_direct(self, text: str, user_id: str = "dashboard", progress_callback=None, image_path: str | None = None) -> str:
+    async def chat_direct(self, text: str, user_id: str = "dashboard", progress_callback=None, image_path: str | None = None, execution_mode: str = "fast") -> str:
         """Process a message directly (no Telegram bus) — for dashboard chat.
 
         Runs the full agent pipeline: skill auto-detect → context build → LLM loop.
         Returns the final response text.
         progress_callback: optional callable(dict) called with progress events during execution.
         image_path: optional path to an image file for vision-capable models.
+        execution_mode: "fast" (default solo agent) or "quality" (HR Task Force).
         """
         if not self.model_manager.active_model:
             return (
@@ -11789,7 +11790,47 @@ class EventHandler:
             if "SYSTEM_CONSTRAINT: LIGHT_MODE" not in (_lctx_db.pattern_hint or ""):
                 _lctx_db.pattern_hint = (_lctx_db.pattern_hint or "") + _light_hint_db
 
-        response_text = await self._run_llm_loop(_lctx_db)
+        if execution_mode == "quality":
+            try:
+                from ..hr.router import HRRouter
+                from ..hr.executor import TaskForceExecutor
+                
+                hr_router = HRRouter(self.model_manager)
+                tf_executor = TaskForceExecutor(self.model_manager)
+                
+                if progress_callback:
+                    progress_callback({"type": "thinking", "round": 0, "note": "Asignando Task Force de Expertos..."})
+                    
+                task_force = await hr_router.build_task_force(text)
+                
+                if progress_callback:
+                    progress_callback({
+                        "type": "thinking", 
+                        "round": 0, 
+                        "note": f"Ejecutando con {task_force.primary.metadata.name} (Primary) y {task_force.auditor.metadata.name} (Auditor)"
+                    })
+                    
+                async def _primary_exec(primary_msgs):
+                    import copy
+                    _clone = copy.copy(_lctx_db)
+                    _clone.messages = primary_msgs
+                    # Temporarily clear pattern_hint so it doesn't double-trigger if the loop resets
+                    _clone.pattern_hint = ""
+                    # Run the full skill execution loop
+                    return await self._run_llm_loop(_clone)
+                    
+                res = await tf_executor.execute_task(text, task_force, primary_executor=_primary_exec)
+                
+                response_text = res.final_output
+                if not res.success:
+                    response_text += f"\n\n> [!WARNING]\n> **Auditor Feedback (Rejected after {res.revisions_used} revisions):**\n> {res.auditor_feedback}"
+                elif task_force.requires_spec:
+                    response_text += f"\n\n> [!TIP]\n> **Quality Path Success:** Approved by {task_force.auditor.metadata.name}."
+            except Exception as e:
+                logger.error("quality_path.failed", error=str(e))
+                response_text = await self._run_llm_loop(_lctx_db)
+        else:
+            response_text = await self._run_llm_loop(_lctx_db)
         # HIGH-2: Persist confirmed domain lock for next turn.
         if self.redis_url and _lctx_db.active_domain_lock:
             try:

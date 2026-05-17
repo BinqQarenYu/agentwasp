@@ -60,7 +60,27 @@ class _OpenRouterProvider:
 
         model = request.model or self._inner._default_model
         start = time.monotonic()
-        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        messages = []
+        last_sys_idx = -1
+        for i, m in enumerate(request.messages):
+            if m.role == "system":
+                last_sys_idx = i
+                
+        for i, m in enumerate(request.messages):
+            # Apply prompt caching to the final system message block for Anthropic/OpenRouter
+            if i == last_sys_idx and len(m.content) > 1000 and ("claude" in model.lower() or "anthropic" in model.lower()):
+                messages.append({
+                    "role": m.role,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": m.content,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ]
+                })
+            else:
+                messages.append({"role": m.role, "content": m.content})
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
@@ -122,7 +142,9 @@ class ModelManager:
 
     async def initialize(self):
         """Check which providers are available on startup."""
-        for name in self.fallback_order:
+        import asyncio
+        
+        async def _check(name: str):
             provider = self.providers[name]
             healthy = await provider.health_check()
             logger.info(
@@ -131,8 +153,16 @@ class ModelManager:
                 healthy=healthy,
                 models=provider.available_models() if healthy else [],
             )
-            if healthy and not self.active_provider:
-                self.active_provider = name
+            return name, healthy
+
+        tasks = [_check(name) for name in self.fallback_order]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for result in results:
+            if isinstance(result, tuple):
+                name, healthy = result
+                if healthy and not self.active_provider:
+                    self.active_provider = name
 
         # Restore persisted default model
         if self.redis_url:
@@ -227,7 +257,8 @@ class ModelManager:
 
         Includes Compaction Overflow Recovery: if a provider returns a
         context-length error, the message history is automatically compressed
-        and the request is retried before falling back to the next provider.
+        and the request is retried. If a model fails entirely, it tries other 
+        models within the same provider before falling back to the next provider.
         """
         # Set active model on the request if not specified
         if not request.model and self.active_model:
@@ -245,73 +276,123 @@ class ModelManager:
                 logger.warning("model_manager.provider_unhealthy", provider=provider_name)
                 continue
 
-            # On fallback, use the provider's default model instead of the
-            # original (e.g. don't send "deepseek-r1:7b" to OpenAI)
-            if provider_name != self.active_provider:
-                available = provider.available_models()
-                request.model = available[0] if available else original_model
-                logger.info(
-                    "model_manager.fallback",
-                    from_provider=self.active_provider,
-                    to_provider=provider_name,
-                    model=request.model,
-                )
-
-            # Attempt with progressive compaction on overflow
-            for attempt, keep_exchanges in enumerate([None, 4, 2, 1]):
-                if keep_exchanges is not None:
-                    # Compact messages for retry attempts
-                    request.messages = self._compact_messages(original_messages, keep_exchanges)
+            available = provider.available_models()
+            
+            # Build list of models to try for this provider
+            models_to_try = []
+            if provider_name == self.active_provider:
+                models_to_try.append(original_model)
+                for m in available:
+                    if m != original_model:
+                        models_to_try.append(m)
+            else:
+                if available:
+                    models_to_try.extend(available)
                 else:
-                    request.messages = original_messages
+                    models_to_try.append(original_model)
 
-                try:
-                    response = await provider.generate(request)
-                    # Non-blocking economics tracking
-                    try:
-                        from ..observability.economics import economics as _econ
-                        usage = response.usage
-                        if usage:
-                            _econ.record(
-                                model=response.model_used,
-                                provider=provider_name,
-                                prompt_tokens=usage.prompt_tokens,
-                                completion_tokens=usage.completion_tokens,
-                            )
-                    except Exception:
-                        pass
-                    if attempt > 0:
-                        logger.info(
-                            "model_manager.overflow_recovered",
-                            provider=provider_name,
-                            attempt=attempt,
-                            kept_exchanges=keep_exchanges,
-                        )
-                    return response
-
-                except Exception as e:
-                    if self._is_overflow_error(e) and keep_exchanges != 1:
-                        # Context overflow — try again with more aggressive compaction
-                        logger.warning(
-                            "model_manager.overflow_detected",
-                            provider=provider_name,
-                            attempt=attempt,
-                            error=str(e)[:120],
-                        )
-                        continue
+            for current_model in models_to_try:
+                request.model = current_model
+                model_failed = False
+                
+                # Attempt with progressive compaction on overflow
+                for attempt, keep_exchanges in enumerate([None, 4, 2, 1]):
+                    if keep_exchanges is not None:
+                        request.messages = self._compact_messages(original_messages, keep_exchanges)
                     else:
-                        # Non-overflow error or final compaction attempt failed
-                        logger.error(
-                            "model_manager.provider_failed",
-                            provider=provider_name,
-                            error=str(e),
-                        )
-                        self.invalidate_health_cache(provider_name)
-                        request.model = original_model
                         request.messages = original_messages
-                        break  # Move to next provider
 
-        raise RuntimeError("All LLM providers failed. No model available.")
+                    try:
+                        response = await provider.generate(request)
+                        # Non-blocking economics tracking
+                        try:
+                            from ..observability.economics import economics as _econ
+                            usage = response.usage
+                            if usage:
+                                _econ.record(
+                                    model=response.model_used,
+                                    provider=provider_name,
+                                    prompt_tokens=usage.prompt_tokens,
+                                    completion_tokens=usage.completion_tokens,
+                                )
+                        except Exception:
+                            pass
+                        if attempt > 0:
+                            logger.info(
+                                "model_manager.overflow_recovered",
+                                provider=provider_name,
+                                attempt=attempt,
+                                kept_exchanges=keep_exchanges,
+                            )
+                        if provider_name != self.active_provider or current_model != original_model:
+                            logger.info(
+                                "model_manager.fallback_success",
+                                provider=provider_name,
+                                model=current_model,
+                            )
+                        return response
+
+                    except Exception as e:
+                        if self._is_overflow_error(e) and keep_exchanges != 1:
+                            logger.warning(
+                                "model_manager.overflow_detected",
+                                provider=provider_name,
+                                attempt=attempt,
+                                error=str(e)[:120],
+                            )
+                            continue
+                        else:
+                            logger.error(
+                                "model_manager.model_failed",
+                                provider=provider_name,
+                                model=current_model,
+                                error=str(e),
+                            )
+                            model_failed = True
+                            break  # Move to next model
+
+                if model_failed:
+                    continue
+                    
+            # If all models in provider failed, invalidate health cache and try next provider
+            self.invalidate_health_cache(provider_name)
+            
+            # Emergency Auto-Recovery: If Ollama completely exhausted, trigger background wake-up
+            if provider_name == "ollama":
+                import asyncio
+                logger.warning("model_manager.ollama_exhausted", note="Falling back to Google/Cloud. Triggering Ollama Wake-Up sequence.")
+                asyncio.create_task(self._attempt_ollama_wakeup())
+
+        # Restore original request state before raising
+        request.model = original_model
+        request.messages = original_messages
+        raise RuntimeError("All LLM providers and models failed. No model available.")
+
+    async def _attempt_ollama_wakeup(self):
+        """Emergency background routine to wake up Ollama models when exhausted."""
+        import httpx
+        import asyncio
+        
+        ollama = self.providers.get("ollama")
+        if not ollama:
+            return
+            
+        base_url = getattr(ollama, "_base_url", "http://host.docker.internal:11434")
+        
+        # Try a sequence of API hits to wake up the daemon or clear memory
+        for attempt in range(3):
+            await asyncio.sleep(5)
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    # Hitting /api/tags can wake up the daemon if it went to sleep
+                    resp = await client.get(f"{base_url}/api/tags")
+                    if resp.status_code == 200:
+                        logger.info("model_manager.ollama_wakeup_ping_success", attempt=attempt+1)
+                        # Clear health cache so Ollama can be tested again on next request
+                        self.invalidate_health_cache("ollama")
+                        break
+            except Exception as e:
+                logger.error("model_manager.ollama_wakeup_ping_failed", attempt=attempt+1, error=str(e))
 
     def _get_chain(self) -> list[str]:
         """Get provider chain starting with active, then fallbacks."""

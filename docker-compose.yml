@@ -9,6 +9,7 @@ services:
       --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
+      - ./012A_Github:/data/012A_Github
     networks:
       - wasp-net
     healthcheck:
@@ -56,7 +57,7 @@ services:
     environment:
       REDIS_URL: redis://agent-redis:6379/0
       DATABASE_URL: postgresql+asyncpg://agent:${POSTGRES_PASSWORD}@agent-postgres:5432/agent
-      OLLAMA_BASE_URL: http://agent-ollama:11434
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
@@ -90,6 +91,7 @@ services:
       - core-uploads:/data/chat-uploads
       - core-browser-sessions:/data/browser_sessions
       - core-skills:/data/skills
+      - /mnt/f:/mnt/f_drive
       # Docker socket is NOT mounted into agent-core on the public default.
       # The integration-manager skill's auto-restart fallback message tells
       # the operator to run `docker restart <container>` manually after
@@ -139,16 +141,21 @@ services:
     networks:
       - wasp-net
 
-  agent-ollama:
-    # Always starts with the stack — but no models are downloaded by default.
-    # The agent only pulls a model when the user clicks "Install" on the
-    # dashboard /models page (or asks the agent in chat). Image alone is ~1.5GB;
-    # models add 4-8GB each. To disable Ollama entirely on a host, run:
-    #   docker compose stop agent-ollama && docker compose rm -f agent-ollama
-    image: ollama/ollama:latest
+#  agent-ollama:
+#    image: ollama/ollama:latest
+#    restart: unless-stopped
+#    volumes:
+#      - ollama-models:/root/.ollama
+#    networks:
+#      - wasp-net
+
+  agent-waha:
+    image: devlikeapro/waha
     restart: unless-stopped
-    volumes:
-      - ollama-models:/root/.ollama
+    ports:
+      - "3000:3000"
+    environment:
+      - WAHA_WORKER_ID=agentwasp
     networks:
       - wasp-net
 

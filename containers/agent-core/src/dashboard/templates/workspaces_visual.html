@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+
+{% block title %}Graph Visualization - Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style">
+    /* High quality graph custom animations and styles */
+    .links line {
+        transition: stroke 0.25s ease, stroke-width 0.25s ease, stroke-opacity 0.25s ease;
+    }
+    .nodes circle {
+        transition: opacity 0.25s ease, r 0.2s ease, stroke-width 0.2s ease;
+        stroke: var(--b1);
+        stroke-width: 1px;
+        cursor: pointer;
+    }
+    .nodes circle:hover {
+        stroke: #ffffff !important;
+        stroke-width: 2px !important;
+    }
+    .glass-card {
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* Subtle pulsing effect for highlighted nodes */
+    @keyframes pulse-glow {
+        0% { filter: drop-shadow(0 0 2px var(--color-glow)); }
+        50% { filter: drop-shadow(0 0 8px var(--color-glow)); }
+        100% { filter: drop-shadow(0 0 2px var(--color-glow)); }
+    }
+    .glow-active {
+        animation: pulse-glow 2s infinite ease-in-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-[98%] mx-auto h-[calc(100vh-100px)] animate-fade-in flex flex-row gap-4 pb-4">
+    <!-- Graph Canvas Area -->
+    <div class="flex-1 rounded-2xl border border-base-300 bg-base-300/20 backdrop-blur overflow-hidden relative shadow-inner flex flex-col min-w-0">
+        <!-- SVG Container -->
+        <div id="graph-container" class="flex-1 cursor-grab active:cursor-grabbing w-full h-full"></div>
+        
+        <!-- Hover / Node Tooltip -->
+        <div id="node-tooltip" class="absolute hidden bg-base-100/95 backdrop-blur text-base-content p-4 rounded-xl shadow-2xl border border-base-300 font-mono text-xs pointer-events-none z-50"></div>
+        
+        <!-- Legend Overlay -->
+        <div class="absolute bottom-4 left-4 bg-base-100/90 backdrop-blur rounded-xl p-3 text-[11px] font-mono shadow border border-base-300/50 flex flex-wrap gap-4 pointer-events-none select-none">
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#10B981] inline-block shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span> File</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#EC4899] inline-block shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span> Class</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#3B82F6] inline-block shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Function</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span> Library/Import</div>
+        </div>
+        
+        <!-- Canvas Status / Quick Search -->
+        <div class="absolute top-4 left-4 flex gap-2 w-full max-w-sm pointer-events-auto z-20">
+            <div class="relative w-full">
+                <span class="absolute left-2.5 top-2.5 text-base-content/40">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input id="graph-search" type="text" placeholder="Search components..." class="input input-sm input-bordered w-full pl-8 pr-8 rounded-lg bg-base-100/95 backdrop-blur shadow font-mono text-xs focus:ring-1 focus:ring-primary focus:outline-none" />
+                <button id="search-clear" class="absolute right-2.5 top-1.5 text-base-content/40 hover:text-base-content hidden font-mono text-xs">✕</button>
+            </div>
+            <button id="btn-zoom-reset" class="btn btn-sm btn-square btn-bordered bg-base-100/95 backdrop-blur shadow hover:bg-base-200" title="Reset Zoom/Center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 6H16" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Control / Meta Sidebar Panel (Always side-by-side on desktop views) -->
+    <div class="w-80 flex-shrink-0 flex flex-col gap-4">
+        <!-- Default Navigation Control Card -->
+        <div id="sidebar-default" class="card bg-base-200 border border-base-300 shadow-xl flex flex-col h-full">
+            <div class="card-body p-5 flex flex-col justify-between overflow-y-auto">
+                <div class="space-y-6">
+                    <!-- Title & Back Link -->
+                    <div class="flex items-center gap-3 border-b border-base-300/60 pb-3">
+                        <a href="/workspaces" class="btn btn-xs btn-circle btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </a>
+                        <div>
+                            <h2 class="text-sm font-bold font-mono tracking-tight text-base-content uppercase">AST Topology</h2>
+                            <p class="text-[10px] text-base-content/50 font-mono">Index-Driven Dependency Map</p>
+                        </div>
+                    </div>
+
+                    <!-- Filters Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold font-mono text-primary uppercase tracking-wider">Node Visibility</h3>
+                        <div class="space-y-1.5 text-xs font-mono">
+                            <label class="flex items-center justify-between cursor-pointer hover:bg-base-300/40 p-2 rounded-lg transition">
+                                <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.4)]"></span> Files</span>
+                                <input type="checkbox" id="filter-file" checked class="checkbox checkbox-xs checkbox-primary" />
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer hover:bg-base-300/40 p-2 rounded-lg transition">
+                                <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#EC4899] shadow-[0_0_6px_rgba(236,72,153,0.4)]"></span> Classes</span>
+                                <input type="checkbox" id="filter-class" checked class="checkbox checkbox-xs checkbox-primary" />
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer hover:bg-base-300/40 p-2 rounded-lg transition">
+                                <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#3B82F6] shadow-[0_0_6px_rgba(59,130,246,0.4)]"></span> Functions</span>
+                                <input type="checkbox" id="filter-function" checked class="checkbox checkbox-xs checkbox-primary" />
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer hover:bg-base-300/40 p-2 rounded-lg transition">
+                                <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.4)]"></span> Imports / Libraries</span>
+                                <input type="checkbox" id="filter-import" checked class="checkbox checkbox-xs checkbox-primary" />
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Force Parameters controls -->
+                    <div class="space-y-4 pt-4 border-t border-base-300/60">
+                        <h3 class="text-xs font-bold font-mono text-primary uppercase tracking-wider">Simulation Dynamics</h3>
+                        
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-mono text-base-content/60">
+                                <span>Link Distance</span>
+                                <span id="val-distance" class="text-accent">50px</span>
+                            </div>
+                            <input type="range" id="param-distance" min="20" max="150" value="50" class="range range-xs range-accent" />
+                        </div>
+                        
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-mono text-base-content/60">
+                                <span>Repulsion Strength</span>
+                                <span id="val-charge" class="text-accent">-30</span>
+                            </div>
+                            <input type="range" id="param-charge" min="-120" max="-5" value="-30" class="range range-xs range-accent" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Summary info -->
+                <div class="mt-6 pt-4 border-t border-base-300 font-mono text-[10px] text-base-content/40 space-y-1.5">
+                    <div class="flex justify-between"><span>Context Path:</span> <span class="text-base-content/70 font-semibold truncate max-w-[150px]" id="meta-path">/app</span></div>
+                    <div class="flex justify-between"><span>Rendered Nodes:</span> <span class="text-base-content/70 font-semibold" id="meta-nodes">0</span></div>
+                    <div class="flex justify-between"><span>Rendered Edges:</span> <span class="text-base-content/70 font-semibold" id="meta-edges">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node Selection Details Card (Hidden by default) -->
+        <div id="sidebar-detail" class="card bg-base-200 border border-base-300 shadow-xl flex flex-col h-full hidden glass-card">
+            <div class="card-body p-5 flex flex-col justify-between h-full overflow-y-auto">
+                <div class="space-y-5">
+                    <!-- Title area with back to index button -->
+                    <div class="flex justify-between items-start border-b border-base-300/60 pb-3">
+                        <div class="max-w-[75%]">
+                            <span id="detail-type" class="badge badge-sm font-mono font-semibold uppercase mb-1">class</span>
+                            <h2 id="detail-name" class="text-base font-bold font-mono tracking-tight text-base-content truncate">ClassName</h2>
+                        </div>
+                        <button id="btn-detail-close" class="btn btn-xs btn-circle btn-ghost" title="Clear selection">✕</button>
+                    </div>
+
+                    <!-- Meta information -->
+                    <div class="space-y-2.5 text-xs font-mono">
+                        <div class="space-y-0.5">
+                            <span class="text-[9px] text-base-content/50 uppercase">Location / Path</span>
+                            <div id="detail-path" class="text-xs text-base-content/80 break-all bg-base-300/40 p-2 rounded-lg border border-base-300/40 select-all">src/foo.py</div>
+                        </div>
+                        <div id="detail-line-wrap" class="flex justify-between items-center py-1 border-b border-base-300/20">
+                            <span class="text-[9px] text-base-content/50 uppercase">Line Number</span>
+                            <span id="detail-line" class="text-accent font-semibold">42</span>
+                        </div>
+                    </div>
+
+                    <!-- Connections Section -->
+                    <div class="space-y-3 pt-2">
+                        <h3 class="text-xs font-bold font-mono text-primary uppercase tracking-wider">Topology Ties</h3>
+                        <div class="max-h-[160px] overflow-y-auto space-y-2 pr-1" id="detail-connections">
+                            <!-- Dynamically loaded list of nodes linked to this -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button Block -->
+                <div class="mt-6 pt-4 border-t border-base-300 space-y-2">
+                    <button id="btn-detail-focus" class="btn btn-sm btn-outline btn-accent rounded-lg w-full gap-2 font-mono text-xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Focus Canvas
+                    </button>
+                    <a id="btn-detail-ask" href="/chat" class="btn btn-sm btn-primary rounded-lg w-full gap-2 font-mono text-xs nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Ask Wasp About Node
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/d3.min.js" nonce="{{ request.state.csp_nonce }}"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+function initGraph() {
+    // Wait for D3 library loading
+    if (typeof d3 === 'undefined') {
+        setTimeout(initGraph, 100);
+        return;
+    }
+
+    const container = document.getElementById('graph-container');
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+    
+    // Clear initial content
+    container.innerHTML = "";
+    
+    // Setup D3 Canvas SVG
+    const svg = d3.select("#graph-container").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("class", "w-full h-full select-none");
+        
+    const g = svg.append("g");
+    
+    // Smooth Zooming Configuration
+    const zoom = d3.zoom()
+        .scaleExtent([0.05, 5])
+        .on("zoom", (e) => {
+            g.attr("transform", e.transform);
+        });
+    svg.call(zoom);
+    
+    const tooltip = d3.select("#node-tooltip");
+    
+    // Define Color Maps for Premium aesthetic
+    const colorMap = {
+        "file": "#10B981",       // vibrant emerald
+        "class": "#EC4899",      // neon pink
+        "function": "#3B82F6",   // electric blue
+        "import": "#F59E0B"      // warm amber
+    };
+    
+    const badgeColors = {
+        "file": "badge-success text-success-content bg-[#10B981]/20 border-[#10B981]/30",
+        "class": "badge-secondary text-secondary-content bg-[#EC4899]/20 border-[#EC4899]/30",
+        "function": "badge-info text-info-content bg-[#3B82F6]/20 border-[#3B82F6]/30",
+        "import": "badge-warning text-warning-content bg-[#F59E0B]/20 border-[#F59E0B]/30"
+    };
+
+    // Shared State Data Variables
+    let allNodes = [];
+    let allEdges = [];
+    let filteredNodes = [];
+    let filteredEdges = [];
+    let selectedNode = null;
+    
+    // Fetch Graph Topology
+    fetch("/workspaces/graph.json")
+        .then(r => r.json())
+        .then(data => {
+            const rawNodes = data.nodes || [];
+            const rawEdges = data.edges || [];
+            
+            // Build direct lookup dictionary for explicit nodes
+            const nodeMap = new Map();
+            rawNodes.forEach(n => nodeMap.set(n.id, n));
+            
+            // Dynamic External Dependency Identification:
+            // Auto-scaffold virtual nodes for imported packages to satisfy links beautifully
+            rawEdges.forEach(e => {
+                if (!nodeMap.has(e.target)) {
+                    const virtualNode = {
+                        id: e.target,
+                        type: "import",
+                        name: e.target,
+                        path: `External Library Target: ${e.target}`,
+                        is_external: true
+                    };
+                    rawNodes.push(virtualNode);
+                    nodeMap.set(e.target, virtualNode);
+                }
+            });
+            
+            allNodes = rawNodes;
+            allEdges = rawEdges;
+            
+            // Populate meta header
+            if (data.metadata) {
+                document.getElementById("meta-path").textContent = data.metadata.root || "/app";
+            }
+            
+            // Perform Initial Draw
+            updateGraph();
+            
+        }).catch(err => {
+            console.error("D3 loading crash:", err);
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full p-8 font-mono text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-error mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="text-error font-bold mb-1">Failed to Load Graph Data</div>
+                    <div class="text-base-content/40 text-xs max-w-sm">${err.message || err}</div>
+                </div>`;
+        });
+        
+    // D3 Forces & Simulation Manager
+    let simulation = d3.forceSimulation()
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collide", d3.forceCollide().radius(d => d.type === 'file' ? 14 : 10))
+        .force("x", d3.forceX(width / 2).strength(0.04))
+        .force("y", d3.forceY(height / 2).strength(0.04));
+        
+    // Simulation rendering components
+    let linkGroup = g.append("g").attr("class", "links");
+    let nodeGroup = g.append("g").attr("class", "nodes");
+    
+    // Core Rendering Coordinator
+    function updateGraph() {
+        // 1. Gather Filter States
+        const showFile = document.getElementById("filter-file").checked;
+        const showClass = document.getElementById("filter-class").checked;
+        const showFunc = document.getElementById("filter-function").checked;
+        const showImport = document.getElementById("filter-import").checked;
+        const searchVal = document.getElementById("graph-search").value.toLowerCase();
+        
+        // Auto-disable filters or filter size rules if workspace is gigantic
+        // to prevent hairball overload while maintaining performance
+        const allowedTypes = new Set();
+        if (showFile) allowedTypes.add("file");
+        if (showClass) allowedTypes.add("class");
+        if (showFunc) allowedTypes.add("function");
+        if (showImport) allowedTypes.add("import");
+        
+        // 2. Perform Node Filtering
+        filteredNodes = allNodes.filter(n => {
+            const matchesType = allowedTypes.has(n.type);
+            const matchesSearch = !searchVal || 
+                n.name.toLowerCase().includes(searchVal) || 
+                (n.path && n.path.toLowerCase().includes(searchVal)) ||
+                n.id.toLowerCase().includes(searchVal);
+                
+            return matchesType && matchesSearch;
+        });
+        
+        // 3. Perform Edge Filtering (only keep edges where both nodes are visible)
+        const visibleIds = new Set(filteredNodes.map(n => n.id));
+        filteredEdges = allEdges.filter(e => {
+            return visibleIds.has(e.source.id || e.source) && visibleIds.has(e.target.id || e.target);
+        });
+        
+        // Map edges to references for D3 engine
+        const linkData = filteredEdges.map(e => ({
+            source: e.source.id || e.source,
+            target: e.target.id || e.target,
+            type: e.type
+        }));
+        
+        // Update stats
+        document.getElementById("meta-nodes").textContent = filteredNodes.length;
+        document.getElementById("meta-edges").textContent = filteredEdges.length;
+        
+        // 4. Update Simulation Data
+        simulation.nodes(filteredNodes);
+        
+        // Fetch current param sliders
+        const linkDistance = +document.getElementById("param-distance").value;
+        const repulsion = +document.getElementById("param-charge").value;
+        
+        simulation.force("link", d3.forceLink(linkData).id(d => d.id).distance(linkDistance))
+            .force("charge", d3.forceManyBody().strength(repulsion));
+            
+        simulation.alpha(0.6).restart();
+        
+        // 5. Update SVG DOM Elements
+        // A. Draw Links
+        const linkSelection = linkGroup.selectAll("line")
+            .data(linkData, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+            
+        linkSelection.exit().remove();
+        
+        const linkEnter = linkSelection.enter().append("line")
+            .attr("stroke", d => d.type === 'contains' ? "#555" : "oklch(var(--a)/0.25)")
+            .attr("stroke-opacity", d => d.type === 'contains' ? 0.35 : 0.25)
+            .attr("stroke-dasharray", d => d.type === 'contains' ? "none" : "3,3")
+            .attr("stroke-width", 1);
+            
+        const currentLinks = linkEnter.merge(linkSelection);
+        
+        // B. Draw Nodes
+        const nodeSelection = nodeGroup.selectAll("circle")
+            .data(filteredNodes, d => d.id);
+            
+        nodeSelection.exit().remove();
+        
+        const nodeEnter = nodeSelection.enter().append("circle")
+            .attr("r", d => d.type === 'file' ? 9 : (d.type === 'class' ? 6.5 : (d.type === 'function' ? 4.5 : 5.5)))
+            .attr("fill", d => colorMap[d.type] || "#888")
+            .attr("opacity", 0.95)
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+                
+        const currentNodes = nodeEnter.merge(nodeSelection);
+        
+        // Build Neighbor dict for quick highlighting lookup
+        const adjacentDict = {};
+        linkData.forEach(e => {
+            const sId = e.source.id || e.source;
+            const tId = e.target.id || e.target;
+            if (!adjacentDict[sId]) adjacentDict[sId] = new Set();
+            if (!adjacentDict[tId]) adjacentDict[tId] = new Set();
+            adjacentDict[sId].add(tId);
+            adjacentDict[tId].add(sId);
+        });
+        
+        // Dynamic Interactivity: Hover Highlights & Tooltips
+        currentNodes.on("mouseover", (event, d) => {
+            tooltip.style("display", "block")
+                .html(`
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full inline-block" style="background:${colorMap[d.type]};"></span><strong>${d.name}</strong></div>
+                        <div class="opacity-50 text-[10px] uppercase">${d.type}</div>
+                        ${d.file || d.path ? `<div class="text-[10px] text-base-content/40 truncate max-w-[200px] border-t border-base-300/30 pt-1 mt-1">${d.file || d.path}</div>` : ''}
+                    </div>
+                `);
+            
+            // Highlight connections on active hover state
+            const neighbors = adjacentDict[d.id] || new Set();
+            currentNodes.style("opacity", n => (n.id === d.id || neighbors.has(n.id)) ? 1.0 : 0.15);
+            currentLinks.style("stroke-opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 0.95 : 0.05)
+                .attr("stroke", l => (l.source.id === d.id || l.target.id === d.id) ? colorMap[d.type] : "#555")
+                .attr("stroke-width", l => (l.source.id === d.id || l.target.id === d.id) ? 2 : 1);
+        })
+        .on("mousemove", (event) => {
+            tooltip.style("left", (event.pageX + 15) + "px")
+                   .style("top", (event.pageY - 15) + "px");
+        })
+        .on("mouseout", () => {
+            tooltip.style("display", "none");
+            
+            // Restore default states
+            currentNodes.style("opacity", 0.95);
+            currentLinks.style("stroke-opacity", d => d.type === 'contains' ? 0.35 : 0.25)
+                .attr("stroke", d => d.type === 'contains' ? "#555" : "oklch(var(--a)/0.25)")
+                .attr("stroke-width", 1);
+        })
+        .on("click", (event, d) => {
+            event.stopPropagation();
+            showNodeDetails(d, adjacentDict);
+        });
+        
+        // Simulation Tick Updates
+        simulation.on("tick", () => {
+            currentLinks
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+                
+            currentNodes
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+        });
+    }
+    
+    // Detailed Topology Analyst side-drawer display
+    function showNodeDetails(d, adjDict) {
+        selectedNode = d;
+        
+        // Glow Node target
+        d3.selectAll("circle")
+            .classed("glow-active", false)
+            .style("stroke", null);
+            
+        d3.selectAll("circle")
+            .filter(n => n.id === d.id)
+            .classed("glow-active", true)
+            .style("stroke", "#ffffff")
+            .style("stroke-width", "2px")
+            .style("--color-glow", colorMap[d.type]);
+
+        // Swap Sidebars
+        document.getElementById("sidebar-default").classList.add("hidden");
+        const sidebarDetail = document.getElementById("sidebar-detail");
+        sidebarDetail.classList.remove("hidden");
+        
+        // Populate node details
+        document.getElementById("detail-name").textContent = d.name;
+        
+        const typeBadge = document.getElementById("detail-type");
+        typeBadge.className = `badge badge-sm font-mono font-semibold uppercase mb-1 ${badgeColors[d.type]}`;
+        typeBadge.textContent = d.type;
+        
+        const pathEl = document.getElementById("detail-path");
+        const relPath = d.file || d.path || d.id;
+        pathEl.textContent = relPath;
+        
+        const lineWrap = document.getElementById("detail-line-wrap");
+        if (d.line) {
+            lineWrap.classList.remove("hidden");
+            document.getElementById("detail-line").textContent = d.line;
+        } else {
+            lineWrap.classList.add("hidden");
+        }
+        
+        // Prefill ask wasp button
+        const askBtn = document.getElementById("btn-detail-ask");
+        askBtn.onclick = (e) => {
+            e.preventDefault();
+            // Inject query into chat storage to auto-load inside chat.html
+            localStorage.setItem("wasp_prefill_query", `Explain the structure and responsibilities of the ${d.type} "${d.name}" located in \`${relPath}\`.`);
+            window.location.href = "/chat";
+        };
+        
+        // Centering Zoom event wire-up
+        document.getElementById("btn-detail-focus").onclick = () => {
+            centerOnNode(d);
+        };
+        
+        // Build linked neighbors view list
+        const connContainer = document.getElementById("detail-connections");
+        connContainer.innerHTML = "";
+        
+        // Scan nodes connected to d
+        const neighborSet = adjDict[d.id] || new Set();
+        const connections = allNodes.filter(n => neighborSet.has(n.id));
+        
+        if (connections.length === 0) {
+            connContainer.innerHTML = `<div class="text-[10px] text-base-content/40 font-mono italic">No adjacent connections in current view.</div>`;
+        } else {
+            connections.forEach(connNode => {
+                const item = document.createElement("div");
+                item.className = "flex items-center justify-between p-1.5 rounded bg-base-100 border border-base-300 hover:border-accent/40 cursor-pointer transition duration-150";
+                item.innerHTML = `
+                    <span class="text-[11px] font-mono truncate max-w-[150px] flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background:${colorMap[connNode.type]};"></span>
+                        ${connNode.name}
+                    </span>
+                    <span class="text-[9px] font-mono text-base-content/40 capitalize">${connNode.type}</span>
+                `;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    showNodeDetails(connNode, adjDict);
+                    centerOnNode(connNode);
+                };
+                connContainer.appendChild(item);
+            });
+        }
+    }
+    
+    // Zoom Reset
+    function resetZoom() {
+        svg.transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity);
+    }
+    
+    // Smooth zoom centering on specific node
+    function centerOnNode(d) {
+        const scale = 1.35;
+        const tx = width / 2 - d.x * scale;
+        const ty = height / 2 - d.y * scale;
+        
+        svg.transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    }
+    
+    // Close Selection details panel
+    function closeNodeDetails() {
+        selectedNode = null;
+        d3.selectAll("circle")
+            .classed("glow-active", false)
+            .style("stroke", null);
+            
+        document.getElementById("sidebar-detail").classList.add("hidden");
+        document.getElementById("sidebar-default").classList.remove("hidden");
+    }
+    
+    // Drag behaviors
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+    
+    // Wire up event listeners
+    document.getElementById("filter-file").addEventListener("change", updateGraph);
+    document.getElementById("filter-class").addEventListener("change", updateGraph);
+    document.getElementById("filter-function").addEventListener("change", updateGraph);
+    document.getElementById("filter-import").addEventListener("change", updateGraph);
+    
+    // Search input controls
+    const searchInput = document.getElementById("graph-search");
+    const clearBtn = document.getElementById("search-clear");
+    
+    searchInput.addEventListener("input", (e) => {
+        const val = e.target.value;
+        if (val) {
+            clearBtn.classList.remove("hidden");
+        } else {
+            clearBtn.classList.add("hidden");
+        }
+        updateGraph();
+        
+        // Auto Focus search target node if it is a single exact match
+        if (filteredNodes.length === 1) {
+            centerOnNode(filteredNodes[0]);
+        }
+    });
+    
+    clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        clearBtn.classList.add("hidden");
+        updateGraph();
+    });
+    
+    // Physics sliders
+    const distInput = document.getElementById("param-distance");
+    const distVal = document.getElementById("val-distance");
+    distInput.addEventListener("input", (e) => {
+        const v = e.target.value;
+        distVal.textContent = `${v}px`;
+        updateGraph();
+    });
+    
+    const chargeInput = document.getElementById("param-charge");
+    const chargeVal = document.getElementById("val-charge");
+    chargeInput.addEventListener("input", (e) => {
+        const v = e.target.value;
+        chargeVal.textContent = v;
+        updateGraph();
+    });
+    
+    // View Resets & Closes
+    document.getElementById("btn-zoom-reset").onclick = resetZoom;
+    document.getElementById("btn-detail-close").onclick = closeNodeDetails;
+    svg.on("click", closeNodeDetails);
+    
+    // Handle Window Resize dynamically
+    window.addEventListener("resize", () => {
+        width = container.clientWidth;
+        height = container.clientHeight;
+        svg.attr("width", width).attr("height", height);
+        simulation.force("center", d3.forceCenter(width / 2, height / 2));
+        simulation.alpha(0.3).restart();
+    });
+}
+
+// Kick off
+initGraph();
+</script>
+{% endblock %}
