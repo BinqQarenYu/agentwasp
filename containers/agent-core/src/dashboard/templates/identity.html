@@ -391,7 +391,7 @@
             <button id="btn-do-reset" class="btn btn-sm font-semibold" data-action="identity:doReset" data-ds="48">Reset to Default</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- Rollback confirmation modal -->
@@ -414,7 +414,7 @@
             <button id="btn-rollback-confirm" class="btn btn-sm font-semibold" data-action="identity:doRollback" data-ds="53">Rollback</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 <!-- Raw JSON modal -->
@@ -422,7 +422,7 @@
     <div class="modal-box max-w-xl" data-ds="54">
         <div class="flex items-center justify-between mb-3">
             <h3 class="font-bold text-sm">Compiled Identity Metadata</h3>
-            <button data-dialog-close="raw-json-modal" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80">✕</button>
+            <button data-dialog-close="raw-json-modal" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80" aria-label="Close raw JSON modal">✕</button>
         </div>
         <pre class="text-xs rounded-lg p-4 overflow-x-auto leading-relaxed font-mono" data-ds="55">{{ compiled | tojson(indent=2) if compiled else '{}' }}</pre>
         <div class="modal-action mt-3">
@@ -431,7 +431,7 @@
             </form>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {% endblock %}
