@@ -422,7 +422,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button data-dialog-close="modal-templates" class="btn btn-ghost btn-sm">Close</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 {% endif %}
 
@@ -440,7 +440,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-save-template" class="btn btn-primary btn-sm" data-action="goals:submitSaveTemplate">Save Template</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {# ── Cancel Goal Modal ────────────────────────────────────────────────────── #}
@@ -453,7 +453,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-cancel-goal" class="btn btn-warning btn-sm" data-action="goals:execCancelGoal">Cancel Goal</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {# ── Delete Goal Modal ────────────────────────────────────────────────────── #}
@@ -466,7 +466,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-delete-goal" class="btn btn-error btn-sm" data-action="goals:execDeleteGoal">Delete</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {# ── Delete Template Modal ────────────────────────────────────────────────── #}
@@ -479,7 +479,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-delete-template" class="btn btn-error btn-sm" data-action="goals:execDeleteTemplate">Delete</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
 {# ── Create Goal Modal ────────────────────────────────────────────────────── #}
@@ -554,7 +554,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-create-goal" class="btn btn-primary btn-sm btn-glow" data-action="goals:submitCreate">Create & Plan</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 {% endif %}
 

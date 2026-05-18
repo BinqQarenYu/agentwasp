@@ -140,13 +140,14 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
         if isinstance(path, int):
             raise PermissionError("Sandbox: opening file descriptors directly is blocked.")
         try:
-            _path_str = _os.fspath(path) if hasattr(_os, "fspath") else path
-            if isinstance(_path_str, bytes):
-                _path_str = _path_str.decode("utf-8")
-            _resolved = _os.path.realpath(str(_path_str))
+            _p = _os.fsdecode(path)
+        except TypeError:
+            _p = str(path)
+        try:
+            _resolved = _os.path.realpath(_p)
         except Exception:
-            raise PermissionError(f"Sandbox: invalid path {{path!r}}")
-        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
+            _resolved = _os.path.abspath(_p)
+        if not _resolved.startswith(_SANDBOX_DIR):
             raise PermissionError(
                 f"Sandbox: file access outside sandbox dir is blocked: {{path!r}}"
             )
@@ -161,13 +162,14 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
         if isinstance(path, int):
             raise PermissionError("Sandbox: opening file descriptors directly is blocked.")
         try:
-            _path_str = _os.fspath(path) if hasattr(_os, "fspath") else path
-            if isinstance(_path_str, bytes):
-                _path_str = _path_str.decode("utf-8")
-            _resolved = _os.path.realpath(str(_path_str))
+            _p = _os.fsdecode(_path)
+        except TypeError:
+            _p = str(_path)
+        try:
+            _resolved = _os.path.realpath(_p)
         except Exception:
-            raise PermissionError(f"Sandbox: invalid path {{path!r}}")
-        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
+            _resolved = _os.path.abspath(_p)
+        if not _resolved.startswith(_SANDBOX_DIR):
             raise PermissionError(
                 f"Sandbox: os.open blocked outside sandbox dir: {{path!r}}"
             )
