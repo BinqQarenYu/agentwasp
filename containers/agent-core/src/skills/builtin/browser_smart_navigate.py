@@ -185,8 +185,8 @@ def _take_screenshot(driver, session_name: str, chat_id: str = "") -> str:
         from .browser import _visual_memory_queue as _vmq
         _vmq.put_nowait({
             "file_path": saved_path,
-            "url": driver.current_url,
-            "page_title": driver.title or "",
+            "url": getattr(driver, 'current_url', ''),
+            "page_title": getattr(driver, 'title', '') or "",
             "description": "smart_navigate scroll frame",
             "tags": ["browser", "smart_navigate", "scroll"],
             "chat_id": chat_id,
@@ -197,7 +197,7 @@ def _take_screenshot(driver, session_name: str, chat_id: str = "") -> str:
     return saved_path
 
 
-def _do_smart_navigate(
+async def _do_smart_navigate(
     url: str,
     session: str,
     click_load_more: bool,
@@ -222,23 +222,23 @@ def _do_smart_navigate(
 
     # ── Navigation ─────────────────────────────────────────────────────────────
     try:
-        driver = _get_driver(session)
-        driver.get(url)
+        driver = await asyncio.to_thread(_get_driver, session)
+        await asyncio.to_thread(driver.get, url)
     except Exception as e:
         return json.dumps({"status": "error", "error": f"navigation failed: {e}"})
 
-    _wait_for_page(driver)
-    time.sleep(0.8)
+    await asyncio.to_thread(_wait_for_page, driver)
+    await asyncio.sleep(0.8)
 
     # ── Overlay dismissal ───────────────────────────────────────────────────────
-    _dismiss_overlays(session)
-    time.sleep(0.5)
-    _dismiss_overlays(session)  # second pass — some banners load after JS renders
-    time.sleep(0.3)
+    await asyncio.to_thread(_dismiss_overlays, session)
+    await asyncio.sleep(0.5)
+    await asyncio.to_thread(_dismiss_overlays, session)  # second pass — some banners load after JS renders
+    await asyncio.sleep(0.3)
 
     try:
-        final_url = driver.current_url
-        final_title = driver.title or ""
+        final_url = await asyncio.to_thread(getattr, driver, 'current_url')
+        final_title = await asyncio.to_thread(getattr, driver, 'title') or ""
     except Exception:
         final_url = url
         final_title = ""
@@ -252,14 +252,14 @@ def _do_smart_navigate(
 
     # ── Scroll to top ───────────────────────────────────────────────────────────
     try:
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(0.3)
+        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
+        await asyncio.sleep(0.3)
     except Exception:
         pass
 
     # ── Initial metrics ─────────────────────────────────────────────────────────
     try:
-        m = driver.execute_script(_SCROLL_METRICS_JS)
+        m = await asyncio.to_thread(driver.execute_script, _SCROLL_METRICS_JS)
         vh = m.get("innerHeight") or 768
         scroll_height = m.get("scrollHeight") or vh
     except Exception:
@@ -282,23 +282,23 @@ def _do_smart_navigate(
 
         # ── Capture BEFORE scroll (shows what was visible at this position) ───
         if capture:
-            path = _take_screenshot(driver, session, chat_id)
+            path = await asyncio.to_thread(_take_screenshot, driver, session, chat_id)
             if path:
                 screenshots.append(path)
 
         # ── Scroll by viewport height ─────────────────────────────────────────
         target_y = step * step_px
         try:
-            driver.execute_script(f"window.scrollTo(0, {target_y});")
+            await asyncio.to_thread(driver.execute_script, f"window.scrollTo(0, {target_y});")
         except Exception:
             stop_reason = "scroll_error"
             break
 
-        time.sleep(wait_s)  # wait for lazy-loaded content (300–800 ms)
+        await asyncio.sleep(wait_s)  # wait for lazy-loaded content (300–800 ms)
 
         # ── Re-read metrics after wait ────────────────────────────────────────
         try:
-            m = driver.execute_script(_SCROLL_METRICS_JS)
+            m = await asyncio.to_thread(driver.execute_script, _SCROLL_METRICS_JS)
             scroll_top = m.get("scrollTop", 0)
             scroll_height = m.get("scrollHeight", vh)
         except Exception:
@@ -311,23 +311,23 @@ def _do_smart_navigate(
         if at_bottom:
             # Capture the final bottom frame
             if capture:
-                path = _take_screenshot(driver, session, chat_id)
+                path = await asyncio.to_thread(_take_screenshot, driver, session, chat_id)
                 if path:
                     screenshots.append(path)
 
             # Try "load more" / pagination if enabled
             if click_load_more:
                 try:
-                    click_result = driver.execute_script(_LOAD_MORE_JS)
+                    click_result = await asyncio.to_thread(driver.execute_script, _LOAD_MORE_JS)
                 except Exception:
                     click_result = None
 
                 if click_result:
                     load_more_clicks += 1
-                    time.sleep(_WAIT_AFTER_LOAD_MORE_S)
+                    await asyncio.sleep(_WAIT_AFTER_LOAD_MORE_S)
                     # Re-check height — did new content load?
                     try:
-                        m2 = driver.execute_script(_SCROLL_METRICS_JS)
+                        m2 = await asyncio.to_thread(driver.execute_script, _SCROLL_METRICS_JS)
                         new_h = m2.get("scrollHeight", scroll_height)
                     except Exception:
                         new_h = scroll_height
@@ -364,14 +364,14 @@ def _do_smart_navigate(
 
     # ── Scroll back to top when done ────────────────────────────────────────────
     try:
-        driver.execute_script("window.scrollTo(0, 0);")
+        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
     except Exception:
         pass
 
     # ── Capture final state of page ─────────────────────────────────────────────
     try:
-        final_url = driver.current_url
-        final_title = driver.title or final_title
+        final_url = await asyncio.to_thread(getattr, driver, 'current_url')
+        final_title = (await asyncio.to_thread(getattr, driver, 'title')) or final_title
     except Exception:
         pass
 
@@ -512,8 +512,7 @@ class BrowserSmartNavigateSkill(SkillBase):
             wait_ms = 500
 
         try:
-            output = await asyncio.to_thread(
-                _do_smart_navigate,
+            output = await _do_smart_navigate(
                 url, session, _click_lm, max_steps, wait_ms, _capture,
                 chat_id, user_id,
             )
