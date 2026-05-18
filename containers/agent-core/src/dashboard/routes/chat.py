@@ -238,7 +238,7 @@ async def chat_stream(request: Request):
                     frame_file.close()
                     result = await asyncio.to_thread(
                         subprocess.run,
-                        ["ffmpeg", "-y", "-i", saved_path, "-vf", "select=eq(n\\,0)",
+                        ["ffmpeg", "-y", "-i", f"file:{saved_path}", "-vf", "select=eq(n\\,0)",
                          "-frames:v", "1", "-q:v", "2", frame_file.name],
                         capture_output=True, timeout=30,
                     )

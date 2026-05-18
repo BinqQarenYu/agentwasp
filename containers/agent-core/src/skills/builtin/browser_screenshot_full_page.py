@@ -5,12 +5,12 @@ each position. Handles lazy loading, detects duplicate frames, and stops at
 page bottom or when MAX_SCREENSHOTS is reached.
 
 Separation of responsibilities:
-  - This skill handles ONLY capture. It never extracts structured text.
-  - It reuses low-level browser.py infrastructure (sessions, driver management).
+  - This skill handles ONLY capture. It never extracts text.
+  - Reuses low-level browser.py infrastructure (sessions, driver).
   - It does NOT call any other skill internally.
 
 Output format (plaintext, one line per entry):
-  screenshots: /data/screenshots/screenshot_X.png, /data/screenshots/screenshot_Y.png
+  screenshots: /data/screenshots/screenshot_X.png, ...
   total: N
   url: <url>
   title: <page title>
@@ -30,7 +30,8 @@ import structlog
 from ..base import SkillBase
 from ..types import ParamType, SkillDefinition, SkillParam, SkillResult
 
-# Import shared browser infrastructure (low-level helpers only, NOT BrowserSkill)
+
+# Import browser infrastructure
 from .browser import (
     SCREENSHOT_DIR,
     SCREENSHOT_SHARED,
@@ -50,7 +51,9 @@ def _hash_png(data: bytes) -> str:
     return hashlib.md5(data, usedforsecurity=False).hexdigest()
 
 
-def _capture_frame(driver, session_name: str, chat_id: str = "") -> tuple[str, bytes]:
+def _capture_frame(
+    driver, session_name: str, chat_id: str = ""
+) -> tuple[str, bytes]:
     """Capture a single frame via CDP. Returns (saved_path, raw_bytes)."""
     os.makedirs(SCREENSHOT_DIR, exist_ok=True)
     os.makedirs(SCREENSHOT_SHARED, exist_ok=True)
@@ -62,7 +65,9 @@ def _capture_frame(driver, session_name: str, chat_id: str = "") -> tuple[str, b
 
     raw_bytes = b""
     try:
-        cdp_result = driver.execute_cdp_cmd("Page.captureScreenshot", {"format": "png"})
+        cdp_result = driver.execute_cdp_cmd(
+            "Page.captureScreenshot", {"format": "png"}
+        )
         raw_bytes = base64.b64decode(cdp_result["data"])
         with open(saved_path, "wb") as f:
             f.write(raw_bytes)
@@ -79,9 +84,9 @@ def _capture_frame(driver, session_name: str, chat_id: str = "") -> tuple[str, b
             return "", b""
 
     # Visual memory: enqueue metadata for the async consumer to process.
-    # get_event_loop().create_task() from a worker thread is unsafe — it either
-    # picks up the wrong loop or raises. The async wrapper drains the queue
-    # after asyncio.to_thread returns and schedules stores on the main loop.
+    # get_event_loop().create_task() from a worker thread is unsafe
+    # picks up the wrong loop or raises. The async wrapper drains
+    # the queue and schedules stores on the main loop.
     try:
         from .browser import _visual_memory_queue as _vmq
         _vmq.put_nowait({
@@ -106,15 +111,15 @@ async def _do_screenshot_full_page(
     chat_id: str,
     user_id: str,
 ) -> str:
-    """Async implementation without blocking event loop or threads."""
+    """Async implementation (runs IO/blocking via asyncio.to_thread)."""
     url = _normalize_url(url)
     if not url:
         return "error: url is required"
 
     session = session or "fullpage1"
-    wait_s = max(0.3, min(0.8, wait_ms / 1000.0))  # clamp 300-800ms → 0.3-0.8s
+    wait_s = max(0.3, min(0.8, wait_ms / 1000.0))  # 300-800ms clamp
 
-    # ── Navigation ────────────────────────────────────────────────────────────
+    # ── Navigation ───────────────────────────────────────────────────────────
     try:
         driver = await asyncio.to_thread(_get_driver, session)
         await asyncio.to_thread(driver.get, url)
@@ -124,7 +129,7 @@ async def _do_screenshot_full_page(
     await asyncio.to_thread(_wait_for_page, driver)
     await asyncio.sleep(0.8)
 
-    # ── Overlay dismissal ─────────────────────────────────────────────────────
+    # ── Overlay dismissal ────────────────────────────────────────────────────
     accepted = await asyncio.to_thread(_dismiss_overlays, session)
     if accepted:
         await asyncio.sleep(0.8)
@@ -132,10 +137,10 @@ async def _do_screenshot_full_page(
     await asyncio.to_thread(_dismiss_overlays, session)
     await asyncio.sleep(0.3)
 
-    # ── Get page title + reset to top ─────────────────────────────────────────
+    # ── Get page title + reset to top ────────────────────────────────────────
     try:
-        page_title = await asyncio.to_thread(getattr, driver, 'title') or ""
-        page_url = await asyncio.to_thread(getattr, driver, 'current_url')
+        page_title = await asyncio.to_thread(getattr, driver, "title") or ""
+        page_url = await asyncio.to_thread(getattr, driver, "current_url")
     except Exception:
         page_title = ""
         page_url = url
@@ -144,20 +149,24 @@ async def _do_screenshot_full_page(
         return f"error: browser blocked by anti-bot at {url}"
 
     try:
-        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
+        await asyncio.to_thread(
+            driver.execute_script, "window.scrollTo(0, 0);"
+        )
         await asyncio.sleep(0.3)
     except Exception:
         pass
 
-    # ── Determine scroll step ─────────────────────────────────────────────────
+    # ── Determine scroll step ────────────────────────────────────────────────
     try:
-        vh = await asyncio.to_thread(driver.execute_script, "return window.innerHeight") or 768
+        vh = await asyncio.to_thread(
+            driver.execute_script, "return window.innerHeight"
+        ) or 768
     except Exception:
         vh = 768
 
     step = scroll_step if scroll_step > 0 else max(vh - 80, 200)
 
-    # ── Scrolling capture loop ────────────────────────────────────────────────
+    # ── Scrolling capture loop ───────────────────────────────────────────────
     screenshots: list[str] = []
     notes: list[str] = []
     prev_hashes: list[str] = []
@@ -167,7 +176,9 @@ async def _do_screenshot_full_page(
         target_y = i * step
 
         try:
-            await asyncio.to_thread(driver.execute_script, f"window.scrollTo(0, {target_y});")
+            await asyncio.to_thread(
+                driver.execute_script, f"window.scrollTo(0, {target_y});"
+            )
         except Exception:
             notes.append(f"scroll failed at position {i}")
             break
@@ -175,7 +186,9 @@ async def _do_screenshot_full_page(
         await asyncio.sleep(wait_s)  # Wait for lazy-load content (300–800ms)
 
         # Capture frame
-        saved_path, raw_bytes = await asyncio.to_thread(_capture_frame, driver, session, chat_id)
+        saved_path, raw_bytes = await asyncio.to_thread(
+            _capture_frame, driver, session, chat_id
+        )
         if not saved_path or not raw_bytes:
             notes.append(f"frame capture failed at position {i}")
             if screenshots:
@@ -187,7 +200,10 @@ async def _do_screenshot_full_page(
         if prev_hashes and frame_hash == prev_hashes[-1]:
             consecutive_dupes += 1
             if consecutive_dupes >= _DEDUP_CONSECUTIVE_LIMIT:
-                notes.append(f"stopped early: {_DEDUP_CONSECUTIVE_LIMIT} consecutive identical frames")
+                notes.append(
+                    f"stopped early: {_DEDUP_CONSECUTIVE_LIMIT} "
+                    "consecutive identical frames"
+                )
                 break
         else:
             consecutive_dupes = 0
@@ -198,10 +214,12 @@ async def _do_screenshot_full_page(
         # Check if we've reached the real page bottom
         try:
             scroll_top_after = await asyncio.to_thread(
-                driver.execute_script, "return window.pageYOffset + window.innerHeight"
+                driver.execute_script,
+                "return window.pageYOffset + window.innerHeight"
             ) or 0
             current_scroll_h = await asyncio.to_thread(
-                driver.execute_script, "return document.documentElement.scrollHeight"
+                driver.execute_script,
+                "return document.documentElement.scrollHeight"
             ) or vh
             if scroll_top_after >= current_scroll_h - 10:
                 break  # Reached bottom — done
@@ -210,11 +228,13 @@ async def _do_screenshot_full_page(
 
     # Scroll back to top when done
     try:
-        await asyncio.to_thread(driver.execute_script, "window.scrollTo(0, 0);")
+        await asyncio.to_thread(
+            driver.execute_script, "window.scrollTo(0, 0);"
+        )
     except Exception:
         pass
 
-    # ── Format output ─────────────────────────────────────────────────────────
+    # ── Format output ────────────────────────────────────────────────────────
     if not screenshots:
         return "error: no screenshots captured"
 
@@ -238,19 +258,25 @@ async def _do_screenshot_full_page(
 
 
 class BrowserScreenshotFullPageSkill(SkillBase):
-    """Capture a full webpage via step-by-step scrolling with duplicate detection."""
+    """Capture full webpage via scrolling and duplicate detection."""
 
     def definition(self) -> SkillDefinition:
         return SkillDefinition(
             name="browser_screenshot_full_page",
             description=(
-                "Capture a COMPLETE webpage by scrolling and screenshotting each section. "
-                "Use when the user says: 'captura completa', 'captura toda la página', "
-                "'haz scroll y captura', 'full page screenshot', 'todo el sitio'. "
-                "Automatically detects duplicate frames (stops when bottom is reached). "
+                "Capture a COMPLETE webpage by scrolling and screenshotting "
+                "each section. "
+                "Use when the user says: 'captura completa', "
+                "'captura toda la página', "
+                "'haz scroll y captura', 'full page screenshot', "
+                "'todo el sitio'. "
+                "Automatically detects duplicate frames (stops when "
+                "bottom is reached). "
                 "Max 30 screenshots. Returns paths to all captured images. "
-                "IMPORTANT: After capture, images are sent automatically. "
-                "Write ONE short sentence about what was captured — no lists, no paths."
+                "IMPORTANT: After capture, images are sent "
+                "automatically. "
+                "Write ONE short sentence about what was captured — "
+                "no lists, no paths."
             ),
             params=[
                 SkillParam(
@@ -263,21 +289,24 @@ class BrowserScreenshotFullPageSkill(SkillBase):
                     param_type=ParamType.STRING,
                     required=False,
                     default="fullpage1",
-                    description="Browser session name (persists cookies). Default: 'fullpage1'",
+                    description="Browser session name (persists cookies). "
+                    "Default: 'fullpage1'",
                 ),
                 SkillParam(
                     name="wait_ms",
                     param_type=ParamType.INTEGER,
                     required=False,
                     default="500",
-                    description="Milliseconds to wait after each scroll for lazy loading (300–800). Default: 500",
+                    description="Wait after scroll (ms) for lazy loading "
+                    "(300–800). Default: 500",
                 ),
                 SkillParam(
                     name="scroll_step",
                     param_type=ParamType.INTEGER,
                     required=False,
                     default="0",
-                    description="Scroll step in pixels. 0 = auto (viewport height minus 80px overlap). Default: 0",
+                    description="Scroll step in pixels. 0 = auto (viewport "
+                    "height minus 80px overlap). Default: 0",
                 ),
             ],
             category="web",
@@ -317,7 +346,7 @@ class BrowserScreenshotFullPageSkill(SkillBase):
             result = await _do_screenshot_full_page(
                 url, session, wait_ms, scroll_step, chat_id, user_id,
             )
-            # Drain visual-memory queue (filled by sync producer in worker thread)
+            # Drain visual-memory queue (filled by sync producer)
             try:
                 import queue as _q
                 from .browser import _visual_memory_queue as _vmq
