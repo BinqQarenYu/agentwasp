@@ -138,9 +138,13 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
     _orig_open = _bi.open
     def _restricted_open(path, *args, **kwargs):
         try:
-            _resolved = _os.path.realpath(str(path))
+            _p = _os.fsdecode(path)
+        except TypeError:
+            _p = str(path)
+        try:
+            _resolved = _os.path.realpath(_p)
         except Exception:
-            _resolved = str(path)
+            _resolved = _os.path.abspath(_p)
         if not _resolved.startswith(_SANDBOX_DIR):
             raise PermissionError(
                 f"Sandbox: file access outside sandbox dir is blocked: {{path!r}}"
@@ -154,9 +158,13 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
     _orig_os_open = _os.open
     def _restricted_os_open(_path, *_a, **_kw):
         try:
-            _resolved = _os.path.realpath(str(_path))
+            _p = _os.fsdecode(_path)
+        except TypeError:
+            _p = str(_path)
+        try:
+            _resolved = _os.path.realpath(_p)
         except Exception:
-            _resolved = str(_path)
+            _resolved = _os.path.abspath(_p)
         if not _resolved.startswith(_SANDBOX_DIR):
             raise PermissionError(
                 f"Sandbox: os.open blocked outside sandbox dir: {{_path!r}}"
