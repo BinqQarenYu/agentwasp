@@ -396,24 +396,24 @@ async def _bump_warn_counter(redis_url: str, sig_hash: str) -> int:
         return 1
 
 
+_ESCALATION_SCHEDULE = (
+    "",
+    "",
+    "[STEERING: this is the 2nd attempt with the same parameters after a WARN. "
+    "Strongly consider an alternative source / different parameters before retrying.]",
+    "[STEERING: 3rd identical retry after WARN. Pivot now — "
+    "the failure pattern is clear; same input will not yield a different result.]",
+)
+
+
 def _escalation_note(repeat_count: int) -> str:
     """Return an additional steering line keyed to repeat count.
 
     First warn (count=1) → empty (regular note already shown).
     Repeat warns escalate the directive without changing the underlying notes.
     """
-    if repeat_count <= 1:
-        return ""
-    if repeat_count == 2:
-        return (
-            "[STEERING: this is the 2nd attempt with the same parameters after a WARN. "
-            "Strongly consider an alternative source / different parameters before retrying.]"
-        )
-    if repeat_count == 3:
-        return (
-            "[STEERING: 3rd identical retry after WARN. Pivot now — "
-            "the failure pattern is clear; same input will not yield a different result.]"
-        )
+    if repeat_count < len(_ESCALATION_SCHEDULE):
+        return _ESCALATION_SCHEDULE[max(0, repeat_count)]
     return (
         f"[STEERING: {repeat_count}th identical retry after WARN. Stop repeating this exact call; "
         "use a fundamentally different approach.]"

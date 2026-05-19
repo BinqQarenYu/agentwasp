@@ -197,3 +197,25 @@ class TestDreamActivation:
         assert hasattr(dream, "DreamJob")
         # The class should be instantiable with the standard kw surface.
         assert callable(dream.DreamJob)
+
+# ──────────────────────────────────────────────────────────────────────
+# backoff and escalation notes
+# ──────────────────────────────────────────────────────────────────────
+from src.agent.cognitive_decisions import _escalation_note, _backoff_for_count
+
+class TestEscalationAndBackoff:
+    def test_escalation_note(self):
+        assert _escalation_note(0) == ""
+        assert _escalation_note(1) == ""
+        assert "2nd attempt" in _escalation_note(2)
+        assert "3rd identical retry" in _escalation_note(3)
+        assert "4th identical retry" in _escalation_note(4)
+        assert "10th identical retry" in _escalation_note(10)
+
+    def test_backoff_for_count(self):
+        assert _backoff_for_count(0) == 0.0
+        assert _backoff_for_count(1) == 0.0
+        assert _backoff_for_count(2) == 3.0
+        assert _backoff_for_count(3) == 5.0
+        assert _backoff_for_count(4) == 8.0
+        assert _backoff_for_count(10) == 8.0
