@@ -1,10 +1,17 @@
-🔒 Fix Path Traversal Bypass in Sandbox _restricted_open
+🧹 [Code Health] Extract prompt configuration to constants.py
 
-🎯 **What:** The vulnerability fixed
-Stateful objects returning different values in `__str__` and `__fspath__` could bypass sandbox path restrictions. Furthermore, when `os.path.realpath` raises an exception, the fallback `str(path)` was insecure because it leaves potential `..` traversal components unresolved.
+🎯 **What:** The code health issue addressed
+Extracted massive static configuration data from `containers/agent-core/src/agent/context.py` into a new file `containers/agent-core/src/agent/constants.py`.
 
-⚠️ **Risk:** The potential impact if left unfixed
-Malicious code executed within the sandbox could break out and read or write files anywhere on the host filesystem that the executing user has access to.
+💡 **Why:** How this improves maintainability
+Previously, `context.py` was heavily polluted by long static lists and prompts like `MODEL_CREATORS`, `PROVIDER_LABELS`, `SYSTEM_PROMPT`, and very long lists like `IDENTITY_POISON` and `SKILL_POISON` which were hardcoded directly inside the `build_context` function.
 
-🛡️ **Solution:** How the fix addresses the vulnerability
-The fix securely grabs the string representation using `os.fsdecode(path)` which properly handles bytes, string, and path-like objects (preventing stateful `__str__` / `__fspath__` mismatches). If `os.path.realpath` fails, it falls back to `os.path.abspath` to securely resolve any `..` traversal components before verifying the resulting path against the sandbox directory.
+By cleanly separating configuration constants (`constants.py`) from runtime logic (`context.py`), it drastically reduces the file size and complexity of `context.py`. This improves readability, reduces the function's perceived complexity, and makes the file easier to maintain.
+
+✅ **Verification:** How you confirmed the change is safe
+- Extracted and imported the exact same constants without any modifications.
+- Ran `make lint` to verify that `flake8` and `mypy` pass.
+- Ran the full test suite (`pytest tests/`) to ensure no functionality is broken.
+
+✨ **Result:** The improvement achieved
+A much cleaner `context.py` with the massive lists moved to `constants.py`.
