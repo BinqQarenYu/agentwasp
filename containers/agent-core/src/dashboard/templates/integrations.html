@@ -281,7 +281,7 @@
                 <h3 class="font-bold text-base" id="modal-details-title">Configure</h3>
                 <p class="text-xs text-base-content/40 mt-0.5 truncate" id="modal-details-desc">Loading…</p>
             </div>
-            <button data-dialog-close="modal-details" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 flex-shrink-0">✕</button>
+            <button data-dialog-close="modal-details" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 flex-shrink-0" aria-label="Close details">✕</button>
         </div>
 
         <!-- Secrets -->
@@ -345,7 +345,7 @@
                 <h3 class="font-bold text-sm" id="failures-modal-title">Failure Log</h3>
                 <p class="text-xs text-base-content/40 mt-0.5" id="failures-modal-subtitle"></p>
             </div>
-            <button data-dialog-close="modal-failures" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80">✕</button>
+            <button data-dialog-close="modal-failures" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80" aria-label="Close failures">✕</button>
         </div>
         <div id="failures-modal-content" class="space-y-2 max-h-72 overflow-y-auto">
             <div class="flex items-center gap-2 text-sm text-base-content/40">
@@ -614,7 +614,7 @@ function renderSecretFields(configuredKeys) {
                 optionalTag + '</label>' +
                 '<input type="password" class="input input-bordered input-xs flex-1 font-mono" id="sfield-' + _esc(k) + '" placeholder="' + _esc(placeholder) + '">' +
                 '<button class="btn btn-xs btn-primary" data-action="integrations:saveSecretField" data-key="' + _esc(k) + '">Save</button>' +
-                (isSet ? '<button class="btn btn-xs btn-ghost text-error opacity-60 hover:opacity-100" data-action="integrations:openDeleteSecret" data-key="' + _esc(k) + '">✕</button>' : '') +
+                (isSet ? '<button class="btn btn-xs btn-ghost text-error opacity-60 hover:opacity-100" data-action="integrations:openDeleteSecret" data-key="' + _esc(k) + '" aria-label="Delete secret">✕</button>' : '') +
             '</div>' +
             (s.help ? '<p class="text-[0.65rem] text-base-content/50 leading-snug pl-[10.5rem]">' + _esc(s.help) + '</p>' : '') +
             (s.example ? '<p class="text-[0.6rem] text-base-content/30 font-mono pl-[10.5rem]">e.g. ' + _esc(s.example) + '</p>' : '') +
