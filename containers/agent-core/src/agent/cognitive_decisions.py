@@ -60,6 +60,13 @@ _WARN_REPEAT_KEY_PREFIX = "cognitive:warn_repeat:"
 _WARN_REPEAT_TTL = 300                # seconds
 _BACKOFF_SCHEDULE = (0.0, 3.0, 5.0, 8.0)  # by repeat count: 1st→0s, 2nd→3s, 3rd→5s, 4th+→8s
 
+_ESCALATION_NOTES = (
+    "",  # count 0 (unused)
+    "",  # count 1 (First warn -> empty)
+    "[STEERING: this is the 2nd attempt with the same parameters after a WARN. Strongly consider an alternative source / different parameters before retrying.]",
+    "[STEERING: 3rd identical retry after WARN. Pivot now — the failure pattern is clear; same input will not yield a different result.]"
+)
+
 
 def _hash_signature(sig: str) -> str:
     """Short stable hash of the call signature for Redis keying."""
