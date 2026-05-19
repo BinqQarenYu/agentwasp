@@ -230,17 +230,18 @@ def _wait_for_page(driver, timeout=8):
         )
     except Exception:
         pass
+
     # Wait for dynamic JS content (SPAs, React, etc.)
-    # Check if body has meaningful content, wait up to 2s max
-    for _ in range(4):
-        time.sleep(0.3)
-        try:
-            body_len = driver.execute_script("return document.body ? document.body.innerText.length : 0")
-            img_count = driver.execute_script("return document.images ? document.images.length : 0")
-            if body_len > 100 or img_count > 3:
-                break
-        except Exception:
-            break
+    # Check if body has meaningful content, return immediately when ready
+    try:
+        WebDriverWait(driver, 1.2).until(
+            lambda d: (
+                d.execute_script("return document.body ? document.body.innerText.length : 0") > 100 or
+                d.execute_script("return document.images ? document.images.length : 0") > 3
+            )
+        )
+    except Exception:
+        pass
 
 
 def _normalize_url(url: str) -> str:

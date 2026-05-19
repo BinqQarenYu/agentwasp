@@ -228,13 +228,13 @@ async def _do_smart_navigate(
         return json.dumps({"status": "error", "error": f"navigation failed: {e}"})
 
     await asyncio.to_thread(_wait_for_page, driver)
-    await asyncio.sleep(0.8)
 
     # ── Overlay dismissal ───────────────────────────────────────────────────────
     await asyncio.to_thread(_dismiss_overlays, session)
-    await asyncio.sleep(0.5)
-    await asyncio.to_thread(_dismiss_overlays, session)  # second pass — some banners load after JS renders
-    await asyncio.sleep(0.3)
+    # _wait_for_page already handles JS rendering, but we can do a very brief yield
+    # instead of a massive 0.8s + 0.5s + 0.3s chain of fixed waits.
+    await asyncio.sleep(0.1)
+    await asyncio.to_thread(_dismiss_overlays, session)  # second pass
 
     try:
         final_url = await asyncio.to_thread(getattr, driver, 'current_url')
