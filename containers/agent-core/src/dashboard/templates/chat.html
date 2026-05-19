@@ -336,7 +336,7 @@
                 : (att.type.startsWith('audio/') ? '🎵' : att.type.startsWith('video/') ? '🎬' : '📎');
             chip.innerHTML = (typeof icon === 'string' && icon.startsWith('<img') ? icon : '<span class="shrink-0">' + icon + '</span>') +
                 '<span title="' + _esc(att.name) + '">' + _esc(att.name) + '</span>' +
-                '<button data-action="chat:removeAttachment" data-idx="' + idx + '" title="Remove">✕</button>';
+                '<button data-action="chat:removeAttachment" data-idx="' + idx + '" title="Remove" aria-label="Remove attachment">✕</button>';
             strip.appendChild(chip);
         });
     }

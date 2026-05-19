@@ -422,7 +422,7 @@
     <div class="modal-box max-w-xl" data-ds="54">
         <div class="flex items-center justify-between mb-3">
             <h3 class="font-bold text-sm">Compiled Identity Metadata</h3>
-            <button data-dialog-close="raw-json-modal" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80">✕</button>
+            <button data-dialog-close="raw-json-modal" class="btn btn-ghost btn-xs opacity-40 hover:opacity-80" aria-label="Close dialog">✕</button>
         </div>
         <pre class="text-xs rounded-lg p-4 overflow-x-auto leading-relaxed font-mono" data-ds="55">{{ compiled | tojson(indent=2) if compiled else '{}' }}</pre>
         <div class="modal-action mt-3">
