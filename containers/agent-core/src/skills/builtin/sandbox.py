@@ -146,12 +146,12 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
         try:
             _resolved = _os.path.realpath(_p)
         except Exception:
-            _resolved = _os.path.abspath(_p)
-        if not _resolved.startswith(_SANDBOX_DIR):
+            raise PermissionError(f"Sandbox: unable to resolve path: {{path!r}}")
+        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
             raise PermissionError(
                 f"Sandbox: file access outside sandbox dir is blocked: {{path!r}}"
             )
-        return _orig_open(_path_str, *args, **kwargs)
+        return _orig_open(_resolved, *args, **kwargs)
     _bi.open = _restricted_open
 
     # Also patch io.open and os.open — both bypass builtins.open at the C level.
@@ -162,18 +162,18 @@ _SANDBOX_WRAPPER_TEMPLATE = textwrap.dedent("""\
         if isinstance(path, int):
             raise PermissionError("Sandbox: opening file descriptors directly is blocked.")
         try:
-            _p = _os.fsdecode(_path)
+            _p = _os.fsdecode(path)
         except TypeError:
-            _p = str(_path)
+            _p = str(path)
         try:
             _resolved = _os.path.realpath(_p)
         except Exception:
-            _resolved = _os.path.abspath(_p)
-        if not _resolved.startswith(_SANDBOX_DIR):
+            raise PermissionError(f"Sandbox: unable to resolve path: {{path!r}}")
+        if _resolved != _SANDBOX_DIR and not _resolved.startswith(_SANDBOX_DIR + _os.sep):
             raise PermissionError(
                 f"Sandbox: os.open blocked outside sandbox dir: {{path!r}}"
             )
-        return _orig_os_open(_path_str, *args, **kwargs)
+        return _orig_os_open(_resolved, *args, **kwargs)
     _os.open = _restricted_os_open
 
     # ── Runtime execution guard ──────────────────────────────────────────────
