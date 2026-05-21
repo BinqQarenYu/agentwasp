@@ -1,3 +1,4 @@
 ## 2024-05-19 - Added ARIA labels to icon-only "close" and "delete" buttons
 **Learning:** Found several modal dialogs, chips, and overlays throughout the dashboard templates that used icon-only buttons (containing just an "✕" character) for closing or removing elements without any accessible name (aria-label).
 **Action:** Always ensure that any button containing only an icon or symbol (e.g. ✕, SVG) includes a descriptive `aria-label` attribute so screen readers can correctly identify its purpose.
+## 2024-05-20 - Add ARIA Labels to Base Navbar/Controls\n**Learning:** Global templates like `base.html` often have prominent icon-only buttons (theme toggle, shortcuts, resets, mobile menu) that lack accessible names, making the entire dashboard less navigable for screen readers.\n**Action:** Always prioritize adding `aria-label`s to globally shared templates first, as this provides the highest impact across the entire application interface.
