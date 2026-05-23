@@ -1,3 +1,6 @@
 ## 2024-05-19 - Added ARIA labels to icon-only "close" and "delete" buttons
 **Learning:** Found several modal dialogs, chips, and overlays throughout the dashboard templates that used icon-only buttons (containing just an "✕" character) for closing or removing elements without any accessible name (aria-label).
 **Action:** Always ensure that any button containing only an icon or symbol (e.g. ✕, SVG) includes a descriptive `aria-label` attribute so screen readers can correctly identify its purpose.
+## 2024-05-23 - Accessibility for Dashboard Modals and Buttons
+**Learning:** The dashboard UI uses daisyUI and HTML templates heavily. Many utility actions (resume, pause, archive, delete, refresh, toggle, view details) are represented as icon-only buttons (`btn-ghost` with SVG icons) or generic modal backdrop dismiss buttons (`<form method="dialog" class="modal-backdrop"><button>close</button></form>`). This presents a massive screen reader accessibility gap across the entire web interface.
+**Action:** When working on DaisyUI or raw HTML template UI updates in the future, always ensure icon-only buttons include descriptive `aria-label` attributes based on their `title` or `data-action` context (e.g. `aria-label="Delete template"` or `aria-label="Close dialog"`).

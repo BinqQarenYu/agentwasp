@@ -231,13 +231,13 @@
           {% if g.state not in ('completed', 'failed', 'cancelled') %}
           <button data-action="goals:confirmCancelGoal" data-id="{{ g.id|e }}" class="btn btn-error btn-xs btn-outline">Cancel</button>
           {% endif %}
-          <button data-action="goals:confirmDeleteGoal" data-id="{{ g.id|e }}" class="btn btn-error btn-xs" title="Delete permanently">
+          <button data-action="goals:confirmDeleteGoal" data-id="{{ g.id|e }}" class="btn btn-error btn-xs" title="Delete permanently" aria-label="Delete permanently">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
           </button>
           {% if g.state == 'completed' %}
-          <button data-action="goals:openSaveTemplate" data-id="{{ g.id|e }}" class="btn btn-ghost btn-xs" title="Save as template">
+          <button data-action="goals:openSaveTemplate" data-id="{{ g.id|e }}" class="btn btn-ghost btn-xs" title="Save as template" aria-label="Save as template">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
             </svg>
@@ -409,7 +409,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
         </div>
         <div class="flex items-center gap-1.5 ml-3">
           <button data-action="goals:useTemplate" data-id="{{ t.id|e }}" data-name="{{ t.name|e }}" class="btn btn-primary btn-xs">Use</button>
-          <button data-action="goals:confirmDeleteTemplate" data-id="{{ t.id|e }}" class="btn btn-ghost btn-xs text-error" title="Delete template">
+          <button data-action="goals:confirmDeleteTemplate" data-id="{{ t.id|e }}" class="btn btn-ghost btn-xs text-error" title="Delete template" aria-label="Delete template">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
@@ -419,10 +419,10 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       {% endfor %}
     </div>
     <div class="modal-action mt-4">
-      <button data-dialog-close="modal-templates" class="btn btn-ghost btn-sm">Close</button>
+      <button data-dialog-close="modal-templates" class="btn btn-ghost btn-sm" aria-label="Close dialog">Close</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 {% endif %}
 
@@ -440,7 +440,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-save-template" class="btn btn-primary btn-sm" data-action="goals:submitSaveTemplate">Save Template</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 
 {# ── Cancel Goal Modal ────────────────────────────────────────────────────── #}
@@ -453,7 +453,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-cancel-goal" class="btn btn-warning btn-sm" data-action="goals:execCancelGoal">Cancel Goal</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 
 {# ── Delete Goal Modal ────────────────────────────────────────────────────── #}
@@ -466,7 +466,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-delete-goal" class="btn btn-error btn-sm" data-action="goals:execDeleteGoal">Delete</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 
 {# ── Delete Template Modal ────────────────────────────────────────────────── #}
@@ -479,7 +479,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-exec-delete-template" class="btn btn-error btn-sm" data-action="goals:execDeleteTemplate">Delete</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 
 {# ── Create Goal Modal ────────────────────────────────────────────────────── #}
@@ -554,7 +554,7 @@ DAG_DATA[{{ g.id | tojson }}] = {{ g.nodes | tojson }};
       <button id="btn-create-goal" class="btn btn-primary btn-sm btn-glow" data-action="goals:submitCreate">Create & Plan</button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close dialog">close</button></form>
 </dialog>
 {% endif %}
 
