@@ -82,7 +82,7 @@
         <!-- Mobile top bar -->
         <div class="navbar bg-base-100 shadow-sm lg:hidden navbar-wasp sticky top-0 z-40">
             <div class="navbar-start">
-                <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-square">
+                <label for="sidebar-toggle" aria-label="Toggle sidebar" class="btn btn-ghost btn-sm btn-square">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
                     </svg>
@@ -272,15 +272,15 @@
 
             <!-- Bottom: controls -->
             <div class="px-3 py-1.5 border-t border-base-300/50 flex items-center justify-end gap-1">
-                <a href="/reset" title="Panic Reset — erase agent brain" class="btn btn-ghost btn-sm btn-circle text-error/50 hover:text-error hover:bg-error/10">
+                <a href="/reset" title="Panic Reset — erase agent brain" aria-label="Panic Reset" class="btn btn-ghost btn-sm btn-circle text-error/50 hover:text-error hover:bg-error/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </a>
-                <button id="btn-shortcuts-open" class="btn btn-ghost btn-sm btn-circle" title="Keyboard shortcuts (?)" data-action="wasp:openShortcutsModal">
+                <button id="btn-shortcuts-open" class="btn btn-ghost btn-sm btn-circle" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-action="wasp:openShortcutsModal">
                     <span class="text-xs font-bold text-base-content/40">?</span>
                 </button>
-                <button id="btn-theme-toggle-sidebar" class="btn btn-ghost btn-sm btn-circle theme-toggle" title="Toggle theme" data-action="wasp:toggleTheme">
+                <button id="btn-theme-toggle-sidebar" class="btn btn-ghost btn-sm btn-circle theme-toggle" title="Toggle theme" aria-label="Toggle theme" data-action="wasp:toggleTheme">
                     <svg class="theme-sun h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
