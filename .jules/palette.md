@@ -1,3 +1,3 @@
-## 2024-05-19 - Added ARIA labels to icon-only "close" and "delete" buttons
-**Learning:** Found several modal dialogs, chips, and overlays throughout the dashboard templates that used icon-only buttons (containing just an "✕" character) for closing or removing elements without any accessible name (aria-label).
-**Action:** Always ensure that any button containing only an icon or symbol (e.g. ✕, SVG) includes a descriptive `aria-label` attribute so screen readers can correctly identify its purpose.
+## 2024-07-08 - Icon-Only Buttons Missing ARIA Labels
+**Learning:** Found multiple instances of icon-only buttons (`.btn-circle`, `.btn-square`) in the templates using `title` attributes but missing required `aria-label`s for screen readers. The `title` attribute is often insufficient for robust accessibility as it's not consistently announced by screen readers or accessible via keyboard focus in all browsers.
+**Action:** When auditing templates, always ensure `.btn-circle`, `.btn-square`, and `.btn-ghost` items with only icons inside have an explicit `aria-label`.
