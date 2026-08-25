@@ -1,3 +1,6 @@
 ## 2024-05-19 - Added ARIA labels to icon-only "close" and "delete" buttons
 **Learning:** Found several modal dialogs, chips, and overlays throughout the dashboard templates that used icon-only buttons (containing just an "✕" character) for closing or removing elements without any accessible name (aria-label).
 **Action:** Always ensure that any button containing only an icon or symbol (e.g. ✕, SVG) includes a descriptive `aria-label` attribute so screen readers can correctly identify its purpose.
+## 2026-08-25 - Missing ARIA Labels on Icon-Only Buttons
+**Learning:** In the Wasp dashboard UI (using DaisyUI/Tailwind), many interactive elements (like `<label>`, `<a>`, and `<button>`) that use icon-only designs (e.g., `.btn-ghost btn-square`) often rely exclusively on `title` attributes or have no text fallback at all. While `title` provides a tooltip on hover for mouse users, it is often insufficient or inconsistently read by screen readers compared to an explicit `aria-label`.
+**Action:** When adding new icon-only buttons or links to the dashboard templates, always include a descriptive `aria-label` attribute in addition to any `title` attribute to ensure full accessibility for screen reader users.
