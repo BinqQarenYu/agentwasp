@@ -1,3 +1,6 @@
 ## 2024-05-19 - Added ARIA labels to icon-only "close" and "delete" buttons
 **Learning:** Found several modal dialogs, chips, and overlays throughout the dashboard templates that used icon-only buttons (containing just an "✕" character) for closing or removing elements without any accessible name (aria-label).
 **Action:** Always ensure that any button containing only an icon or symbol (e.g. ✕, SVG) includes a descriptive `aria-label` attribute so screen readers can correctly identify its purpose.
+## 2024-06-25 - Ensuring Icon-Only 'Buttons' (Links/Labels) Have Screen Reader Support
+**Learning:** In the DaisyUI/Tailwind design system, icon-only interactive elements often use structural tags like `<a>` (for navigation like the Panic Reset button) or `<label>` (for UI toggles like the sidebar menu) stylized with `.btn-square` or `.btn-circle`. These tags do not natively behave like buttons to screen readers without descriptive text.
+**Action:** When auditing icon-only buttons for accessibility, search beyond `<button>` tags. Check `<label>` and `<a>` elements that are styled as buttons (`.btn`, `.btn-circle`, `.btn-square`, etc.) and ensure they have explicit `aria-label` attributes to convey their function.
