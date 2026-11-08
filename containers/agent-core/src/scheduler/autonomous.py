@@ -44,6 +44,8 @@ from ..events.types import EventType
 from ..models.manager import ModelManager
 from ..models.types import Message, ModelRequest
 from ..utils.safe_notify import safe_notify
+from ..curiosity.evaluator import CuriosityEvaluator
+from ..curiosity.teleology import TeleologicalAligner
 
 logger = structlog.get_logger()
 
@@ -239,6 +241,8 @@ class AutonomousGoalGeneratorJob:
         self.bus = bus
         self.notify_chat_id = notify_chat_id
         self.goal_orchestrator = goal_orchestrator
+        self.curiosity_evaluator = CuriosityEvaluator()
+        self.teleological_aligner = TeleologicalAligner()
 
     async def __call__(self) -> str:
         from ..policy import with_trace
@@ -321,6 +325,43 @@ class AutonomousGoalGeneratorJob:
         if not action:
             _g("autonomous:no_action_needed")
             return "Autonomous: no proactive action needed"
+
+        # Teleological Goal Alignment & Curiosity Gate
+        active_goal_objectives = []
+        if self.goal_orchestrator:
+            try:
+                from ..goal_orchestrator.store import list_active_goals
+                r_store = aioredis.from_url(self.redis_url, decode_responses=True)
+                try:
+                    active_goals = await list_active_goals(r_store)
+                    active_goal_objectives = [g.objective for g in active_goals if getattr(g, "objective", None)]
+                finally:
+                    await r_store.aclose()
+            except Exception:
+                pass
+
+        teleology_decision = self.teleological_aligner.evaluate_alignment(
+            candidate_task=action,
+            active_goals=active_goal_objectives,
+        )
+
+        if not teleology_decision.passes_threshold:
+            logger.info(
+                "autonomous.teleology_pruned",
+                action=action[:100],
+                alignment=teleology_decision.alignment_score,
+                status=teleology_decision.status,
+                rationale=teleology_decision.rationale,
+            )
+            state["last_teleology_pruned"] = {
+                "action": action[:100],
+                "alignment": teleology_decision.alignment_score,
+                "status": teleology_decision.status,
+                "ts": now,
+            }
+            await self._persist_state_only(state)
+            _g(f"autonomous:teleology_pruned[{teleology_decision.status}]")
+            return f"Autonomous: pruned by Teleological Filter ({teleology_decision.status}, score={teleology_decision.alignment_score})"
 
         # Dedup: skip if this exact action recently failed with a persistent error
         signature = _action_signature(action)

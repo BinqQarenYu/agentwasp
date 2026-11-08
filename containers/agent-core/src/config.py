@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     database_url: str = f"postgresql+asyncpg://agent:{os.environ.get('POSTGRES_PASSWORD', '')}@localhost:5432/agent" if "DATABASE_URL" not in os.environ else os.environ["DATABASE_URL"]
     ollama_base_url: str = "http://localhost:11434" if "OLLAMA_BASE_URL" not in os.environ else os.environ["OLLAMA_BASE_URL"]
     ollama_model: str = "llama3"
+    ollama_load_timeout: float = 300.0
+    ollama_client_timeout: float = 300.0
+    ollama_keep_alive: str = "10m"
+    ollama_is_remote: bool = False
     timezone: str = "America/Santiago"
     openai_api_key: str = ""
     anthropic_api_key: str = ""

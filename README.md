@@ -149,7 +149,9 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 - [docs/QUICKSTART.md](docs/QUICKSTART.md) — first 10 minutes
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — VPS + local + reverse-proxy guidance
 - [docs/SECURITY.md](docs/SECURITY.md) — threat model, fail-closed defaults, secret handling
-- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — **honest** map of what works and what's experimental
+- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md)
+- [docs/AGENT_MESH_ARCHITECTURE.md](docs/AGENT_MESH_ARCHITECTURE.md) — Grok-style UI/UX and 15-bot Agent Mesh architecture
+ — **honest** map of what works and what's experimental
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common errors with fixes
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, BSL implications
 - [CHANGELOG.md](CHANGELOG.md) — version history (v2.7 is the first public release; pre-OSS history at [docs.agentwasp.com/changelog](https://docs.agentwasp.com/changelog))

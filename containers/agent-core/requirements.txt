@@ -20,6 +20,8 @@ selenium>=4.25,<5.0
 nodriver>=0.40
 pyyaml>=6.0,<7.0
 cryptography>=42.0,<44.0
+markdown>=3.6,<4.0
+markdownify>=0.11,<1.0
 # Test dependencies
 pytest>=8.0,<10.0
 pytest-asyncio>=0.24,<2.0

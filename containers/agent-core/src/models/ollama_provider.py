@@ -218,10 +218,11 @@ class OllamaProvider(LLMProvider):
             if self._loaded_model and self._loaded_model != model_name:
                 await self.unload_model(self._loaded_model)
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            from ..config import settings
+            async with httpx.AsyncClient(timeout=settings.ollama_load_timeout) as client:
                 resp = await client.post(
                     f"{self.base_url}/api/generate",
-                    json={"model": model_name, "keep_alive": "10m"},
+                    json={"model": model_name, "keep_alive": settings.ollama_keep_alive},
                 )
                 if resp.status_code == 200:
                     self._loaded_model = model_name
@@ -273,7 +274,15 @@ class OllamaProvider(LLMProvider):
             },
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        from ..config import settings
+        client_kwargs = {}
+        if settings.ollama_is_remote:
+            client_kwargs["limits"] = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+            client_kwargs["timeout"] = httpx.Timeout(settings.ollama_client_timeout, connect=10.0)
+        else:
+            client_kwargs["timeout"] = settings.ollama_client_timeout
+
+        async with httpx.AsyncClient(**client_kwargs) as client:
             resp = await client.post(f"{self.base_url}/api/chat", json=payload)
             resp.raise_for_status()
             data = resp.json()

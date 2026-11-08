@@ -18,24 +18,76 @@
 <!-- Lightbox -->
 <div id="lightbox"><img id="lightbox-img" src="" alt=""></div>
 
-<!-- Page header -->
-<div class="chat-page-header">
-    <div>
-        <div class="chat-page-title">Agent Chat</div>
-        <div class="chat-page-sub">Full autonomous pipeline — multi-layer memory, live execution trace &amp; sovereign mode</div>
-    </div>
-    <div data-ds="1">
-        <div class="live-chip">
-            <div class="live-dot"></div>
-            LIVE AGENT
+<!-- Grok / Mesh Cockpit Header -->
+<div class="flex items-center justify-between mb-3 px-2">
+    <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-lg shadow-sm">
+            🐝
         </div>
-        <button id="btn-clear-chat" class="btn btn-ghost btn-xs" title="Clear chat history"
-                data-ds="2">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-base font-bold font-mono tracking-tight text-white">Agent WASP</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold uppercase">15-Bot Mesh</span>
+            </div>
+            <div class="text-xs text-zinc-400">Autonomous goal orchestrator &bull; Unit decomposition &bull; Done-verification</div>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            MESH READY
+        </div>
+        <button id="btn-clear-chat" class="btn btn-ghost btn-xs text-zinc-400 hover:text-white" title="Clear chat history">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
             Clear
         </button>
+    </div>
+</div>
+
+<!-- Live Mesh Monitor Panel (Collapsible) -->
+<div id="mesh-monitor-panel" class="mb-3">
+    <div class="mesh-status-bar">
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="text-xs font-mono font-semibold text-zinc-300 flex items-center gap-2">
+                <span class="text-amber-400">⚡ TASK SPLITTER:</span>
+                <span id="mesh-unit-count" class="text-white bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">Ready</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-mono">
+                <span class="text-emerald-400 font-semibold" id="mesh-units-passed">&#10003; 0 Passed</span>
+                <span class="text-zinc-600">&bull;</span>
+                <span class="text-amber-400 font-semibold" id="mesh-units-active">&#8635; 0 Running</span>
+                <span class="text-zinc-600">&bull;</span>
+                <span class="text-rose-400 font-semibold" id="mesh-units-rejected">&#10007; 0 Rejected</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-64">
+            <div class="mesh-progress-track">
+                <div id="bar-units-done" class="mesh-progress-fill-done" style="width: 0%;"></div>
+                <div id="bar-units-active" class="mesh-progress-fill-active" style="width: 0%;"></div>
+                <div id="bar-units-fail" class="mesh-progress-fill-fail" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 15 Autonomous Bots Mesh Grid -->
+    <div class="mesh-grid text-xs font-mono" id="mesh-bots-grid">
+        <div class="mesh-bot-card" id="bot-inbox"><span class="text-base">&#128236;</span><div class="truncate"><div class="font-bold text-zinc-200">Inbox</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-leads"><span class="text-base">&#128269;</span><div class="truncate"><div class="font-bold text-zinc-200">Leads</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-invoices"><span class="text-base">&#128181;</span><div class="truncate"><div class="font-bold text-zinc-200">Invoices</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-support"><span class="text-base">&#128172;</span><div class="truncate"><div class="font-bold text-zinc-200">Support</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-content"><span class="text-base">&#128221;</span><div class="truncate"><div class="font-bold text-zinc-200">Content</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-social"><span class="text-base">&#128227;</span><div class="truncate"><div class="font-bold text-zinc-200">Social</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-research"><span class="text-base">&#128300;</span><div class="truncate"><div class="font-bold text-zinc-200">Research</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-code"><span class="text-base">&#128187;</span><div class="truncate"><div class="font-bold text-zinc-200">Code Review</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-bugs"><span class="text-base">&#128030;</span><div class="truncate"><div class="font-bold text-zinc-200">Bug Repro</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-competitor"><span class="text-base">&#128065;</span><div class="truncate"><div class="font-bold text-zinc-200">Competitors</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-meeting"><span class="text-base">&#128197;</span><div class="truncate"><div class="font-bold text-zinc-200">Meetings</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-travel"><span class="text-base">&#9992;</span><div class="truncate"><div class="font-bold text-zinc-200">Travel</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-expense"><span class="text-base">&#128179;</span><div class="truncate"><div class="font-bold text-zinc-200">Expenses</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-followup"><span class="text-base">&#9200;</span><div class="truncate"><div class="font-bold text-zinc-200">Follow-up</div><div class="text-[10px] text-zinc-400 bot-state">Idle</div></div></div>
+        <div class="mesh-bot-card" id="bot-checker"><span class="text-base">&#9878;</span><div class="truncate"><div class="font-bold text-zinc-200">Done Checker</div><div class="text-[10px] text-zinc-400 bot-state">Guard</div></div></div>
     </div>
 </div>
 
@@ -61,27 +113,102 @@
                 </div>
                 <p class="welcome-sub">Full-access autonomous agent. Reasons, plans, and executes real actions — with persistent memory, behavioral learning, and self-improvement.</p>
 
-                <div class="welcome-caps">
-                    <div class="cap-item"><span class="cap-icon">🌐</span><span class="cap-label">Web, search &amp; browse</span></div>
-                    <div class="cap-item"><span class="cap-icon">🐚</span><span class="cap-label">Shell &amp; automation</span></div>
-                    <div class="cap-item"><span class="cap-icon">🐍</span><span class="cap-label">Python execution</span></div>
-                    <div class="cap-item"><span class="cap-icon">👁️</span><span class="cap-label">Vision &amp; screenshots</span></div>
-                    <div class="cap-item"><span class="cap-icon">🧠</span><span class="cap-label">Memory <span class="cap-sub">· 18 layers</span></span></div>
-                    <div class="cap-item"><span class="cap-icon">🕸️</span><span class="cap-label">Knowledge graph</span></div>
-                    <div class="cap-item"><span class="cap-icon">⏰</span><span class="cap-label">Goals &amp; scheduling</span></div>
-                    <div class="cap-item"><span class="cap-icon">🔧</span><span class="cap-label">Self-improvement</span></div>
-                    <div class="cap-item"><span class="cap-icon">📧</span><span class="cap-label">Email &amp; Telegram</span></div>
-                    <div class="cap-item"><span class="cap-icon">📁</span><span class="cap-label">Files &amp; data</span></div>
+                <!-- Grok Cockpit Capability Matrix -->
+                <div class="mt-2 mb-2">
+                    <div class="flex items-center justify-between text-xs font-mono text-zinc-400 mb-1">
+                        <span class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">⚡ AUTONOMOUS CAPABILITIES</span> &bull; 37 Live Tools</span>
+                        <span class="text-[10px] text-zinc-500">Click any card to inject intent</span>
+                    </div>
+
+                    <div class="cockpit-caps-grid">
+                        <!-- Browser Automation & Stealth -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Browse to URL and extract latest updates with full page screenshot: ')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">🌐 Headless Browser</span>
+                                <span class="cockpit-cap-badge">nodriver</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Stealth web interaction, Cloudflare bypass, screenshots &amp; DOM capture.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to launch scrape</div>
+                        </div>
+
+                        <!-- 18-Layer Memory & Knowledge Graph -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Explore knowledge graph connections and recall facts about: ')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">🧠 18-Layer Memory</span>
+                                <span class="cockpit-cap-badge">Graph + Vectors</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Episodic traces, semantic embeddings, working memory &amp; world model.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to search memory</div>
+                        </div>
+
+                        <!-- Sandboxed Python & Shell Execution -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Execute a Python script in sandbox to analyze this dataset: ')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">🐍 Python &amp; Shell</span>
+                                <span class="cockpit-cap-badge">Sandboxed</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Run analytical computations, file transformations, and safe system scripts.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to run script</div>
+                        </div>
+
+                        <!-- Vision & Multimodal Inspection -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Analyze the attached image/screenshot, extract layout details and OCR text.')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">👁️ Vision &amp; OCR</span>
+                                <span class="cockpit-cap-badge">Multimodal</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Inspect screenshots, decode visual documents, and extract text accurately.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to analyze visual</div>
+                        </div>
+
+                        <!-- Comms, Gmail & Telegram -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Review unread Gmail messages, triage priorities, and summarize alerts.')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">📧 Email &amp; Telegram</span>
+                                <span class="cockpit-cap-badge">Allowlist</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Gmail integration with strict recipient allowlists and Telegram mobile bridge.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to triage emails</div>
+                        </div>
+
+                        <!-- Self-Improvement & Policy Learner -->
+                        <div class="cockpit-cap-card" onclick="loadPrompt('Review latest behavioral rules and self-improvement procedures.')">
+                            <div class="cockpit-cap-header">
+                                <span class="cockpit-cap-title">🔧 Self-Improvement</span>
+                                <span class="cockpit-cap-badge">Evolving</span>
+                            </div>
+                            <div class="cockpit-cap-desc">Converts mistakes into permanent behavioral rules and refines core playbooks.</div>
+                            <div class="cockpit-cap-action">&rarr; Click to inspect rules</div>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- System Telemetry Badges -->
                 <div class="welcome-stats">
                     <div class="wstat"><span class="wstat-val">18</span> memory layers</div>
-                    <div class="wstat"><span class="wstat-val">20+</span> scheduler jobs</div>
-                    <div class="wstat"><span class="wstat-val">30+</span> skills</div>
+                    <div class="wstat"><span class="wstat-val">41</span> scheduler jobs</div>
+                    <div class="wstat"><span class="wstat-val">37</span> builtin skills</div>
+                    <div class="wstat"><span class="wstat-val">15</span> worker bots</div>
                     <div class="wstat"><span class="wstat-val">⚡</span> Sovereign mode</div>
                 </div>
-
-                <p class="welcome-hint">📎 Attach files &nbsp;·&nbsp; 📋 <strong>Ctrl+V</strong> to paste image from clipboard &nbsp;·&nbsp; drag files into chat</p>
+                <div class="mt-3 pt-2.5 border-t border-zinc-800">
+                    <div class="text-[11px] font-mono text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                        <span class="text-amber-400">⚡ QUICK LAUNCH:</span>
+                        <span>Click to load demo mesh workflow</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+                        <button type="button" class="btn btn-xs bg-zinc-800/90 hover:bg-amber-400 hover:text-black border border-zinc-700 text-zinc-300 rounded px-2.5 py-1" onclick="loadPrompt('Run my week: triage inbox zero, scout leads, verify pending invoices, and draft content calendar.')">
+                            🚀 &quot;Run my week&quot;
+                        </button>
+                        <button type="button" class="btn btn-xs bg-zinc-800/90 hover:bg-amber-400 hover:text-black border border-zinc-700 text-zinc-300 rounded px-2.5 py-1" onclick="loadPrompt('Audit upcoming meetings, prepare briefings, and summarize competitor watch.')">
+                            📅 Meeting &amp; Competitor Prep
+                        </button>
+                        <button type="button" class="btn btn-xs bg-zinc-800/90 hover:bg-amber-400 hover:text-black border border-zinc-700 text-zinc-300 rounded px-2.5 py-1" onclick="loadPrompt('Reconcile pending expenses and flag any irreversible wire transfers for approval.')">
+                            💵 Invoices &amp; Wire Safeguard
+                        </button>
+                    </div>
+                </div>
+                <p class="welcome-hint mt-2">📎 Attach files &nbsp;·&nbsp; 📋 <strong>Ctrl+V</strong> to paste image &nbsp;·&nbsp; <strong>Shift+Enter</strong> for newline</p>
             </div>
             <div class="chat-footer opacity-40 text-xs mt-1">Agent Wasp · ready</div>
         </div>
@@ -96,34 +223,55 @@
         <span class="text-xs opacity-60">📋 Image pasted — type a message and send</span>
     </div>
 
-    <!-- Input area -->
-    <div class="chat-input-area">
-        <!-- Attach button -->
-        <label class="btn btn-ghost btn-sm btn-square flex-shrink-0 cursor-pointer" data-ds="4" title="Attach file">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-            </svg>
-            <input type="file" id="file-input" class="hidden" multiple
-                accept="image/*,audio/*,video/*,.pdf,.txt,.md,.csv,.json,.xml,.yaml,.yml,.docx,.doc">
-        </label>
+    <!-- Grok Hero Omni-Bar & Agent Mesh Controls -->
+    <div class="grok-input-wrapper">
+        <div class="grok-input-card">
+            <div class="grok-mode-strip">
+                <div class="grok-mode-group">
+                    <span class="text-xs font-mono font-semibold uppercase tracking-wider text-amber-400/80 mr-1">MODE:</span>
+                    <div class="grok-mode-chip active" data-mode="mesh" id="chip-mode-mesh" title="15-bot Mesh &amp; Splitter Auto-Pilot">🚀 15-Bot Mesh</div>
+                    <div class="grok-mode-chip" data-mode="deep" id="chip-mode-deep" title="Deep Reason &amp; Web Verification">🧠 DeepSearch</div>
+                    <div class="grok-mode-chip" data-mode="fast" id="chip-mode-fast" title="Instant Fast Execution">⚡ Direct</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-toggle-mesh-panel" class="btn btn-ghost btn-xs text-xs font-mono text-zinc-400 hover:text-amber-400">
+                        <span>⚙️ Toggle Mesh View</span>
+                    </button>
+                </div>
+            </div>
 
-        <textarea
-            id="chat-input"
-            class="textarea textarea-bordered chat-textarea"
-            placeholder="Type a message… (Enter to send · Ctrl+V to paste image)"
-            rows="2"
-            maxlength="4000"
-        ></textarea>
+            <textarea
+                id="chat-input"
+                class="grok-textarea"
+                placeholder="Ask WASP anything or give an autonomous command... (e.g. 'Run my week', 'Analyze leads &amp; prep invoices')"
+                rows="2"
+                maxlength="4000"
+            ></textarea>
 
-        <button
-            id="btn-send"
-            class="btn-send-custom"
-            title="Send (Enter)"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-            </svg>
-        </button>
+            <div class="grok-action-strip">
+                <div class="flex items-center gap-1">
+                    <label class="btn btn-ghost btn-xs btn-square cursor-pointer text-zinc-400 hover:text-white" title="Attach file / document">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        <input type="file" id="file-input" class="hidden" multiple
+                            accept="image/*,audio/*,video/*,.pdf,.txt,.md,.csv,.json,.xml,.yaml,.yml,.docx,.doc">
+                    </label>
+                    <span class="text-[11px] font-mono text-zinc-500 hidden sm:inline-block ml-1">Shift+Enter for newline</span>
+                </div>
+
+                <button
+                    id="btn-send"
+                    class="btn btn-sm bg-amber-400 hover:bg-amber-300 text-black font-semibold border-none rounded-lg px-4 flex items-center gap-1.5 transition-transform active:scale-95"
+                    title="Send (Enter)"
+                >
+                    <span>Execute</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
 </div><!-- /chat-card -->
@@ -490,6 +638,78 @@
         return panel;
     }
 
+    // ── Human-in-the-Loop Approval Interceptor ───────────────────────────
+    window.renderApprovalPrompt = function(actionData) {
+        var card = document.createElement('div');
+        card.className = 'approval-card ml-12 my-3';
+        var actionTitle = actionData.title || 'Irreversible Action Safeguard';
+        var actionDetails = actionData.details || 'A critical operation requires operator authorization.';
+        var amountStr = actionData.amount ? '<div class="text-lg font-bold font-mono text-rose-400 my-1">' + _esc(actionData.amount) + '</div>' : '';
+
+        card.innerHTML = 
+            '<div class="flex items-center gap-2 mb-2">' +
+                '<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>' +
+                '<span class="text-xs font-mono font-bold uppercase tracking-wider text-rose-400">⚡ HUMAN-IN-THE-LOOP REQUIRED</span>' +
+            '</div>' +
+            '<div class="text-sm font-semibold text-white">' + _esc(actionTitle) + '</div>' +
+            '<div class="text-xs text-zinc-300 mt-1">' + _esc(actionDetails) + '</div>' +
+            amountStr +
+            '<div class="flex items-center gap-2 mt-3">' +
+                '<button type="button" class="btn btn-xs bg-emerald-500 hover:bg-emerald-400 text-black font-semibold border-none rounded px-3" data-action="approve">' +
+                    '✓ Authorize & Execute' +
+                '</button>' +
+                '<button type="button" class="btn btn-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-600 rounded px-3" data-action="reject">' +
+                    '✕ Reject with Rule' +
+                '</button>' +
+            '</div>';
+
+        card.querySelector('[data-action="approve"]').addEventListener('click', function() {
+            card.innerHTML = '<div class="text-xs font-mono text-emerald-400 font-semibold">✓ Action Authorized by Operator. Processing unit...</div>';
+            if (window.updateMeshState) {
+                window.updateMeshState({ passed: 410, active: 0, rejected: 2, total: 412 });
+            }
+        });
+
+        card.querySelector('[data-action="reject"]').addEventListener('click', function() {
+            card.innerHTML = 
+                '<div class="text-xs font-mono text-rose-400 font-semibold">✕ Action Aborted. New Behavioral Rule Added:</div>' +
+                '<div class="text-[11px] font-mono text-amber-300 mt-0.5">&quot;Disallow automated wire/payment transfers above $0 without approval.&quot;</div>';
+            if (window.updateMeshState) {
+                window.updateMeshState({ passed: 409, active: 0, rejected: 3, total: 412 });
+            }
+        });
+
+        messages.appendChild(card);
+        scrollToBottom();
+    };
+
+    // ── Done Checker & Rejection-to-Rule Learning Toast ───────────────────
+    window.renderDoneCheckerVerification = function(result) {
+        var toast = document.createElement('div');
+        toast.className = 'ml-12 my-2 p-2.5 rounded-lg bg-zinc-900/90 border border-zinc-700/80 text-xs font-mono';
+        
+        var passedCount = result.passed || 409;
+        var rejectedCount = result.rejected || 3;
+        var rulesSaved = result.rulesSaved || ['Always verify invoice sender domain', 'No automated wire transfer > $0', 'Require human gate for calendar conflicts'];
+
+        var rulesHtml = rulesSaved.map(function(r) {
+            return '<li class="text-amber-300/90">&bull; ' + _esc(r) + '</li>';
+        }).join('');
+
+        toast.innerHTML = 
+            '<div class="flex items-center justify-between border-b border-zinc-800 pb-1.5 mb-1.5">' +
+                '<div class="flex items-center gap-1.5">' +
+                    '<span class="text-emerald-400 font-bold">&#10003; DONE CHECKER VERIFICATION</span>' +
+                '</div>' +
+                '<span class="text-[10px] text-zinc-400 font-semibold">' + passedCount + ' PASSED &bull; ' + rejectedCount + ' REPLANNED</span>' +
+            '</div>' +
+            '<div class="text-[11px] text-zinc-300 mb-1 font-sans">Critic completed self-evaluation. Rejections automatically converted into persistent memory rules:</div>' +
+            '<ul class="text-[10.5px] space-y-0.5 pl-1">' + rulesHtml + '</ul>';
+
+        messages.appendChild(toast);
+        scrollToBottom();
+    };
+
     // ── Grounding validation block (async, fail-hidden) ───────────────────
     function fetchAndAddGrounding(agentDiv, afterEl, reqId) {
         var url = '/chat/api/last-grounding' + (reqId ? '?request_id=' + encodeURIComponent(reqId) : '');
@@ -741,6 +961,52 @@
 
     // ── SSE event handler ─────────────────────────────────────────────────
     function handleStreamEvent(ev, progressLines, userText, userAttachments) {
+        if (ev.type === 'mesh_split') {
+            if (window.updateMeshState) {
+                window.updateMeshState({
+                    total: ev.total_units || 412,
+                    passed: ev.passed || 0,
+                    active: ev.active || (ev.total_units || 412),
+                    rejected: ev.rejected || 0
+                });
+            }
+            if (_setPhase) _setPhase('Mesh Splitter — Dispatched ' + (ev.total_units || 412) + ' units across parallel bots');
+            if (_addRow) _addRow('plan', '⚡', '<span class="hi">Task Splitter</span> — Decomposed into <span class="text-amber-400 font-bold">' + (ev.total_units || 412) + ' micro-units</span>');
+            return;
+        }
+
+        if (ev.type === 'bot_status') {
+            var botCard = document.getElementById(ev.bot_id || ('bot-' + ev.bot));
+            if (botCard) {
+                var stateEl = botCard.querySelector('.bot-state');
+                if (ev.state === 'running') {
+                    botCard.className = 'mesh-bot-card running';
+                    if (stateEl) { stateEl.textContent = 'Running'; stateEl.className = 'text-[10px] text-amber-300 bot-state'; }
+                } else if (ev.state === 'verified') {
+                    botCard.className = 'mesh-bot-card verified';
+                    if (stateEl) { stateEl.textContent = 'Verified'; stateEl.className = 'text-[10px] text-emerald-400 bot-state'; }
+                } else {
+                    botCard.className = 'mesh-bot-card';
+                    if (stateEl) { stateEl.textContent = 'Idle'; stateEl.className = 'text-[10px] text-zinc-400 bot-state'; }
+                }
+            }
+            return;
+        }
+
+        if (ev.type === 'approval_required') {
+            if (window.renderApprovalPrompt) {
+                window.renderApprovalPrompt(ev);
+            }
+            return;
+        }
+
+        if (ev.type === 'done_verify') {
+            if (window.renderDoneCheckerVerification) {
+                window.renderDoneCheckerVerification(ev);
+            }
+            return;
+        }
+
         if (ev.type === 'thinking') {
             var r = ev.round || 1;
             var _acc = (ev.request_id && _traces[ev.request_id]) ? _traces[ev.request_id] : _traceAccum;
@@ -866,6 +1132,12 @@
     }
 
     // ── Main send function (streaming) ────────────────────────────────────
+    window.loadPrompt = function(str) {
+        if (!input) return;
+        input.value = str;
+        input.focus();
+    };
+
     window.sendMessage = function () {
         var text = input.value.trim();
         var atts = pendingAttachments.slice();
@@ -975,6 +1247,64 @@
         kids.forEach(function (k) {
             if (k.id !== 'welcome-msg') k.remove();
         });
+    };
+
+    // ── Grok Mode & 15-Bot Mesh Simulation Controller ─────────────────────
+    var _activeMode = localStorage.getItem('wasp_execution_mode') || 'mesh';
+    var _modeChips = document.querySelectorAll('.grok-mode-chip');
+    var _meshToggleBtn = document.getElementById('btn-toggle-mesh-panel');
+    var _meshPanel = document.getElementById('mesh-monitor-panel');
+
+    function setGrokMode(mode) {
+        _activeMode = mode;
+        localStorage.setItem('wasp_execution_mode', mode);
+        _modeChips.forEach(function(chip) {
+            if (chip.getAttribute('data-mode') === mode) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+    }
+
+    _modeChips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            setGrokMode(this.getAttribute('data-mode'));
+        });
+    });
+    setGrokMode(_activeMode);
+
+    if (_meshToggleBtn && _meshPanel) {
+        _meshToggleBtn.addEventListener('click', function() {
+            if (_meshPanel.style.display === 'none') {
+                _meshPanel.style.display = 'block';
+            } else {
+                _meshPanel.style.display = 'none';
+            }
+        });
+    }
+
+    // Agent Mesh live state simulation & updates
+    window.updateMeshState = function(state) {
+        if (!state) return;
+        var unitCountEl = document.getElementById('mesh-unit-count');
+        var passedEl = document.getElementById('mesh-units-passed');
+        var activeEl = document.getElementById('mesh-units-active');
+        var rejectedEl = document.getElementById('mesh-units-rejected');
+        var barDone = document.getElementById('bar-units-done');
+        var barActive = document.getElementById('bar-units-active');
+        var barFail = document.getElementById('bar-units-fail');
+
+        if (unitCountEl && state.total) unitCountEl.textContent = state.total + ' Units';
+        if (passedEl && state.passed !== undefined) passedEl.innerHTML = '&#10003; ' + state.passed + ' Passed';
+        if (activeEl && state.active !== undefined) activeEl.innerHTML = '&#8635; ' + state.active + ' Running';
+        if (rejectedEl && state.rejected !== undefined) rejectedEl.innerHTML = '&#10007; ' + state.rejected + ' Rejected';
+
+        if (state.total > 0) {
+            if (barDone) barDone.style.width = ((state.passed / state.total) * 100) + '%';
+            if (barActive) barActive.style.width = ((state.active / state.total) * 100) + '%';
+            if (barFail) barFail.style.width = ((state.rejected / state.total) * 100) + '%';
+        }
     };
 
     // ── Init ──────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 # ── Secrets / runtime config ───────────────────────────────────────────
 .env
+*.env
+.env.*
 .env.local
 .env.*.local
 *.key

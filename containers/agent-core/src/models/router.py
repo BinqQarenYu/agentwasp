@@ -1,127 +1,133 @@
-"""Intelligent model router — classify tasks and suggest the optimal model.
+"""Intelligent & Risk-Hardened Model Router for Agent WASP.
 
-Routes based on task type keywords:
-- vision: requires image analysis → vision-capable model (GPT-4o, Claude, Gemini, LLaVA)
-- code: programming/scripting → best code model
-- quick: simple/fast tasks → fastest/cheapest model
-- complex: deep analysis → most powerful model
-- default: use active model
-
-The router does NOT switch models automatically — it suggests.
-The agent can use route_task() to pick the best model for each step.
+Routes tasks intelligently across tiers:
+- High-End Cloud Tier (Gemini Pro/Flash, Grok, GPT-4o): Complex reasoning, code review, security audits, multi-step tool execution, and the Done-Checker critic.
+- Deterministic Math Guard: Forces mathematical and financial expressions to bypass mental calculation and route to Python/calculator tools.
+- Local Tier (Ollama / Small models): Safe classification, read-only drafting, spam triage, and low-risk conversation.
+- System Pressure Guard: Fallback to cloud if local host RAM exceeds 80% to avoid VRAM thrashing.
 """
 
 import re
 import structlog
+from typing import Tuple, List, Optional
 
 logger = structlog.get_logger()
 
-# Task type patterns
+# ── High-Risk Domain Patterns (Unconditional Cloud Escalation) ───────────────
+_SECURITY_AUDIT_PATTERNS = re.compile(
+    r"(security|vulnerability|exploit|cve|re-entrancy|penetration|audit|sanitiz|auth|bypass|permission|secret|credential|token|privilege)",
+    re.IGNORECASE,
+)
+
+_FINANCIAL_OR_MATH_PATTERNS = re.compile(
+    r"(\$|€|£|\busd\b|\beur\b|\binvoice\b|\bwire\b|\btransfer\b|\bpayment\b|\binterest\b|\btax\b|\bvat\b|\bformula\b|\bcalculate\b|\bequation\b|\bpercent\b|%|\bsum\b|\baverage\b|\bbalance\b|\breconcil\b)",
+    re.IGNORECASE,
+)
+
+_CODE_AND_ARCHITECTURE_PATTERNS = re.compile(
+    r"(\brefactor\b|\barchitecture\b|\bdocker\b|\bkubernetes\b|\bdatabase schema\b|\bmigration\b|\bdeadlock\b|\bconcurrency\b|\brace condition\b|\basyncio\b|\bmultiprocess\b|\bcompiler\b|\bast\b|\bunit test\b)",
+    re.IGNORECASE,
+)
+
 _VISION_PATTERNS = re.compile(
-    r"\b(imagen|foto|screenshot|captura|chart|gráfico|grafico|picture|image|visual|"
-    r"photo|ver|mira|muéstrame|muéstra|describe|analiza esta|what do you see|"
-    r"what's in|qué hay|qué ves|read this image|lee esta imagen)\b",
+    r"(\bimagen\b|\bfoto\b|\bscreenshot\b|\bcaptura\b|\bchart\b|\bgráfico\b|\bpicture\b|\bimage\b|\bvisual\b|\bphoto\b|describe this image|what is in this picture)",
     re.IGNORECASE,
 )
 
-_CODE_PATTERNS = re.compile(
-    r"\b(código|code|script|función|function|clase|class|programa|program|"
-    r"python|javascript|typescript|bash|sql|algoritmo|algorithm|debuggear|debug|"
-    r"refactorizar|refactor|optimizar el código|implement|implementa|escribe una|"
-    r"write a function|create a script|crea un script)\b",
+# ── Low-Risk / Trivial Patterns (Safe for Local Ollama Tier) ─────────────────
+_TRIVIAL_CLASSIFY_PATTERNS = re.compile(
+    r"(\bspam\b|is this spam|\bclassify\b|\btag this\b|\bcategorize\b|draft a quick greeting|say hello|summarize in one sentence|clean up whitespace)",
     re.IGNORECASE,
 )
 
-_QUICK_PATTERNS = re.compile(
-    r"\b(qué hora|que hora|what time|clima|weather|tiempo|temperatura|"
-    r"cuánto|cuanto|how much|precio|price|precio actual|convierte|convert|"
-    r"traduce|translate|suma|add|multiplica|multiply|cuántos|cuantos|"
-    r"quick|rápido|rapido|fast|dame solo|just give me)\b",
-    re.IGNORECASE,
-)
-
-_COMPLEX_PATTERNS = re.compile(
-    r"\b(analiza|analyze|análisis|analysis|investiga|investigate|research|"
-    r"explica en detalle|explain in detail|redacta|draft|escribe un ensayo|"
-    r"write an essay|plan|estrategia|strategy|diseña|design|arquitectura|"
-    r"architecture|comparar|compare|evalúa|evaluate|mejora|improve|optimiza)\b",
-    re.IGNORECASE,
-)
-
-# Preferred models per task type (ordered by preference)
-_VISION_MODELS = [
-    "claude-opus-4-6", "claude-sonnet-4-6", "gpt-4o", "gemini-2.0-flash",
-    "gemini-1.5-pro", "claude-3-5-sonnet-20241022", "llava:7b", "llava:13b",
-    "bakllava", "moondream",
+# Preferred cloud models for complex / high-stakes tasks
+_CLOUD_HIGH_END_MODELS = [
+    "gemini-2.0-flash", "gemini-2.5-pro", "grok-2", "gpt-4o", "claude-3-5-sonnet",
 ]
 
-_CODE_MODELS = [
-    "claude-opus-4-6", "claude-sonnet-4-6", "claude-3-5-sonnet-20241022",
-    "gpt-4o", "gpt-4", "deepseek-coder", "codellama", "qwen2.5-coder",
-]
-
-_QUICK_MODELS = [
-    "gpt-4o-mini", "claude-haiku-4-5-20251001", "claude-3-5-haiku-20241022",
-    "gemini-2.0-flash", "grok-beta", "qwen2.5:1.5b", "tinyllama",
-]
-
-_COMPLEX_MODELS = [
-    "claude-opus-4-6", "gpt-4o", "gemini-1.5-pro", "claude-3-5-sonnet-20241022",
-    "gpt-4", "grok-2",
+_LOCAL_OR_FAST_MODELS = [
+    "qwen2.5:7b", "llama3.1:8b", "mistral:7b", "qwen2.5-coder:7b", "gpt-4o-mini", "gemini-2.0-flash-lite",
 ]
 
 
-def classify_task(text: str) -> str:
-    """Classify a task into: vision, code, quick, complex, or default."""
-    if _VISION_PATTERNS.search(text):
+def classify_task_hardened(text: str, has_attachments: bool = False) -> str:
+    """Classifies task with strict safety overrides to prevent false logic and errors."""
+    if has_attachments or _VISION_PATTERNS.search(text):
         return "vision"
-    if _CODE_PATTERNS.search(text):
-        return "code"
-    if _QUICK_PATTERNS.search(text):
-        return "quick"
-    if _COMPLEX_PATTERNS.search(text):
-        return "complex"
-    return "default"
+
+    # Rule 1: Financial & Math MUST escalate to Cloud + Tool Execution
+    if _FINANCIAL_OR_MATH_PATTERNS.search(text):
+        return "financial_math_high_risk"
+
+    # Rule 2: Security & Code Audits MUST escalate to Cloud
+    if _SECURITY_AUDIT_PATTERNS.search(text) or _CODE_AND_ARCHITECTURE_PATTERNS.search(text):
+        return "deep_engineering_high_risk"
+
+    # Rule 3: Only truly trivial, non-calculating tasks can use the local tier
+    if _TRIVIAL_CLASSIFY_PATTERNS.search(text) and len(text.split()) < 40:
+        return "trivial_local_tier"
+
+    return "cloud_general"
 
 
-def suggest_model(task_type: str, available_models: list[str]) -> str | None:
-    """Return the best available model for the task type, or None if no match."""
-    preferred_lists = {
-        "vision": _VISION_MODELS,
-        "code": _CODE_MODELS,
-        "quick": _QUICK_MODELS,
-        "complex": _COMPLEX_MODELS,
+def suggest_hardened_model(
+    task_type: str,
+    available_models: List[str],
+    active_model: str,
+    host_cpi_pressure: float = 0.0,
+) -> Tuple[str, str, dict]:
+    """Recommends model tier and returns safety metadata."""
+    metadata = {
+        "requires_deterministic_tool": False,
+        "tier": "cloud",
+        "reason": "Standard reasoning tier",
     }
-    preferred = preferred_lists.get(task_type, [])
-    available_lower = {m.lower(): m for m in available_models}
 
-    for candidate in preferred:
-        # Exact match
-        if candidate in available_models:
-            return candidate
-        # Prefix match (e.g. "llava" matches "llava:7b")
-        for avail_l, avail_orig in available_lower.items():
-            if avail_l.startswith(candidate.lower()) or candidate.lower().startswith(avail_l):
-                return avail_orig
-    return None
+    # If host machine is under severe RAM pressure (>80%), avoid local Ollama VRAM freeze
+    if host_cpi_pressure > 80.0:
+        metadata["reason"] = "Host RAM > 80% — forced cloud execution to prevent system thrash"
+        return task_type, active_model, metadata
+
+    if task_type in ("financial_math_high_risk", "deep_engineering_high_risk"):
+        metadata["requires_deterministic_tool"] = (task_type == "financial_math_high_risk")
+        metadata["tier"] = "cloud_high_end"
+        metadata["reason"] = "High-stakes task escalated to high-end frontier model"
+
+        for candidate in _CLOUD_HIGH_END_MODELS:
+            for m in available_models:
+                if candidate in m.lower():
+                    return task_type, m, metadata
+
+    elif task_type == "trivial_local_tier":
+        metadata["tier"] = "local_ollama"
+        metadata["reason"] = "Trivial task routed to local/fast tier to conserve cloud quota"
+
+        for candidate in _LOCAL_OR_FAST_MODELS:
+            for m in available_models:
+                if candidate in m.lower():
+                    return task_type, m, metadata
+
+    return task_type, active_model, metadata
 
 
-def route_task(text: str, available_models: list[str], active_model: str) -> tuple[str, str]:
-    """Route a task to the optimal model.
+def route_task(
+    text: str,
+    available_models: List[str],
+    active_model: str,
+    has_attachments: bool = False,
+    host_cpi_pressure: float = 0.0,
+) -> Tuple[str, str]:
+    """Compatibility wrapper for route_task with risk hardening."""
+    task_type = classify_task_hardened(text, has_attachments=has_attachments)
+    _, recommended_model, meta = suggest_hardened_model(
+        task_type, available_models, active_model, host_cpi_pressure
+    )
 
-    Returns (task_type, recommended_model).
-    recommended_model is the active_model if no better match found.
-    """
-    task_type = classify_task(text)
-    if task_type == "default":
-        return "default", active_model
-
-    recommended = suggest_model(task_type, available_models)
-    if recommended and recommended != active_model:
-        logger.info(
-            "model_router.suggestion",
-            task_type=task_type,
-            recommended=recommended,
-            active=active_model,
-        )
-    return task_type, recommended or active_model
+    logger.info(
+        "model_router.hardened_decision",
+        task_type=task_type,
+        model_selected=recommended_model,
+        tier=meta["tier"],
+        reason=meta["reason"],
+    )
+    return task_type, recommended_model

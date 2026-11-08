@@ -18,6 +18,10 @@ _PER_PAGE = 25
 
 
 def _build_filters(stmt, event_type: str, source: str, errors_only: bool, search: str):
+    search = str(getattr(search, "default", search) if not isinstance(search, str) else search)
+    event_type = str(getattr(event_type, "default", event_type) if not isinstance(event_type, str) else event_type)
+    source = str(getattr(source, "default", source) if not isinstance(source, str) else source)
+    errors_only = bool(getattr(errors_only, "default", errors_only) if not isinstance(errors_only, bool) else errors_only)
     if event_type:
         stmt = stmt.where(AuditLog.event_type == event_type)
     if source:
