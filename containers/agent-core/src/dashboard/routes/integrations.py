@@ -19,6 +19,7 @@ _LOGO_MAP: dict[str, str] = {
     "github":             "github",
     "gmail-connector":    "gmail",
     "google-calendar":    "googlecalendar",
+    "google-drive":       "googledrive",
     "telegram":           "telegram",
     "whatsapp":           "whatsapp",
     "whatsapp-baileys":   "whatsapp-baileys",

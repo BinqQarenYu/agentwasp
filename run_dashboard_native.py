@@ -309,6 +309,7 @@ from src.integrations.connectors.telegram import TelegramConnector
 from src.integrations.connectors.discord import DiscordConnector
 from src.integrations.connectors.slack import SlackConnector
 from src.integrations.connectors.google_calendar import GoogleCalendarConnector
+from src.integrations.connectors.google_drive import GoogleDriveConnector
 from src.integrations.connectors.notion import NotionConnector
 from src.integrations.connectors.webhook import WebhookConnector
 from src.integrations.connectors.browser_controlled import BrowserControlledConnector
@@ -325,6 +326,7 @@ _connectors = [
     DiscordConnector(),
     SlackConnector(),
     GoogleCalendarConnector(),
+    GoogleDriveConnector(),
     NotionConnector(),
     WebhookConnector(),
     BrowserControlledConnector(),
