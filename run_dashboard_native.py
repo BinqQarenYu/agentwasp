@@ -339,8 +339,9 @@ _connectors = [
 for c in _connectors:
     intg_registry.register(c)
 
-# Enable Gmail, Google Drive, Google Sheets, Google Photos, and Windows bridge
+# Enable Gmail, GitHub, Google Drive, Google Sheets, Google Photos, and Windows bridge
 policy.enable("gmail-connector")
+policy.enable("github")
 policy.enable("platform-windows")
 policy.enable("google-drive")
 policy.enable("google-sheets")
@@ -349,7 +350,7 @@ policy.enable("google-photos")
 # Override policy.is_enabled and _policy.is_enabled to keep them lit
 _original_is_enabled = policy.is_enabled
 def _is_enabled_hook(iid):
-    if iid in ("gmail-connector", "platform-windows", "google-drive", "google-sheets", "google-photos"):
+    if iid in ("gmail-connector", "github", "platform-windows", "google-drive", "google-sheets", "google-photos"):
         return True
     return False
 policy.is_enabled = _is_enabled_hook
