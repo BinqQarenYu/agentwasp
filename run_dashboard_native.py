@@ -316,6 +316,7 @@ from src.integrations.connectors.notion import NotionConnector
 from src.integrations.connectors.webhook import WebhookConnector
 from src.integrations.connectors.browser_controlled import BrowserControlledConnector
 from src.integrations.connectors.platform_windows import WindowsBridgeConnector
+from src.integrations.connectors.mcp import MCPConnector
 
 vault = SecretVault("redis://127.0.0.1:6379/0", "0123456789abcdef0123456789abcdef")
 policy = PolicyEngine(redis_url="redis://127.0.0.1:6379/0")
@@ -335,22 +336,24 @@ _connectors = [
     WebhookConnector(),
     BrowserControlledConnector(),
     WindowsBridgeConnector(),
+    MCPConnector(),
 ]
 for c in _connectors:
     intg_registry.register(c)
 
-# Enable Gmail, GitHub, Google Drive, Google Sheets, Google Photos, and Windows bridge
+# Enable Gmail, GitHub, Google Drive, Google Sheets, Google Photos, Windows bridge, and Antigravity MCP
 policy.enable("gmail-connector")
 policy.enable("github")
 policy.enable("platform-windows")
 policy.enable("google-drive")
 policy.enable("google-sheets")
 policy.enable("google-photos")
+policy.enable("mcp")
 
 # Override policy.is_enabled and _policy.is_enabled to keep them lit
 _original_is_enabled = policy.is_enabled
 def _is_enabled_hook(iid):
-    if iid in ("gmail-connector", "github", "platform-windows", "google-drive", "google-sheets", "google-photos"):
+    if iid in ("gmail-connector", "github", "platform-windows", "google-drive", "google-sheets", "google-photos", "mcp"):
         return True
     return False
 policy.is_enabled = _is_enabled_hook
