@@ -224,11 +224,52 @@ function initGraph() {
         
     const g = svg.append("g");
     
-    // Smooth Zooming Configuration
+    // ── Persistent Graph Viewport & Filter State (Remember View) ─────────
+    const STORAGE_KEY_VIEW = 'wasp_graphify_view_state_v1';
+    let saveTimeout = null;
+    
+    function loadSavedViewState() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY_VIEW);
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return null;
+    }
+
+    function saveCurrentViewState() {
+        try {
+            const t = d3.zoomTransform(svg.node());
+            const state = {
+                transform: { k: t.k, x: t.x, y: t.y },
+                filters: {
+                    file: document.getElementById('filter-file').checked,
+                    class: document.getElementById('filter-class').checked,
+                    function: document.getElementById('filter-function').checked,
+                    import: document.getElementById('filter-import').checked,
+                },
+                search: document.getElementById('graph-search').value,
+                physics: {
+                    distance: document.getElementById('param-distance').value,
+                    charge: document.getElementById('param-charge').value,
+                },
+                selectedNodeId: selectedNode ? selectedNode.id : null,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(STORAGE_KEY_VIEW, JSON.stringify(state));
+        } catch(e) {}
+    }
+
+    function debouncedSaveView() {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveCurrentViewState, 250);
+    }
+
+    // Smooth Zooming Configuration with auto-save
     const zoom = d3.zoom()
         .scaleExtent([0.05, 5])
         .on("zoom", (e) => {
             g.attr("transform", e.transform);
+            debouncedSaveView();
         });
     svg.call(zoom);
     
@@ -291,8 +332,62 @@ function initGraph() {
                 document.getElementById("meta-path").textContent = data.metadata.root || "/app";
             }
             
+            // Restore saved filter, search, and physics controls if available
+            const savedState = loadSavedViewState();
+            if (savedState) {
+                if (savedState.filters) {
+                    if (typeof savedState.filters.file === 'boolean') document.getElementById('filter-file').checked = savedState.filters.file;
+                    if (typeof savedState.filters.class === 'boolean') document.getElementById('filter-class').checked = savedState.filters.class;
+                    if (typeof savedState.filters.function === 'boolean') document.getElementById('filter-function').checked = savedState.filters.function;
+                    if (typeof savedState.filters.import === 'boolean') document.getElementById('filter-import').checked = savedState.filters.import;
+                }
+                if (savedState.search) {
+                    document.getElementById('graph-search').value = savedState.search;
+                    document.getElementById('search-clear').classList.remove('hidden');
+                }
+                if (savedState.physics) {
+                    if (savedState.physics.distance) {
+                        document.getElementById('param-distance').value = savedState.physics.distance;
+                        document.getElementById('val-distance').textContent = savedState.physics.distance + 'px';
+                    }
+                    if (savedState.physics.charge) {
+                        document.getElementById('param-charge').value = savedState.physics.charge;
+                        document.getElementById('val-charge').textContent = savedState.physics.charge;
+                    }
+                }
+            }
+
             // Perform Initial Draw
             updateGraph();
+
+            // Restore saved viewport pan/zoom position
+            if (savedState && savedState.transform) {
+                const tr = savedState.transform;
+                if (tr && typeof tr.k === 'number' && tr.k > 0) {
+                    setTimeout(() => {
+                        svg.call(zoom.transform, d3.zoomIdentity.translate(tr.x, tr.y).scale(tr.k));
+                    }, 50);
+                }
+            }
+
+            // Restore selected node details if previously open
+            if (savedState && savedState.selectedNodeId) {
+                const targetNode = allNodes.find(n => n.id === savedState.selectedNodeId);
+                if (targetNode) {
+                    setTimeout(() => {
+                        const adjDict = {};
+                        rawEdges.forEach(e => {
+                            const sId = e.source.id || e.source;
+                            const tId = e.target.id || e.target;
+                            if (!adjDict[sId]) adjDict[sId] = new Set();
+                            if (!adjDict[tId]) adjDict[tId] = new Set();
+                            adjDict[sId].add(tId);
+                            adjDict[tId].add(sId);
+                        });
+                        showNodeDetails(targetNode, adjDict);
+                    }, 100);
+                }
+            }
             
         }).catch(err => {
             console.error("D3 loading crash:", err);
@@ -362,6 +457,7 @@ function initGraph() {
         document.getElementById("meta-nodes").textContent = filteredNodes.length;
         document.getElementById("meta-edges").textContent = filteredEdges.length;
         
+        debouncedSaveView();
         // 4. Update Simulation Data
         simulation.nodes(filteredNodes);
         
@@ -469,6 +565,7 @@ function initGraph() {
     
     // Detailed Topology Analyst side-drawer display
     function showNodeDetails(d, adjDict) {
+        debouncedSaveView();
         selectedNode = d;
         
         // Glow Node target
@@ -552,11 +649,12 @@ function initGraph() {
         }
     }
     
-    // Zoom Reset
+    // Zoom Reset (resets viewport & clears saved transform)
     function resetZoom() {
         svg.transition()
             .duration(750)
             .call(zoom.transform, d3.zoomIdentity);
+        setTimeout(saveCurrentViewState, 800);
     }
     
     // Smooth zoom centering on specific node
@@ -572,6 +670,7 @@ function initGraph() {
     
     // Close Selection details panel
     function closeNodeDetails() {
+        debouncedSaveView();
         selectedNode = null;
         d3.selectAll("circle")
             .classed("glow-active", false)
