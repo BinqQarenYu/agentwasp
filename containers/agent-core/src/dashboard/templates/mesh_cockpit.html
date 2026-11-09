@@ -1,98 +1,136 @@
 {% extends "base.html" %}
-{% block title %}GROK BOT MESH — Altair One-Person-Company{% endblock %}
+{% block title %}GROK BOT MESH — one-person-company{% endblock %}
 
 {% block page_css %}
 <style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
-/* Altair Pure OLED Dark Canvas */
+/* Exact Altair OLED Pure Black Canvas */
 body {
-    background-color: #050608 !important;
+    background-color: #05070b !important;
 }
 
-.altair-canvas-container {
-    background: radial-gradient(circle at 50% 30%, #0d1117 0%, #050608 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    position: relative;
-    overflow: hidden;
-    min-height: calc(100vh - 120px);
+.mesh-root {
+    background: #07090e;
+    min-height: calc(100vh - 100px);
     width: 100%;
     color: #e6edf3;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     user-select: none;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow-x: auto;
 }
 
-/* Header bar */
-.altair-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(13, 17, 23, 0.85);
-    backdrop-filter: blur(16px);
-    padding: 10px 24px;
+/* ── Top Header Navigation Bar ────────────────────────────────────────── */
+.mesh-top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: relative;
-    z-index: 30;
+    padding: 12px 24px 8px 24px;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
-
-.altair-tab {
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.altair-tab.active {
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-}
-.altair-tab:not(.active) {
-    color: rgba(255, 255, 255, 0.45);
-}
-.altair-tab:hover:not(.active) {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.altair-stat-pill {
+.mesh-brand {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    padding: 0 14px;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-.altair-stat-pill:last-child {
-    border-right: none;
-}
-.altair-stat-val {
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    line-height: 1.1;
-}
-.altair-stat-lbl {
-    font-size: 9px;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.4);
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
     letter-spacing: 0.5px;
 }
-
-/* Viewport with horizontal scrolling if screen is narrow, preventing squishing */
-.altair-stage-wrapper {
-    overflow-x: auto;
-    overflow-y: hidden;
-    width: 100%;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+.mesh-grok-icon-mini {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.altair-stage {
+.mesh-grok-icon-mini span {
+    width: 2px;
+    height: 7px;
+    background: #000;
+    margin: 0 1px;
+    border-radius: 1px;
+}
+.mesh-nav-links {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 20px;
+}
+.mesh-nav-item {
+    color: #6e7681;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+.mesh-nav-item.active {
+    color: #ffffff;
+    border-bottom: 1px solid #58a6ff;
+    padding-bottom: 2px;
+}
+.mesh-nav-item:hover:not(.active) {
+    color: #c9d1d9;
+}
+
+/* Breadcrumb Sub-Header */
+.mesh-sub-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+}
+.mesh-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+.mesh-title-sub {
+    color: #8b949e;
+    font-weight: 400;
+}
+.mesh-reload-btn {
+    cursor: pointer;
+    color: #58a6ff;
+    transition: transform 0.2s;
+}
+.mesh-reload-btn:hover {
+    transform: rotate(180deg);
+}
+
+/* Telemetry Counter Pills in Sub-Header */
+.mesh-stat-group {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+.mesh-stat-box {
+    text-align: right;
+}
+.mesh-stat-num {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.mesh-stat-tag {
+    font-size: 9px;
+    color: #6e7681;
+    text-transform: lowercase;
+}
+
+/* ── Interactive Graph Stage ─────────────────────────────────────────── */
+.mesh-stage-wrapper {
     position: relative;
-    min-width: 1480px;
-    height: 840px;
+    width: 100%;
+    min-width: 1180px;
+    height: 820px;
+    overflow: hidden;
 }
-
-/* SVG Connection Lines overlay */
-#altair-wires-svg {
+#mesh-svg-wires {
     position: absolute;
     top: 0;
     left: 0;
@@ -102,830 +140,1429 @@ body {
     z-index: 5;
 }
 
-/* Animated Glowing Fiber Wire */
-.fiber-wire {
+/* Fiber Wire Paths */
+.mesh-fiber-wire {
     fill: none;
-    stroke-width: 1.4;
-    opacity: 0.4;
-    transition: stroke 0.3s, opacity 0.3s, stroke-width 0.3s;
-    stroke-dasharray: 6, 6;
-    animation: wireIdleFlow 2.5s linear infinite;
+    stroke-width: 1.25;
+    opacity: 0.65;
+    stroke-dasharray: 4, 4;
+    animation: wireRun 1.8s linear infinite;
 }
-.fiber-wire.active {
-    opacity: 0.95;
-    stroke-width: 2.2;
-    filter: drop-shadow(0 0 8px currentColor);
-    animation: wireFastFlow 1.2s linear infinite;
+.mesh-fiber-wire.static-dim {
+    stroke-dasharray: none;
+    opacity: 0.35;
+    stroke-width: 1;
 }
-
-@keyframes wireIdleFlow {
-    from { stroke-dashoffset: 24; }
-    to { stroke-dashoffset: 0; }
-}
-@keyframes wireFastFlow {
-    from { stroke-dashoffset: 28; }
+@keyframes wireRun {
+    from { stroke-dashoffset: 20; }
     to { stroke-dashoffset: 0; }
 }
 
-/* Floating ambient movement for Cards & Orbs */
-@keyframes floatGentle {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-4px); }
-}
-.float-ambient {
-    animation: floatGentle 4s ease-in-out infinite;
-}
-
-/* Inputs on far left */
-.input-node-badge {
-    background: #161b22;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+/* ── Stage 1: Left Input Pill Badges ─────────────────────────────────── */
+.input-badge {
+    position: absolute;
+    left: 36px;
+    width: 64px;
+    height: 22px;
+    background: #0f141c;
+    border: 1px solid #30363d;
+    border-radius: 4px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    width: 110px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    justify-content: center;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #c9d1d9;
+    letter-spacing: 0.3px;
     z-index: 10;
 }
+.input-badge-port {
+    position: absolute;
+    right: -4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #0d1117;
+    border: 1.5px solid #fff;
+}
 
-/* Grok Mask Orb */
-.grok-mask-orb {
-    width: 68px;
-    height: 68px;
-    border-radius: 18px;
+/* ── Stage 2: Central Logic Gates & Grok Orb ─────────────────────────── */
+.grok-orb-card {
+    position: absolute;
+    left: 122px;
+    top: 410px;
+    transform: translateY(-50%);
+    width: 82px;
+    height: 82px;
     background: #ffffff;
-    box-shadow: 0 0 35px rgba(255, 255, 255, 0.35);
+    border-radius: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;
+    box-shadow: 0 0 35px rgba(255, 255, 255, 0.4);
+    z-index: 12;
     cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s;
-    z-index: 10;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
-.grok-mask-orb:hover {
-    transform: scale(1.08);
+.grok-orb-card:hover {
+    transform: translateY(-50%) scale(1.05);
     box-shadow: 0 0 50px rgba(255, 255, 255, 0.6);
 }
-.grok-eyes {
+.grok-orb-eyes {
     display: flex;
     gap: 12px;
 }
-.grok-eye {
-    width: 9px;
-    height: 18px;
-    background: #000000;
-    border-radius: 4px;
+.grok-orb-eye {
+    width: 11px;
+    height: 22px;
+    background: #000;
+    border-radius: 5px;
+}
+.grok-label-tag {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    font-size: 7.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid #30363d;
+    white-space: nowrap;
 }
 
-/* Gate Cards (Check & Splitter) */
-.gate-card {
-    background: #0d1117;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 11px;
-    width: 145px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    z-index: 10;
+/* Gate Cards: Check (Top) & Splitter (Bottom) */
+.mesh-gate-card {
+    position: absolute;
+    left: 218px;
+    width: 148px;
+    background: #0a0d14;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+    z-index: 12;
 }
-.gate-card.check-gate {
+.gate-check {
+    top: 270px;
     border: 1px solid #d29922;
 }
-.gate-card.splitter-gate {
-    border: 1px solid #58a6ff;
+.gate-splitter {
+    top: 490px;
+    border: 1px solid #388bfd;
 }
-
-/* 15 Employee Bot Pills */
-.bot-pill-row {
+.gate-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 12px;
-    border-radius: 9999px;
-    background: #0d1117;
-    font-size: 10.5px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-    width: 155px;
-    z-index: 10;
+    margin-bottom: 6px;
 }
-.bot-pill-row:hover {
-    transform: translateX(4px);
-    filter: brightness(1.2);
+.gate-title {
+    font-weight: 700;
+    font-size: 11px;
 }
-
-/* Micro Unit Execution Tags (Continuous Waterfall) */
-.unit-tag {
-    display: inline-block;
-    padding: 2.5px 8px;
+.gate-badge-btn {
+    width: 18px;
+    height: 18px;
     border-radius: 4px;
-    font-size: 9px;
-    font-family: inherit;
-    font-weight: 600;
-    margin: 2px 0;
-    border: 1px solid transparent;
-    transition: all 0.2s ease;
-    cursor: default;
-    white-space: nowrap;
-    text-align: center;
-}
-.unit-tag:hover {
-    transform: scale(1.08);
-    z-index: 20;
-}
-
-/* Continuous moving waterfalls */
-@keyframes waterfallScrollUp {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
-}
-@keyframes waterfallScrollDown {
-    0% { transform: translateY(-50%); }
-    100% { transform: translateY(0); }
-}
-.waterfall-col-track-up {
-    animation: waterfallScrollUp 32s linear infinite;
-}
-.waterfall-col-track-down {
-    animation: waterfallScrollDown 36s linear infinite;
-}
-.waterfall-col-track-up-fast {
-    animation: waterfallScrollUp 26s linear infinite;
-}
-.waterfall-col-track-down-fast {
-    animation: waterfallScrollDown 29s linear infinite;
-}
-.waterfall-col-track-up:hover,
-.waterfall-col-track-down:hover {
-    animation-play-state: paused;
-}
-
-/* Verified Output Orb */
-.verified-output-orb {
-    width: 95px;
-    height: 95px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #238636 0%, #0d1117 75%);
-    border: 2px solid #3fb950;
-    box-shadow: 0 0 35px rgba(63, 185, 80, 0.45);
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 15;
-}
-.verified-output-orb:hover {
-    transform: scale(1.08);
-    box-shadow: 0 0 55px rgba(63, 185, 80, 0.7);
+    font-size: 9px;
+    font-weight: bold;
 }
 
-/* Telemetry Summary Cards */
-.altair-card-summary {
-    background: #0d1117;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-    z-index: 15;
+/* Toggle Pill inside gate */
+.gate-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    color: #8b949e;
+    margin-bottom: 6px;
 }
-
-/* Bottom Monospace Console Log */
-.altair-terminal-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(9, 12, 16, 0.95);
-    padding: 8px 24px;
-    font-size: 10px;
-    color: #7ee787;
+.gate-toggle-switch {
+    width: 20px;
+    height: 10px;
+    background: #238636;
+    border-radius: 5px;
+    position: relative;
+}
+.gate-toggle-switch::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    top: 1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+}
+.gate-meta-desc {
+    font-size: 8.5px;
+    color: #8b949e;
+    line-height: 1.35;
+    margin-bottom: 6px;
+}
+.gate-link-sub {
+    font-size: 8px;
+    color: #58a6ff;
+    text-decoration: underline;
+    display: block;
+    margin-bottom: 6px;
+}
+.gate-connect-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    font-size: 8px;
+    color: #8b949e;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gate-connect-action {
+    color: #d29922;
+    cursor: pointer;
+    font-weight: 600;
+}
+.gate-splitter .gate-connect-action {
+    color: #388bfd;
+}
+
+/* ── Stage 3: The 15 Employee Cards (Rounded Stack) ─────────────────── */
+.mesh-bots-column {
+    position: absolute;
+    left: 405px;
+    top: 62px;
+    width: 156px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    z-index: 12;
+}
+.employee-card-mesh {
+    background: #080b11;
+    border-radius: 12px;
+    padding: 4px 8px;
     position: relative;
-    z-index: 30;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    transition: transform 0.15s, filter 0.15s;
+    cursor: pointer;
+}
+.employee-card-mesh:hover {
+    transform: translateX(3px);
+    filter: brightness(1.2);
+}
+.emp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+.emp-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.emp-icon-badge {
+    width: 17px;
+    height: 17px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5px;
+    font-weight: 800;
+}
+.emp-title-text {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+.emp-tag-badge {
+    font-size: 7.5px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+}
+.emp-sub-desc {
+    font-size: 7.5px;
+    color: #8b949e;
+    line-height: 1.2;
+    padding-left: 23px;
+}
+.emp-sub-link {
+    font-size: 7px;
+    color: #6e7681;
+    padding-left: 23px;
+    margin-top: 1px;
+}
+
+/* Right port anchor on each employee card */
+.emp-out-port {
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #080b11;
+    border: 1.5px solid currentColor;
+}
+
+/* ── Stage 4: 3-Column Execution Units Waterfall ──────────────────────── */
+.mesh-units-matrix {
+    position: absolute;
+    left: 580px;
+    top: 60px;
+    display: flex;
+    gap: 16px;
+    width: 320px;
+    z-index: 10;
+}
+.unit-column-track {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 86px;
+}
+.mesh-unit-tag {
+    position: relative;
+    padding: 2.5px 7px;
+    border-radius: 4px;
+    font-size: 8.5px;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: default;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.mesh-unit-tag:hover {
+    transform: scale(1.06);
+    z-index: 20;
+}
+/* Left port dot on unit tag */
+.unit-in-port {
+    position: absolute;
+    left: -4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #080b11;
+    border: 1.5px solid currentColor;
+}
+/* Right port dot on unit tag */
+.unit-out-port {
+    position: absolute;
+    right: -4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #080b11;
+    border: 1.5px solid currentColor;
+}
+
+/* ── Terminal Event Log at bottom ─────────────────────────────────────── */
+.mesh-terminal-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: #06080d;
+    padding: 10px 24px;
+    font-size: 10.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #8b949e;
+}
+.term-log-line {
+    display: flex;
+    gap: 16px;
+}
+.term-time {
+    color: #484f58;
+}
+.term-bot {
+    color: #f43f5e;
+    font-weight: 600;
+}
+.term-action {
+    color: #7ee787;
+}
+.term-code {
+    color: #3fb950;
+    font-weight: 700;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="altair-canvas-container flex flex-col">
-    <!-- Header Controls -->
-    <div class="altair-header">
-        <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-                <span class="text-white font-bold text-xs tracking-wider">GROK BOT MESH</span>
-                <span class="text-zinc-500 text-xs">/</span>
-                <span class="text-zinc-400 text-xs font-semibold">one-person-company</span>
-                <button id="btn-replay-anim" class="btn btn-ghost btn-xs text-amber-400 border border-amber-400/30 hover:bg-amber-400/10 gap-1 ml-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Pulse Run
-                </button>
-            </div>
-            <div class="flex items-center gap-1.5 ml-4">
-                <span class="altair-tab active">Global</span>
-                <span class="altair-tab">Bots</span>
-                <span class="altair-tab">Runs</span>
-                <span class="altair-tab">Rules</span>
-                <span class="altair-tab">Memory</span>
-            </div>
-        </div>
-
-        <!-- Telemetry Stats -->
+<div class="mesh-root">
+    <!-- Top Header Navigation Bar (Matches ground truth) -->
+    <div class="mesh-top-bar">
         <div class="flex items-center">
-            <div class="altair-stat-pill">
-                <div class="altair-stat-val text-white" id="stat-bots">15</div>
-                <div class="altair-stat-lbl">bots online</div>
+            <div class="mesh-brand">
+                <span class="mesh-grok-icon-mini"><span></span><span></span></span>
+                <span class="text-white">GROK BOT</span>
+                <span class="text-zinc-600 font-normal">MESH</span>
             </div>
-            <div class="altair-stat-pill">
-                <div class="altair-stat-val text-amber-400" id="stat-units">412</div>
-                <div class="altair-stat-lbl">units</div>
+            <div class="mesh-nav-links">
+                <span class="mesh-nav-item active">Global</span>
+                <span class="mesh-nav-item">Bots</span>
+                <span class="mesh-nav-item">Runs</span>
+                <span class="mesh-nav-item">Rules</span>
+                <span class="mesh-nav-item">Memory</span>
             </div>
-            <div class="altair-stat-pill">
-                <div class="altair-stat-val text-emerald-400" id="stat-verified">409</div>
-                <div class="altair-stat-lbl">verified</div>
-            </div>
-            <div class="altair-stat-pill">
-                <div class="altair-stat-val text-rose-400" id="stat-rejected">3</div>
-                <div class="altair-stat-lbl">rejected</div>
-            </div>
-            <div class="altair-stat-pill">
-                <div class="altair-stat-val text-sky-400" id="stat-rules">3</div>
-                <div class="altair-stat-lbl">rules</div>
-            </div>
-            <div class="pl-3 flex items-center gap-1.5 text-xs text-rose-500 font-mono">
-                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 LIVE
+            </span>
+            <div class="flex items-center gap-1.5 bg-zinc-900 px-2 py-0.5 rounded-full border border-zinc-800 text-[11px] text-zinc-300">
+                <span class="w-3.5 h-3.5 rounded-full bg-sky-500 flex items-center justify-center text-[8px] font-bold text-white">@</span>
+                <span>@maestrooth</span>
             </div>
         </div>
     </div>
 
-    <!-- Main Visual Stage (Altair DAG Layout with horizontal protection) -->
-    <div class="altair-stage-wrapper flex-1">
-        <div class="altair-stage" id="mesh-viewport">
-            <!-- SVG Canvas for all dynamic bezier wires -->
-            <svg id="altair-wires-svg"></svg>
+    <!-- Sub-Header: Title and Live Telemetry Group -->
+    <div class="mesh-sub-bar">
+        <div class="mesh-title-row">
+            <span class="mesh-title-sub">global /</span>
+            <span class="text-white">one-person-company</span>
+            <span class="mesh-reload-btn" id="btn-mesh-reload" title="Re-sync state">↻</span>
+        </div>
 
-            <!-- STAGE 1: Left Inputs (x = 30px) -->
-            <div class="absolute left-[30px] top-28 flex flex-col gap-12" id="col-inputs">
-                <div class="input-node-badge" id="node-in-task"><span>TASK</span><span class="w-2 h-2 rounded-full bg-emerald-400"></span></div>
-                <div class="input-node-badge" id="node-in-inbox"><span>INBOX</span><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span></div>
-                <div class="input-node-badge" id="node-in-cal"><span>CALENDAR</span><span class="w-2 h-2 rounded-full bg-sky-400"></span></div>
-                <div class="input-node-badge" id="node-in-mem"><span>MEMORY.MD</span><span class="w-2 h-2 rounded-full bg-purple-400"></span></div>
+        <div class="mesh-stat-group">
+            <div class="mesh-stat-box">
+                <div class="mesh-stat-num text-white" id="stat-val-bots">15</div>
+                <div class="mesh-stat-tag">bots online</div>
             </div>
-
-            <!-- STAGE 2: Grok Master Orb & Dispatcher Gates (x = 180px) -->
-            <div class="absolute left-[180px] top-32 flex flex-col items-center gap-5" id="col-dispatcher">
-                <!-- Check Gate -->
-                <div class="gate-card check-gate" id="node-gate-check">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold text-amber-400">Check</span>
-                        <span class="text-xs text-amber-400">✓ Enabled</span>
-                    </div>
-                    <div class="text-[9px] text-zinc-400 mb-1">Writes pass condition</div>
-                    <div class="text-[9px] text-zinc-500">inbox zero · no auto-pay</div>
-                    <div class="mt-2 text-[9px] font-bold text-amber-400 border-t border-amber-400/20 pt-1">Splitter → 15 bots</div>
-                </div>
-
-                <!-- Grok White Mask Icon -->
-                <div class="grok-mask-orb float-ambient" id="node-grok-orb" title="Grok Coordinator">
-                    <div class="grok-eyes">
-                        <div class="grok-eye"></div>
-                        <div class="grok-eye"></div>
-                    </div>
-                    <span class="text-[8px] font-bold text-black mt-1 font-sans tracking-tight">GROK BOT</span>
-                </div>
-
-                <!-- Splitter Gate -->
-                <div class="gate-card splitter-gate" id="node-gate-splitter">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold text-sky-400">Splitter</span>
-                        <span class="text-xs text-sky-400">✓ Enabled</span>
-                    </div>
-                    <div class="text-[9px] text-zinc-400 mb-1">Cuts task into units</div>
-                    <div class="text-[9px] text-zinc-500">84 run in parallel</div>
-                    <div class="mt-2 text-[9px] font-bold text-sky-400 border-t border-sky-400/20 pt-1">Task Graph</div>
-                </div>
+            <div class="mesh-stat-box">
+                <div class="mesh-stat-num text-white" id="stat-val-units">412</div>
+                <div class="mesh-stat-tag">units</div>
             </div>
-
-            <!-- STAGE 3: 15 Employee Bots (x = 380px) -->
-            <div class="absolute left-[380px] top-8 flex flex-col gap-2" id="col-15-bots">
-                <!-- 1. Inbox Triage (Hermes) -->
-                <div class="bot-pill-row border border-emerald-500/50 text-emerald-400" id="bot-01" data-color="#10b981">
-                    <span>🟢 Inbox Triage</span><span class="text-[9px] font-mono text-zinc-400">32u</span>
-                </div>
-                <!-- 2. Meeting Prep (Clara) -->
-                <div class="bot-pill-row border border-pink-500/50 text-pink-400" id="bot-02" data-color="#ec4899">
-                    <span>🌸 Meeting Prep</span><span class="text-[9px] font-mono text-zinc-400">18u</span>
-                </div>
-                <!-- 3. Content Calendar (Calliope) -->
-                <div class="bot-pill-row border border-purple-500/50 text-purple-400" id="bot-03" data-color="#a855f7">
-                    <span>🟣 Content Cal</span><span class="text-[9px] font-mono text-zinc-400">45u</span>
-                </div>
-                <!-- 4. Expense Tracker (Ledger) -->
-                <div class="bot-pill-row border border-blue-500/50 text-blue-400" id="bot-04" data-color="#3b82f6">
-                    <span>🔵 Expense Track</span><span class="text-[9px] font-mono text-zinc-400">24u</span>
-                </div>
-                <!-- 5. Bug Repro (Sherlock) -->
-                <div class="bot-pill-row border border-amber-500/50 text-amber-400" id="bot-05" data-color="#f59e0b">
-                    <span>🟠 Bug Repro</span><span class="text-[9px] font-mono text-zinc-400">12u</span>
-                </div>
-                <!-- 6. Competitor Watch (Argus) -->
-                <div class="bot-pill-row border border-rose-500/50 text-rose-400" id="bot-06" data-color="#f43f5e">
-                    <span>🔴 Comp. Watch</span><span class="text-[9px] font-mono text-zinc-400">20u</span>
-                </div>
-                <!-- 7. Travel Planner (Odyssey) -->
-                <div class="bot-pill-row border border-fuchsia-500/50 text-fuchsia-400" id="bot-07" data-color="#d946ef">
-                    <span>🌺 Travel Plan</span><span class="text-[9px] font-mono text-zinc-400">14u</span>
-                </div>
-                <!-- 8. Follow-up (Echo) -->
-                <div class="bot-pill-row border border-indigo-500/50 text-indigo-400" id="bot-08" data-color="#6366f1">
-                    <span>🟣 Follow-up</span><span class="text-[9px] font-mono text-zinc-400">29u</span>
-                </div>
-                <!-- 9. Dr. Albert (Principal Scientist) -->
-                <div class="bot-pill-row border border-amber-500/50 text-amber-300" id="bot-09" data-color="#f59e0b" title="Dr. Albert: Principal Scientist & Epistemologist">
-                    <span>🔬 Dr. Albert</span><span class="text-[9px] font-mono text-amber-400">PhD</span>
-                </div>
-                <!-- 10. Daily Digest (Apollo) -->
-                <div class="bot-pill-row border border-emerald-400/50 text-emerald-300" id="bot-10" data-color="#34d399">
-                    <span>🟩 Daily Digest</span><span class="text-[9px] font-mono text-zinc-400">16u</span>
-                </div>
-                <!-- 11. Lead Scout (Hunter) -->
-                <div class="bot-pill-row border border-red-500/50 text-red-400" id="bot-11" data-color="#ef4444">
-                    <span>🔴 Lead Scout</span><span class="text-[9px] font-mono text-zinc-400">52u</span>
-                </div>
-                <!-- 12. Invoice Bot (Midas) -->
-                <div class="bot-pill-row border border-violet-500/50 text-violet-400" id="bot-12" data-color="#8b5cf6">
-                    <span>🟣 Invoice Bot</span><span class="text-[9px] font-mono text-zinc-400">22u</span>
-                </div>
-                <!-- 13. Support Desk (Aegis) -->
-                <div class="bot-pill-row border border-amber-600/50 text-amber-500" id="bot-13" data-color="#d97706">
-                    <span>🟠 Support Desk</span><span class="text-[9px] font-mono text-zinc-400">31u</span>
-                </div>
-                <!-- 14. Social Poster (Mercury) -->
-                <div class="bot-pill-row border border-teal-500/50 text-teal-400" id="bot-14" data-color="#14b8a6">
-                    <span>🟢 Social Poster</span><span class="text-[9px] font-mono text-zinc-400">25u</span>
-                </div>
-                <!-- 15. Athena (Fleet Steward) -->
-                <div class="bot-pill-row border border-cyan-500/50 text-cyan-400" id="bot-15" data-color="#06b6d4" title="Athena: GitHub Fleet Steward & Code Architect">
-                    <span>🛡️ Athena (Fleet)</span><span class="text-[9px] font-mono text-cyan-300">81r</span>
-                </div>
+            <div class="mesh-stat-box">
+                <div class="mesh-stat-num text-emerald-400" id="stat-val-verified">98</div>
+                <div class="mesh-stat-tag">verified</div>
             </div>
-
-            <!-- STAGE 4: Micro Execution Units Waterfall (x = 590px, width = 450px) -->
-            <div class="absolute left-[590px] top-6 flex gap-3 h-[780px] overflow-hidden" id="col-micro-units">
-                <!-- Stream Col 1 -->
-                <div class="w-24 overflow-hidden relative">
-                    <div class="flex flex-col gap-1 waterfall-col-track-up">
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">expense.log</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">temp.check</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">digest.write</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">followup.send</span>
-                        <span class="unit-tag bg-sky-950/60 text-sky-400 border-sky-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">post.queue</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">cal.book</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">crm.update</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-cyan-950/60 text-cyan-400 border-cyan-500/30">lead.find</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">invoice.send</span>
-                        <!-- Loop duplicates for infinite seamless animation -->
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">expense.log</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">temp.check</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">digest.write</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">followup.send</span>
-                        <span class="unit-tag bg-sky-950/60 text-sky-400 border-sky-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">post.queue</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">cal.book</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">crm.update</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-cyan-950/60 text-cyan-400 border-cyan-500/30">lead.find</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">invoice.send</span>
-                    </div>
-                </div>
-
-                <!-- Stream Col 2 -->
-                <div class="w-24 overflow-hidden relative">
-                    <div class="flex flex-col gap-1 waterfall-col-track-down">
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">invoice.send</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">followup.send</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">trip.book</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">vat.rate</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">post.queue</span>
-                        <span class="unit-tag bg-violet-950/60 text-violet-400 border-violet-500/30">inbox.sort</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">lead.find</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
-                        <!-- Loop duplicates -->
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">invoice.send</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">followup.send</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">trip.book</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">vat.rate</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">post.queue</span>
-                        <span class="unit-tag bg-violet-950/60 text-violet-400 border-violet-500/30">inbox.sort</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">lead.find</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
-                    </div>
-                </div>
-
-                <!-- Stream Col 3 -->
-                <div class="w-24 overflow-hidden relative">
-                    <div class="flex flex-col gap-1 waterfall-col-track-up-fast">
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">digest.write</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">comp.scan</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">cat.book</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">test.run</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">price.check</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-sky-950/60 text-sky-400 border-sky-500/30">test.run</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">cal.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
-                        <!-- Loop duplicates -->
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">digest.write</span>
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">comp.scan</span>
-                        <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">cat.book</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">test.run</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">price.check</span>
-                        <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
-                        <span class="unit-tag bg-sky-950/60 text-sky-400 border-sky-500/30">test.run</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">cal.scan</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
-                        <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
-                    </div>
-                </div>
-
-                <!-- Stream Col 4 -->
-                <div class="w-24 overflow-hidden relative">
-                    <div class="flex flex-col gap-1 waterfall-col-track-down-fast">
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">invoice.send</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">mail.reply</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">table.sync</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">bug.repro</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">comp.scan</span>
-                        <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">audit.cut</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">crm.update</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                        <!-- Loop duplicates -->
-                        <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">invoice.send</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">mail.reply</span>
-                        <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">table.sync</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">bug.repro</span>
-                        <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
-                        <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">comp.scan</span>
-                        <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
-                        <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">audit.cut</span>
-                        <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
-                        <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">crm.update</span>
-                        <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
-                    </div>
-                </div>
+            <div class="mesh-stat-box">
+                <div class="mesh-stat-num text-rose-500" id="stat-val-rejected">1</div>
+                <div class="mesh-stat-tag">rejected</div>
             </div>
-
-            <!-- STAGE 5: Verified Output Orb & Altair Run Complete Dashboard (x = 1080px, isolated) -->
-            <div class="absolute left-[1080px] top-10 flex flex-col items-center gap-5" id="col-verified-orb">
-                <!-- Large Glowing Green Completion Orb -->
-                <div class="verified-output-orb float-ambient" id="orb-verified">
-                    <svg class="h-8 w-8 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span class="text-[9px] font-bold text-white tracking-widest uppercase">Verified</span>
-                    <span class="text-[8px] text-emerald-200">409 / 412</span>
-                </div>
-
-                <!-- Run Complete Telemetry Panel -->
-                <div class="altair-card-summary w-84 text-xs font-mono" id="panel-run-summary">
-                    <div class="flex items-center justify-between text-zinc-400 mb-2">
-                        <div class="flex items-center gap-1.5 text-emerald-400 font-bold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            RUN COMPLETE
-                        </div>
-                        <span class="text-[10px] text-zinc-500">one-person-company</span>
-                    </div>
-                    <div class="text-3xl font-extrabold text-white mb-2">412 units</div>
-                    <div class="flex items-center gap-3 text-[10px] text-zinc-400 pb-3 border-b border-zinc-800 mb-3">
-                        <span class="text-white">15 bots</span>
-                        <span>·</span>
-                        <span class="text-rose-400">3 rejected</span>
-                        <span>·</span>
-                        <span class="text-sky-400">3 rules</span>
-                        <span>·</span>
-                        <span class="text-emerald-400">0 broken</span>
-                    </div>
-
-                    <!-- Sub-cards: Inbox & Posts -->
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
-                            <div class="flex items-center justify-between text-[10px] text-emerald-400 mb-1">
-                                <span>inbox · zero</span>
-                                <span>✓</span>
-                            </div>
-                            <div class="h-6 flex items-end gap-1">
-                                <span class="w-1.5 bg-emerald-500 h-2 rounded-t"></span>
-                                <span class="w-1.5 bg-emerald-500 h-3 rounded-t"></span>
-                                <span class="w-1.5 bg-emerald-500 h-5 rounded-t"></span>
-                                <span class="w-1.5 bg-emerald-500 h-1 rounded-t"></span>
-                                <span class="w-1.5 bg-emerald-500 h-6 rounded-t"></span>
-                            </div>
-                            <div class="text-[9px] text-zinc-500 mt-1">164 replied · 2 held</div>
-                        </div>
-                        <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
-                            <div class="flex items-center justify-between text-[10px] text-teal-400 mb-1">
-                                <span>posts · 21 queued</span>
-                                <span>✓</span>
-                            </div>
-                            <div class="h-6 flex items-end gap-1">
-                                <span class="w-1.5 bg-teal-500 h-3 rounded-t"></span>
-                                <span class="w-1.5 bg-teal-500 h-4 rounded-t"></span>
-                                <span class="w-1.5 bg-teal-500 h-6 rounded-t"></span>
-                                <span class="w-1.5 bg-teal-500 h-5 rounded-t"></span>
-                                <span class="w-1.5 bg-teal-500 h-2 rounded-t"></span>
-                            </div>
-                            <div class="text-[9px] text-zinc-500 mt-1">mon → sun · 9:00 slot</div>
-                        </div>
-                    </div>
-
-                    <!-- Memory Rules Learned -->
-                    <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 mb-3">
-                        <div class="flex items-center justify-between text-[10px] text-purple-400 mb-1">
-                            <span>MEMORY.md +3</span>
-                            <span>🧠</span>
-                        </div>
-                        <div class="text-[10px] text-zinc-400 space-y-0.5">
-                            <div>• reply in my tone</div>
-                            <div>• trips under $1,200</div>
-                            <div>• set 20% on invoices</div>
-                        </div>
-                    </div>
-
-                    <!-- Human Gate: Payment Approval Notice -->
-                    <div class="bg-amber-950/30 p-2.5 rounded-lg border border-amber-500/40">
-                        <div class="flex items-center justify-between text-[10px] text-amber-300 font-bold mb-1">
-                            <span>payment · needs you</span>
-                            <span>⚠️</span>
-                        </div>
-                        <div class="text-[10px] text-zinc-300 mb-2">wire $1,840 — contractor waiting irreversible · your call</div>
-                        <div class="flex items-center gap-2">
-                            <button class="btn btn-xs bg-amber-500 hover:bg-amber-400 text-black border-none font-bold">Approve</button>
-                            <button class="btn btn-xs btn-ghost text-zinc-400 hover:text-white">Send Back</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="mesh-stat-box">
+                <div class="mesh-stat-num text-sky-400" id="stat-val-rules">1</div>
+                <div class="mesh-stat-tag">rules</div>
             </div>
         </div>
     </div>
 
-    <!-- Monospace Live Event Terminal -->
-    <div class="altair-terminal-footer">
-        <div class="flex items-center gap-4">
-            <span class="text-zinc-500">09:48:12</span>
-            <span>bot_15 · athena → pr.review · unit 295 / 295 completed</span>
-            <span class="text-zinc-500">|</span>
-            <span class="text-amber-400">check: rule written to MEMORY.md</span>
+    <!-- Main Interactive Graph Canvas -->
+    <div class="mesh-stage-wrapper" id="mesh-viewport">
+        <!-- SVG Canvas for all cubic-bezier fiber threads -->
+        <svg id="mesh-svg-wires"></svg>
+
+        <!-- 1. LEFT INPUTS -->
+        <div class="input-badge" style="top: 215px;" id="in-task">
+            <span>TASK</span><span class="input-badge-port"></span>
         </div>
-        <div class="flex items-center gap-3">
-            <span class="text-zinc-500">Altair AI &bull; Grok Bot Mesh</span>
-            <span class="text-xs text-emerald-400 font-bold">100% OPERATIONAL</span>
+        <div class="input-badge" style="top: 315px;" id="in-inbox">
+            <span>INBOX</span><span class="input-badge-port"></span>
         </div>
+        <div class="input-badge" style="top: 635px;" id="in-cal">
+            <span>CALENDAR</span><span class="input-badge-port"></span>
+        </div>
+        <div class="input-badge" style="top: 735px;" id="in-mem">
+            <span>MEMORY.MD</span><span class="input-badge-port"></span>
+        </div>
+
+        <!-- 2. GROK ORB & DUAL GATES -->
+        <div class="grok-orb-card" id="orb-grok">
+            <div class="grok-orb-eyes">
+                <div class="grok-orb-eye"></div>
+                <div class="grok-orb-eye"></div>
+            </div>
+            <span class="grok-label-tag">GROK BOT</span>
+        </div>
+
+        <!-- Check Gate -->
+        <div class="mesh-gate-card gate-check" id="gate-check">
+            <div class="gate-header-row">
+                <span class="gate-title text-amber-400">Check</span>
+                <span class="gate-badge-btn bg-amber-400 text-black">✓</span>
+            </div>
+            <div class="gate-toggle-row">
+                <span class="gate-toggle-switch"></span>
+                <span>Enabled</span>
+            </div>
+            <div class="gate-meta-desc">Writes pass condition</div>
+            <div class="text-[8px] text-zinc-500 mb-1">inbox zero · no auto-pay</div>
+            <span class="gate-link-sub">MEMORY.md</span>
+            <div class="gate-connect-footer">
+                <span>• Splitter • 15 bots</span>
+                <span class="gate-connect-action">✓ Connect</span>
+            </div>
+        </div>
+
+        <!-- Splitter Gate -->
+        <div class="mesh-gate-card gate-splitter" id="gate-splitter">
+            <div class="gate-header-row">
+                <span class="gate-title text-sky-400">Splitter</span>
+                <span class="gate-badge-btn bg-sky-400/20 text-sky-400">v</span>
+            </div>
+            <div class="gate-toggle-row">
+                <span class="gate-toggle-switch"></span>
+                <span>Enabled</span>
+            </div>
+            <div class="gate-meta-desc">Cuts task into units</div>
+            <div class="text-[8px] text-zinc-500 mb-1">edge + data only<br>8+ run in parallel</div>
+            <div class="gate-connect-footer">
+                <span>Task Graph<br>• 15 bots</span>
+                <span class="gate-connect-action">✓ Connect</span>
+            </div>
+        </div>
+
+        <!-- 3. THE 15 EMPLOYEE CARDS (Single Column, matching Ground Truth colors & text) -->
+        <div class="mesh-bots-column" id="col-15-employees">
+            <!-- 1. Inbox Triage -->
+            <div class="employee-card-mesh border border-emerald-500/60" id="bot-card-01" data-color="#10b981">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-emerald-500/20 text-emerald-400">IT</span>
+                        <span class="emp-title-text">Inbox Triage</span>
+                    </div>
+                    <span class="emp-tag-badge bg-emerald-500/20 text-emerald-300">IT</span>
+                </div>
+                <div class="emp-sub-desc">Mail, Labels, MEMORY.md</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #10b981;"></span>
+            </div>
+
+            <!-- 2. Meeting Prep -->
+            <div class="employee-card-mesh border border-pink-500/60" id="bot-card-02" data-color="#ec4899">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-pink-500/20 text-pink-400">MP</span>
+                        <span class="emp-title-text">Meeting Prep</span>
+                    </div>
+                    <span class="emp-tag-badge bg-pink-500/20 text-pink-300">MP</span>
+                </div>
+                <div class="emp-sub-desc">Calendar, Docs</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #ec4899;"></span>
+            </div>
+
+            <!-- 3. Content Calendar -->
+            <div class="employee-card-mesh border border-purple-500/60" id="bot-card-03" data-color="#a855f7">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-purple-500/20 text-purple-400">CC</span>
+                        <span class="emp-title-text">Content Calendar</span>
+                    </div>
+                    <span class="emp-tag-badge bg-purple-500/20 text-purple-300">CC</span>
+                </div>
+                <div class="emp-sub-desc">Drafts, MEMORY.md</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #a855f7;"></span>
+            </div>
+
+            <!-- 4. Expense Tracker -->
+            <div class="employee-card-mesh border border-indigo-500/60" id="bot-card-04" data-color="#6366f1">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-indigo-500/20 text-indigo-400">ET</span>
+                        <span class="emp-title-text">Expense Tracker</span>
+                    </div>
+                    <span class="emp-tag-badge bg-indigo-500/20 text-indigo-300">ET</span>
+                </div>
+                <div class="emp-sub-desc">Sheets, Receipts</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #6366f1;"></span>
+            </div>
+
+            <!-- 5. Bug Repro -->
+            <div class="employee-card-mesh border border-amber-500/60" id="bot-card-05" data-color="#f59e0b">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-amber-500/20 text-amber-400">BR</span>
+                        <span class="emp-title-text">Bug Repro</span>
+                    </div>
+                    <span class="emp-tag-badge bg-amber-500/20 text-amber-300">BR</span>
+                </div>
+                <div class="emp-sub-desc">Repo, Shell</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #f59e0b;"></span>
+            </div>
+
+            <!-- 6. Competitor Watch -->
+            <div class="employee-card-mesh border border-rose-500/60" id="bot-card-06" data-color="#f43f5e">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-rose-500/20 text-rose-400">CW</span>
+                        <span class="emp-title-text">Competitor Watch</span>
+                    </div>
+                    <span class="emp-tag-badge bg-rose-500/20 text-rose-300">CW</span>
+                </div>
+                <div class="emp-sub-desc">Web, Alerts</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #f43f5e;"></span>
+            </div>
+
+            <!-- 7. Travel Planner -->
+            <div class="employee-card-mesh border border-fuchsia-500/60" id="bot-card-07" data-color="#d946ef">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-fuchsia-500/20 text-fuchsia-400">TP</span>
+                        <span class="emp-title-text">Travel Planner</span>
+                    </div>
+                    <span class="emp-tag-badge bg-fuchsia-500/20 text-fuchsia-300">TP</span>
+                </div>
+                <div class="emp-sub-desc">Browser, Calendar</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #d946ef;"></span>
+            </div>
+
+            <!-- 8. Follow-up -->
+            <div class="employee-card-mesh border border-blue-500/60" id="bot-card-08" data-color="#3b82f6">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-blue-500/20 text-blue-400">FU</span>
+                        <span class="emp-title-text">Follow-up</span>
+                    </div>
+                    <span class="emp-tag-badge bg-blue-500/20 text-blue-300">FU</span>
+                </div>
+                <div class="emp-sub-desc">Mail, CRM</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #3b82f6;"></span>
+            </div>
+
+            <!-- 9. Research (Dr. Albert) -->
+            <div class="employee-card-mesh border border-amber-600/60" id="bot-card-09" data-color="#d97706">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-amber-600/20 text-amber-400">RS</span>
+                        <span class="emp-title-text">Research</span>
+                    </div>
+                    <span class="emp-tag-badge bg-amber-600/20 text-amber-300">RS</span>
+                </div>
+                <div class="emp-sub-desc">Arxiv, Docs (Dr. Albert)</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #d97706;"></span>
+            </div>
+
+            <!-- 10. Daily Digest -->
+            <div class="employee-card-mesh border border-emerald-400/60" id="bot-card-10" data-color="#34d399">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-emerald-400/20 text-emerald-300">DD</span>
+                        <span class="emp-title-text">Daily Digest</span>
+                    </div>
+                    <span class="emp-tag-badge bg-emerald-400/20 text-emerald-300">DD</span>
+                </div>
+                <div class="emp-sub-desc">Chat, Notes</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #34d399;"></span>
+            </div>
+
+            <!-- 11. Lead Scout -->
+            <div class="employee-card-mesh border border-red-500/60" id="bot-card-11" data-color="#ef4444">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-red-500/20 text-red-400">LS</span>
+                        <span class="emp-title-text">Lead Scout</span>
+                    </div>
+                    <span class="emp-tag-badge bg-red-500/20 text-red-300">LS</span>
+                </div>
+                <div class="emp-sub-desc">Web, CRM</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #ef4444;"></span>
+            </div>
+
+            <!-- 12. Invoice Bot -->
+            <div class="employee-card-mesh border border-violet-500/60" id="bot-card-12" data-color="#8b5cf6">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-violet-500/20 text-violet-400">IB</span>
+                        <span class="emp-title-text">Invoice Bot</span>
+                    </div>
+                    <span class="emp-tag-badge bg-violet-500/20 text-violet-300">IB</span>
+                </div>
+                <div class="emp-sub-desc">Sheets, Mail</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #8b5cf6;"></span>
+            </div>
+
+            <!-- 13. Support Desk -->
+            <div class="employee-card-mesh border border-amber-500/60" id="bot-card-13" data-color="#f59e0b">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-amber-500/20 text-amber-400">SD</span>
+                        <span class="emp-title-text">Support Desk</span>
+                    </div>
+                    <span class="emp-tag-badge bg-amber-500/20 text-amber-300">SD</span>
+                </div>
+                <div class="emp-sub-desc">Helpdesk, Mail</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #f59e0b;"></span>
+            </div>
+
+            <!-- 14. Social Poster -->
+            <div class="employee-card-mesh border border-teal-500/60" id="bot-card-14" data-color="#14b8a6">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-teal-500/20 text-teal-400">SP</span>
+                        <span class="emp-title-text">Social Poster</span>
+                    </div>
+                    <span class="emp-tag-badge bg-teal-500/20 text-teal-300">SP</span>
+                </div>
+                <div class="emp-sub-desc">X, Media</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #14b8a6;"></span>
+            </div>
+
+            <!-- 15. Code Review (Athena) -->
+            <div class="employee-card-mesh border border-rose-600/60" id="bot-card-15" data-color="#e11d48">
+                <div class="emp-header">
+                    <div class="emp-left">
+                        <span class="emp-icon-badge bg-rose-600/20 text-rose-400">CR</span>
+                        <span class="emp-title-text">Code Review</span>
+                    </div>
+                    <span class="emp-tag-badge bg-rose-600/20 text-rose-300">CR</span>
+                </div>
+                <div class="emp-sub-desc">Repos, Diff (Athena)</div>
+                <div class="emp-sub-link">MEMORY.md</div>
+                <span class="emp-out-port" style="color: #e11d48;"></span>
+            </div>
+        </div>
+
+        <!-- 4. THREE COLUMNS OF MICRO EXECUTION UNITS (Exact match to Ground Truth) -->
+        <div class="mesh-units-matrix" id="matrix-units">
+            <!-- Column 1 -->
+            <div class="unit-column-track" id="u-col-1">
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    trip.book
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    expense.log
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    pr.review
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    tone.check
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    digest.write
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.draft
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    followup.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-blue-950/70 text-blue-400 border-blue-500/40">
+                    <span class="unit-in-port" style="color: #3b82f6;"></span>
+                    hotel.hold
+                    <span class="unit-out-port" style="color: #3b82f6;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.queue
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    media.cut
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    helph.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    pc.review
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-amber-950/70 text-amber-400 border-amber-500/40">
+                    <span class="unit-in-port" style="color: #f59e0b;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #f59e0b;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    crm.update
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    comp.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    pr.review
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    lead.find
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    notes.prep
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    hotel.hold
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    hote.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    hotel.hold
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    expense.log
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    test.ran
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    memory.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    notes.ponp
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    followup.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    mail.reply
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    Test.run
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    test.run
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    test.run
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+            </div>
+
+            <!-- Column 2 -->
+            <div class="unit-column-track" id="u-col-2">
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    invoice.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    followup.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    trip.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    followup.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-rose-950/70 text-rose-400 border-rose-500/40">
+                    <span class="unit-in-port" style="color: #f43f5e;"></span>
+                    wptccoon
+                    <span class="unit-out-port" style="color: #f43f5e;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    trip.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.draft
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    meedia.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    media.cut
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.quee
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    text.queue
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-rose-950/70 text-rose-400 border-rose-500/40">
+                    <span class="unit-in-port" style="color: #f43f5e;"></span>
+                    inbox.novu
+                    <span class="unit-out-port" style="color: #f43f5e;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    text.find
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    memory.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    nobox.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    notes.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    media.cut
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    memry.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-teal-950/70 text-teal-400 border-teal-500/40">
+                    <span class="unit-in-port" style="color: #14b8a6;"></span>
+                    noox.find..
+                    <span class="unit-out-port" style="color: #14b8a6;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-purple-950/70 text-purple-400 border-purple-500/40">
+                    <span class="unit-in-port" style="color: #8b5cf6;"></span>
+                    lead.find
+                    <span class="unit-out-port" style="color: #8b5cf6;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    Test.run
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    test.run
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    nail.reply
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    research.satn
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    ticket.reply
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cook.scrx
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    inbox.sent
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    resout.reute
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    expense.log
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+            </div>
+
+            <!-- Column 3 -->
+            <div class="unit-column-track" id="u-col-3">
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    digest.write
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    comp.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    compp.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    notes.prep
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    pr.review
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    test.run
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    ticket.reply
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-rose-950/70 text-rose-400 border-rose-500/40">
+                    <span class="unit-in-port" style="color: #f43f5e;"></span>
+                    priorittiee
+                    <span class="unit-out-port" style="color: #f43f5e;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    receipt.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    trip.book
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.queu
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    test.run
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    cal.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    inbox.srt
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    text.find
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    memory.save
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-blue-950/70 text-blue-400 border-blue-500/40">
+                    <span class="unit-in-port" style="color: #3b82f6;"></span>
+                    mail.reply
+                    <span class="unit-out-port" style="color: #3b82f6;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    inbox.sent
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    invoice.send
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    mailreply
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    recept.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    trip.book
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-emerald-950/70 text-emerald-400 border-emerald-500/40">
+                    <span class="unit-in-port" style="color: #10b981;"></span>
+                    trip.scan
+                    <span class="unit-out-port" style="color: #10b981;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    bug.repro
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    lovot.cut
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    hotel.hold
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    crm.update
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    crm.update
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-fuchsia-950/70 text-fuchsia-400 border-fuchsia-500/40">
+                    <span class="unit-in-port" style="color: #d946ef;"></span>
+                    memory.save
+                    <span class="unit-out-port" style="color: #d946ef;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.draft
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-amber-950/70 text-amber-400 border-amber-500/40">
+                    <span class="unit-in-port" style="color: #f59e0b;"></span>
+                    media.cut
+                    <span class="unit-out-port" style="color: #f59e0b;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    lead.find
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    test.scan
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+                <span class="mesh-unit-tag bg-zinc-900 text-zinc-300 border-zinc-700">
+                    <span class="unit-in-port" style="color: #6e7681;"></span>
+                    post.draft
+                    <span class="unit-out-port" style="color: #6e7681;"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monospace Live Bottom Terminal (Exact match) -->
+    <div class="mesh-terminal-row">
+        <div class="term-log-line">
+            <span class="term-time">22:57:11.50</span>
+            <span class="text-zinc-300 font-bold">grok</span>
+            <span>spawn check • spawn splitter</span>
+        </div>
+        <span class="term-code">200</span>
+    </div>
+    <div class="mesh-terminal-row" style="padding-top: 2px;">
+        <div class="term-log-line">
+            <span class="term-time">22:57:11.50</span>
+            <span class="term-bot">bot_03</span>
+            <span>Content Calendar • check: tone</span>
+        </div>
+        <span class="text-emerald-400">ok</span>
+    </div>
+    <div class="mesh-terminal-row" style="padding-top: 2px; padding-bottom: 12px;">
+        <div class="term-log-line">
+            <span class="term-time">22:57:12.30</span>
+            <span class="term-bot">bot_07</span>
+            <span>attach MEMORY.md • Follow-up</span>
+        </div>
+        <span class="text-emerald-400">ok</span>
     </div>
 </div>
 
-<!-- Dynamic Bezier Spline Engine (GPU-Accelerated) -->
+<!-- Dynamic Spline Engine (Exact Cubic Bezier Crossings) -->
 <script nonce="{{ request.state.csp_nonce }}">
 document.addEventListener("DOMContentLoaded", () => {
-    const svg = document.getElementById("altair-wires-svg");
-    const stage = document.getElementById("mesh-viewport");
+    const svg = document.getElementById("mesh-svg-wires");
+    const viewport = document.getElementById("mesh-viewport");
 
-    function getCenter(el) {
+    function getAnchor(el, side = "right") {
         if (!el) return { x: 0, y: 0 };
-        const stageRect = stage.getBoundingClientRect();
+        const vRect = viewport.getBoundingClientRect();
         const rect = el.getBoundingClientRect();
         return {
-            x: rect.left - stageRect.left + (rect.width / 2),
-            y: rect.top - stageRect.top + (rect.height / 2)
+            x: side === "left" ? (rect.left - vRect.left) : (rect.right - vRect.left),
+            y: (rect.top - vRect.top) + (rect.height / 2)
         };
     }
 
-    function createWire(x1, y1, x2, y2, color, active = true) {
+    function drawBezier(x1, y1, x2, y2, color = "#58a6ff", active = false) {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const dx = Math.abs(x2 - x1) * 0.52;
+        const dx = Math.abs(x2 - x1) * 0.55;
         const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         path.setAttribute("d", d);
         path.setAttribute("stroke", color);
-        path.setAttribute("class", active ? "fiber-wire active" : "fiber-wire");
+        path.setAttribute("class", active ? "mesh-fiber-wire" : "mesh-fiber-wire static-dim");
         svg.appendChild(path);
         return path;
     }
 
-    function renderAllWires() {
+    function renderMeshConnections() {
         svg.innerHTML = "";
-        
-        // 1. Inputs -> Grok Orb & Gates
-        const grokOrb = document.getElementById("node-grok-orb");
-        const checkGate = document.getElementById("node-gate-check");
-        const splitGate = document.getElementById("node-gate-splitter");
-        
-        const gPos = getCenter(grokOrb);
-        const cPos = getCenter(checkGate);
-        const sPos = getCenter(splitGate);
 
-        const inTask = getCenter(document.getElementById("node-in-task"));
-        const inInbox = getCenter(document.getElementById("node-in-inbox"));
-        const inCal = getCenter(document.getElementById("node-in-cal"));
-        const inMem = getCenter(document.getElementById("node-in-mem"));
+        const inTask = getAnchor(document.getElementById("in-task"));
+        const inInbox = getAnchor(document.getElementById("in-inbox"));
+        const inCal = getAnchor(document.getElementById("in-cal"));
+        const inMem = getAnchor(document.getElementById("in-mem"));
 
-        createWire(inTask.x + 45, inTask.y, cPos.x - 70, cPos.y, "#34d399", true);
-        createWire(inInbox.x + 45, inInbox.y, gPos.x - 34, gPos.y, "#38bdf8", true);
-        createWire(inCal.x + 45, inCal.y, sPos.x - 70, sPos.y, "#818cf8", true);
-        createWire(inMem.x + 45, inMem.y, sPos.x - 70, sPos.y, "#c084fc", true);
+        const orb = getAnchor(document.getElementById("orb-grok"), "left");
+        const orbRight = getAnchor(document.getElementById("orb-grok"), "right");
 
-        // 2. Grok & Gates -> 15 Bots
-        const bots = document.querySelectorAll(".bot-pill-row");
-        bots.forEach((bot, idx) => {
-            const bPos = getCenter(bot);
+        const gateCheckLeft = getAnchor(document.getElementById("gate-check"), "left");
+        const gateCheckRight = getAnchor(document.getElementById("gate-check"), "right");
+
+        const gateSplitLeft = getAnchor(document.getElementById("gate-splitter"), "left");
+        const gateSplitRight = getAnchor(document.getElementById("gate-splitter"), "right");
+
+        // 1. Inputs to Check, Grok, Splitter
+        drawBezier(inTask.x, inTask.y, gateCheckLeft.x, gateCheckLeft.y, "#ffffff", false);
+        drawBezier(inInbox.x, inInbox.y, orb.x, orb.y, "#ffffff", true);
+        drawBezier(inInbox.x, inInbox.y, gateCheckLeft.x, gateCheckLeft.y + 15, "#ffffff", false);
+        drawBezier(inCal.x, inCal.y, gateSplitLeft.x, gateSplitLeft.y, "#ffffff", false);
+        drawBezier(inMem.x, inMem.y, gateSplitLeft.x, gateSplitLeft.y + 20, "#ffffff", false);
+
+        // 2. Grok to Gates
+        drawBezier(orbRight.x, orbRight.y - 15, gateCheckLeft.x, gateCheckLeft.y + 30, "#d29922", true);
+        drawBezier(orbRight.x, orbRight.y + 15, gateSplitLeft.x, gateSplitLeft.y + 10, "#388bfd", true);
+
+        // 3. Gates to 15 Employees
+        const botCards = document.querySelectorAll(".employee-card-mesh");
+        botCards.forEach((bot, idx) => {
+            const bPos = getAnchor(bot, "left");
             const color = bot.getAttribute("data-color") || "#58a6ff";
-            createWire(sPos.x + 70, sPos.y, bPos.x - 75, bPos.y, color, true);
-        });
-
-        // 3. 15 Bots -> Micro Execution Units Waterfall
-        const unitCols = document.querySelectorAll("#col-micro-units > div");
-        bots.forEach((bot, bIdx) => {
-            const bPos = getCenter(bot);
-            const color = bot.getAttribute("data-color") || "#58a6ff";
-            const targetCol = unitCols[bIdx % unitCols.length];
-            if (targetCol) {
-                const tags = targetCol.querySelectorAll(".unit-tag");
-                const tag = tags[bIdx % tags.length];
-                if (tag) {
-                    const tPos = getCenter(tag);
-                    createWire(bPos.x + 75, bPos.y, tPos.x - 45, tPos.y, color, false);
-                }
-            }
-        });
-
-        // 4. Micro Units -> Verified Output Orb
-        const verifiedOrb = document.getElementById("orb-verified");
-        const vPos = getCenter(verifiedOrb);
-        
-        bots.forEach((bot) => {
-            const bPos = getCenter(bot);
-            const color = bot.getAttribute("data-color") || "#3fb950";
-            createWire(bPos.x + 620, bPos.y, vPos.x - 45, vPos.y, color, true);
-        });
-    }
-
-    // Initial render
-    setTimeout(renderAllWires, 200);
-    window.addEventListener("resize", renderAllWires);
-
-    // Live SSE Stream Trigger via /mesh/api/trigger-run
-    const btnPulse = document.getElementById("btn-replay-anim");
-    const terminalBar = document.querySelector(".altair-terminal-footer");
-
-    function logTerminal(text, color="#7ee787") {
-        if (!terminalBar) return;
-        const now = new Date().toTimeString().split(" ")[0];
-        terminalBar.innerHTML = `
-            <div class="flex items-center gap-4">
-                <span class="text-zinc-500">${now}</span>
-                <span style="color: ${color}">${text}</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="text-zinc-500">Altair AI &bull; Grok Bot Mesh</span>
-                <span class="text-xs text-emerald-400 font-bold">LIVE EXECUTION</span>
-            </div>
-        `;
-    }
-
-    async function triggerLiveRun() {
-        btnPulse.classList.add("loading");
-        btnPulse.innerText = "Running...";
-        logTerminal("⚡ Grok Coordinator: Decomposing task graph into parallel units...", "#38bdf8");
-
-        try {
-            const resp = await fetch("/mesh/api/trigger-run", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: "Execute employee mesh sync" })
-            });
-            const reader = resp.body.getReader();
-            const decoder = new TextDecoder();
             
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split("\n");
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            if (data.type === "splitter") {
-                                logTerminal(`Splitter: Generated ${data.units_generated} parallel units across 15 employee bots`, "#d29922");
-                            } else if (data.type === "bot_pulse") {
-                                const botEl = document.getElementById(data.bot_id);
-                                if (botEl) {
-                                    botEl.style.transform = "translateX(8px) scale(1.05)";
-                                    botEl.style.boxShadow = `0 0 15px ${data.color}`;
-                                    setTimeout(() => {
-                                        botEl.style.transform = "";
-                                        botEl.style.boxShadow = "";
-                                    }, 400);
-                                }
-                                logTerminal(`Bot active: ${data.bot_name} executing unit...`, data.color);
-                            } else if (data.type === "unit_executed") {
-                                logTerminal(`Unit check: ${data.unit} -> status: ${data.status}`, "#34d399");
-                            } else if (data.type === "converge") {
-                                const vOrb = document.getElementById("orb-verified");
-                                if (vOrb) {
-                                    vOrb.style.transform = "scale(1.15)";
-                                    vOrb.style.boxShadow = "0 0 60px rgba(63, 185, 80, 0.9)";
-                                    setTimeout(() => {
-                                        vOrb.style.transform = "";
-                                        vOrb.style.boxShadow = "";
-                                    }, 800);
-                                }
-                                logTerminal(`✓ RUN COMPLETE: ${data.verified} verified, ${data.rejected} rejected. 0 broken.`, "#3fb950");
-                            }
-                        } catch(e) {}
-                    }
-                }
+            // Connect from Splitter gate to each bot card
+            drawBezier(gateSplitRight.x, gateSplitRight.y, bPos.x, bPos.y, color, true);
+            // Connect check gate to top bots
+            if (idx < 5) {
+                drawBezier(gateCheckRight.x, gateCheckRight.y, bPos.x, bPos.y, "#d29922", false);
             }
-        } catch(err) {
-            logTerminal(`Execution error: ${err.message}`, "#f43f5e");
-        } finally {
-            btnPulse.classList.remove("loading");
-            btnPulse.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Pulse Run`;
-        }
+        });
+
+        // 4. Employees to Execution Units Waterfall (Cross-weaving threads matching ground truth)
+        const col1Units = document.querySelectorAll("#u-col-1 .mesh-unit-tag");
+        const col2Units = document.querySelectorAll("#u-col-2 .mesh-unit-tag");
+        const col3Units = document.querySelectorAll("#u-col-3 .mesh-unit-tag");
+
+        botCards.forEach((bot, bIdx) => {
+            const bRight = getAnchor(bot, "right");
+            const color = bot.getAttribute("data-color") || "#3fb950";
+
+            // Connect each bot to 2 or 3 tags in column 1
+            const u1 = col1Units[(bIdx * 2) % col1Units.length];
+            const u2 = col1Units[(bIdx * 2 + 1) % col1Units.length];
+            if (u1) {
+                const uPos = getAnchor(u1, "left");
+                drawBezier(bRight.x, bRight.y, uPos.x, uPos.y, color, true);
+            }
+            if (u2) {
+                const uPos = getAnchor(u2, "left");
+                drawBezier(bRight.x, bRight.y, uPos.x, uPos.y, color, false);
+            }
+        });
+
+        // Column 1 -> Column 2 cross-connecting threads
+        col1Units.forEach((u1, idx) => {
+            if (idx % 2 === 0 && col2Units[idx]) {
+                const p1 = getAnchor(u1, "right");
+                const p2 = getAnchor(col2Units[idx], "left");
+                drawBezier(p1.x, p1.y, p2.x, p2.y, "#30363d", false);
+            }
+            if (idx % 3 === 0 && col2Units[(idx + 4) % col2Units.length]) {
+                const p1 = getAnchor(u1, "right");
+                const p2 = getAnchor(col2Units[(idx + 4) % col2Units.length], "left");
+                drawBezier(p1.x, p1.y, p2.x, p2.y, "#f43f5e", true);
+            }
+        });
+
+        // Column 2 -> Column 3 cross-connecting threads
+        col2Units.forEach((u2, idx) => {
+            if (idx % 2 === 1 && col3Units[idx]) {
+                const p1 = getAnchor(u2, "right");
+                const p2 = getAnchor(col3Units[idx], "left");
+                drawBezier(p1.x, p1.y, p2.x, p2.y, "#10b981", true);
+            }
+            if (idx % 4 === 0 && col3Units[(idx + 2) % col3Units.length]) {
+                const p1 = getAnchor(u2, "right");
+                const p2 = getAnchor(col3Units[(idx + 2) % col3Units.length], "left");
+                drawBezier(p1.x, p1.y, p2.x, p2.y, "#388bfd", false);
+            }
+        });
     }
 
-    btnPulse.addEventListener("click", () => {
-        // Trigger SVG dash animation reflow
-        svg.querySelectorAll(".fiber-wire").forEach(w => {
-            w.classList.remove("active");
-            void w.offsetWidth;
-            w.classList.add("active");
-        });
-        // Trigger backend SSE execution
-        triggerLiveRun();
-    });
+    setTimeout(renderMeshConnections, 200);
+    window.addEventListener("resize", renderMeshConnections);
 
-    // Auto-fetch real-time backend state on load
-    fetch("/mesh/api/state")
-        .then(r => r.json())
-        .then(data => {
-            if (data.ok) {
-                document.getElementById("stat-bots").innerText = data.bots_online;
-                document.getElementById("stat-units").innerText = data.total_units;
-                document.getElementById("stat-verified").innerText = data.verified_units;
-                document.getElementById("stat-rejected").innerText = data.rejected_units;
-                document.getElementById("stat-rules").innerText = data.active_rules;
-            }
-        })
-        .catch(() => {});
+    // Reload button trigger
+    const reloadBtn = document.getElementById("btn-mesh-reload");
+    if (reloadBtn) {
+        reloadBtn.addEventListener("click", () => {
+            reloadBtn.style.transform = "rotate(360deg)";
+            setTimeout(() => {
+                reloadBtn.style.transform = "none";
+                renderMeshConnections();
+            }, 400);
+        });
+    }
 });
 </script>
 {% endblock %}
