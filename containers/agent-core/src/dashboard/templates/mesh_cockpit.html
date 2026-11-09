@@ -706,14 +706,111 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(renderAllWires, 150);
     window.addEventListener("resize", renderAllWires);
 
-    // Pulse Run replay button
-    document.getElementById("btn-replay-anim").addEventListener("click", () => {
+    // Live SSE Stream Trigger via /mesh/api/trigger-run
+    const btnPulse = document.getElementById("btn-replay-anim");
+    const terminalBar = document.querySelector(".altair-terminal-footer");
+
+    function logTerminal(text, color="#7ee787") {
+        if (!terminalBar) return;
+        const now = new Date().toTimeString().split(" ")[0];
+        terminalBar.innerHTML = `
+            <div class="flex items-center gap-4">
+                <span class="text-zinc-500">${now}</span>
+                <span style="color: ${color}">${text}</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-zinc-500">Altair AI &bull; Grok Bot Mesh</span>
+                <span class="text-xs text-emerald-400 font-bold">LIVE EXECUTION</span>
+            </div>
+        `;
+    }
+
+    async function triggerLiveRun() {
+        btnPulse.classList.add("loading");
+        btnPulse.innerText = "Running...";
+        logTerminal("⚡ Grok Coordinator: Decomposing task graph into parallel units...", "#38bdf8");
+
+        try {
+            const resp = await fetch("/mesh/api/trigger-run", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: "Execute employee mesh sync" })
+            });
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.type === "splitter") {
+                                logTerminal(`Splitter: Generated ${data.units_generated} parallel units across 15 employee bots`, "#d29922");
+                            } else if (data.type === "bot_pulse") {
+                                const botEl = document.getElementById(data.bot_id);
+                                if (botEl) {
+                                    botEl.style.transform = "translateX(8px) scale(1.05)";
+                                    botEl.style.boxShadow = `0 0 15px ${data.color}`;
+                                    setTimeout(() => {
+                                        botEl.style.transform = "";
+                                        botEl.style.boxShadow = "";
+                                    }, 400);
+                                }
+                                logTerminal(`Bot active: ${data.bot_name} executing unit...`, data.color);
+                            } else if (data.type === "unit_executed") {
+                                logTerminal(`Unit check: ${data.unit} -> status: ${data.status}`, "#34d399");
+                            } else if (data.type === "converge") {
+                                const vOrb = document.getElementById("orb-verified");
+                                if (vOrb) {
+                                    vOrb.style.transform = "scale(1.15)";
+                                    vOrb.style.boxShadow = "0 0 60px rgba(63, 185, 80, 0.9)";
+                                    setTimeout(() => {
+                                        vOrb.style.transform = "";
+                                        vOrb.style.boxShadow = "";
+                                    }, 800);
+                                }
+                                logTerminal(`✓ RUN COMPLETE: ${data.verified} verified, ${data.rejected} rejected. 0 broken.`, "#3fb950");
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
+        } catch(err) {
+            logTerminal(`Execution error: ${err.message}`, "#f43f5e");
+        } finally {
+            btnPulse.classList.remove("loading");
+            btnPulse.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Pulse Run`;
+        }
+    }
+
+    btnPulse.addEventListener("click", () => {
+        // Trigger SVG dash animation reflow
         svg.querySelectorAll(".fiber-wire").forEach(w => {
             w.classList.remove("active");
-            void w.offsetWidth; // trigger reflow
+            void w.offsetWidth;
             w.classList.add("active");
         });
+        // Trigger backend SSE execution
+        triggerLiveRun();
     });
+
+    // Auto-fetch real-time backend state on load
+    fetch("/mesh/api/state")
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                document.getElementById("stat-bots").innerText = data.bots_online;
+                document.getElementById("stat-units").innerText = data.total_units;
+                document.getElementById("stat-verified").innerText = data.verified_units;
+                document.getElementById("stat-rejected").innerText = data.rejected_units;
+                document.getElementById("stat-rules").innerText = data.active_rules;
+            }
+        })
+        .catch(() => {});
 });
 </script>
 {% endblock %}
