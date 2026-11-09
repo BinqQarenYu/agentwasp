@@ -188,12 +188,12 @@
                         </svg>
                         Focus Canvas
                     </button>
-                    <a id="btn-detail-ask" href="/chat" class="btn btn-sm btn-primary rounded-lg w-full gap-2 font-mono text-xs nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    <button id="btn-detail-ask" class="btn btn-sm btn-primary rounded-lg w-full gap-2 font-mono text-xs shadow-md hover:shadow-primary/30 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        Ask Wasp About Node
-                    </a>
+                        Ask Wasp to Analyze Node
+                    </button>
                 </div>
             </div>
         </div>
@@ -604,12 +604,55 @@ function initGraph() {
             lineWrap.classList.add("hidden");
         }
         
-        // Prefill ask wasp button
+        // Prefill ask wasp button with deep contextual AST reasoning prompt
         const askBtn = document.getElementById("btn-detail-ask");
         askBtn.onclick = (e) => {
             e.preventDefault();
-            // Inject query into chat storage to auto-load inside chat.html
-            localStorage.setItem("wasp_prefill_query", `Explain the structure and responsibilities of the ${d.type} "${d.name}" located in \`${relPath}\`.`);
+
+            // 1. Gather rich topology context from the AST graph
+            const neighborSet = adjDict[d.id] || new Set();
+            const connList = allNodes.filter(n => neighborSet.has(n.id));
+            const connSummary = connList.slice(0, 6).map(n => `- ${n.type.toUpperCase()}: \`${n.name}\` (${n.file || n.path || n.id})`).join('\n');
+            const totalConnCount = connList.length;
+
+            // 2. Synthesize powerful, highly actionable prompt tailored by AST type
+            let dynamicPrompt = '';
+            const lineInfo = d.line ? ` (starting at line ${d.line})` : '';
+
+            if (d.type === 'file') {
+                dynamicPrompt = `Audit and analyze the architectural role of file \`${relPath}\` in Agent WASP:
+1. Architecture & Scope: What does this module define, and what are its primary responsibilities?
+2. Connected Dependencies: It interfaces with ${totalConnCount} components, including:
+${connSummary || '- No direct internal connections'}
+3. Security & Stability: Review for error boundaries, concurrency limits, and provider budget compliance.
+4. Suggestions: Recommend any immediate refactoring, test coverage, or optimization improvements.`;
+            } else if (d.type === 'class') {
+                dynamicPrompt = `Perform a deep code inspection on class \`${d.name}\` inside \`${relPath}\`${lineInfo}:
+1. Design Pattern & Responsibility: What invariant or domain entity does \`${d.name}\` implement?
+2. Connected Relationships (${totalConnCount} links):
+${connSummary || '- None'}
+3. State & Concurrency: Is this class thread-safe, async-compatible, and resilient under failure?
+4. Usage Examples: Show how other WASP agents or services should instantiate and consume this class.`;
+            } else if (d.type === 'function') {
+                dynamicPrompt = `Analyze function \`${d.name}\` located in \`${relPath}\`${lineInfo}:
+1. Execution Logic: What are the expected inputs, outputs, side-effects, and failure modes?
+2. Dependency Footprint (${totalConnCount} connections):
+${connSummary || '- None'}
+3. Robustness Audit: Does this function handle timeouts, rate limits, and missing arguments properly?
+4. Improvement: Provide an optimized or safer implementation if potential bottlenecks exist.`;
+            } else {
+                dynamicPrompt = `Investigate the import / external dependency \`${d.name}\` referenced by \`${relPath}\`:
+1. Usage: How is this dependency utilized across the Agent WASP codebase?
+2. Coupling & Health: Are there tighter alternatives or lightweight native standard library approaches?
+3. Security Review: Confirm whether this dependency adheres to our zero-trust, sandbox-governed policy.`;
+            }
+
+            // 3. Store into localStorage and seamlessly navigate to Grok Cockpit Chat
+            try {
+                localStorage.setItem("wasp_prefill_query", dynamicPrompt);
+            } catch (err) {
+                console.error("Failed to store prefill prompt:", err);
+            }
             window.location.href = "/chat";
         };
         

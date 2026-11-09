@@ -1309,6 +1309,21 @@
 
     // ── Init ──────────────────────────────────────────────────────────────
     loadHistory();
+
+    // Check for prefilled AST / Node query from Codebase Graphify
+    try {
+        var prefill = localStorage.getItem('wasp_prefill_query');
+        if (prefill) {
+            localStorage.removeItem('wasp_prefill_query');
+            if (input) {
+                input.value = prefill;
+                // Auto-adjust textarea height if auto-expanding
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 240) + 'px';
+            }
+        }
+    } catch (e) {}
+
     input.focus();
     // Bind controls (no inline event handlers)
     var _clearBtn = document.getElementById('btn-clear-chat');
