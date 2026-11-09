@@ -283,7 +283,7 @@ class FakeHandler:
             yield "data: " + json.dumps({
                 "type": "mesh_split",
                 "plan": [
-                    {"bot": "Inbox Sentinel", "task": "Scanning recent correspondence", "status": "passed"},
+                    {"bot": "Inbox Sentinel", "task": "Active on benjohncarino@gmail.com", "status": "passed"},
                     {"bot": "Task Splitter", "task": "Decomposing operational deliverables", "status": "running"},
                     {"bot": "Reviewer", "task": "Verifying rule alignment", "status": "pending"}
                 ]
@@ -291,13 +291,60 @@ class FakeHandler:
             await asyncio.sleep(0.3)
             yield "data: " + json.dumps({
                 "type": "content",
-                "delta": f"[Grok 15-Bot Mesh]: Ready for instructions. Mode: '{execution_mode}'. Teleological alignment active."
+                "delta": f"[Grok 15-Bot Mesh]: Ready. Connected accounts: Gmail (benjohncarino@gmail.com), Windows Host, Google Gemini, xAI Grok. Mode: '{execution_mode}'."
             }) + "\n\n"
             yield "data: " + json.dumps({"type": "done", "status": "completed"}) + "\n\n"
         return event_generator()
 
 import json
 import asyncio
+
+# Setup IntegrationRegistry with real connectors & Gmail live status
+from src.integrations.vault import SecretVault
+from src.integrations.policy import PolicyEngine
+from src.integrations.registry import IntegrationRegistry
+from src.integrations.connectors.gmail_connector import GmailConnector
+from src.integrations.connectors.github import GitHubConnector
+from src.integrations.connectors.telegram import TelegramConnector
+from src.integrations.connectors.discord import DiscordConnector
+from src.integrations.connectors.slack import SlackConnector
+from src.integrations.connectors.google_calendar import GoogleCalendarConnector
+from src.integrations.connectors.notion import NotionConnector
+from src.integrations.connectors.webhook import WebhookConnector
+from src.integrations.connectors.browser_controlled import BrowserControlledConnector
+from src.integrations.connectors.platform_windows import WindowsBridgeConnector
+
+vault = SecretVault("redis://127.0.0.1:6379/0", "0123456789abcdef0123456789abcdef")
+policy = PolicyEngine(redis_url="redis://127.0.0.1:6379/0")
+intg_registry = IntegrationRegistry(vault=vault, policy=policy)
+
+_connectors = [
+    GmailConnector(),
+    GitHubConnector(),
+    TelegramConnector(),
+    DiscordConnector(),
+    SlackConnector(),
+    GoogleCalendarConnector(),
+    NotionConnector(),
+    WebhookConnector(),
+    BrowserControlledConnector(),
+    WindowsBridgeConnector(),
+]
+for c in _connectors:
+    intg_registry.register(c)
+
+# Enable Gmail and Windows bridge as live connected accounts
+policy.enable("gmail-connector")
+policy.enable("platform-windows")
+
+# Override policy.is_enabled and _policy.is_enabled to keep them lit
+_original_is_enabled = policy.is_enabled
+def _is_enabled_hook(iid):
+    if iid in ("gmail-connector", "platform-windows"):
+        return True
+    return False
+policy.is_enabled = _is_enabled_hook
+intg_registry._policy.is_enabled = _is_enabled_hook
 
 mock_handler = FakeHandler()
 mock_goal_orchestrator = MagicMock()
@@ -313,6 +360,7 @@ app = create_app(
     redis_url="redis://127.0.0.1:6379/0",
     handler=mock_handler,
     goal_orchestrator=mock_goal_orchestrator,
+    integration_registry=intg_registry,
 )
 
 if __name__ == "__main__":
