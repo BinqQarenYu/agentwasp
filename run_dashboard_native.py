@@ -28,7 +28,7 @@ sys.path.insert(0, AGENT_CORE_DIR)
 
 # Set environment
 os.environ["DASHBOARD_PORT"] = "1434"
-os.environ["DASHBOARD_BIND"] = "127.0.0.1"
+os.environ["DASHBOARD_BIND"] = "0.0.0.0"
 os.environ["SOVEREIGN_MODE"] = "true"
 os.environ["DASHBOARD_SECRET"] = "native-wasp-secret-key-32charsmin"
 
@@ -390,4 +390,4 @@ if __name__ == "__main__":
     print("Audit URL:    http://127.0.0.1:1434/audit")
     print("Grok UI URL:  http://127.0.0.1:1434/chat")
     print("=" * 70)
-    uvicorn.run(app, host="127.0.0.1", port=1434, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=1434, log_level="info")

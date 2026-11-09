@@ -261,11 +261,13 @@
                 </div>
 
                 <button
+                    type="button"
                     id="btn-send"
-                    class="btn btn-sm bg-amber-400 hover:bg-amber-300 text-black font-semibold border-none rounded-lg px-4 flex items-center gap-1.5 transition-transform active:scale-95"
-                    title="Send (Enter)"
+                    class="btn btn-sm bg-amber-400 hover:bg-amber-300 text-black font-semibold border-none rounded-lg px-4 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-md shadow-amber-400/20"
+                    title="Execute Prompt (Enter)"
+                    onclick="if(window.sendMessage) window.sendMessage();"
                 >
-                    <span>Execute</span>
+                    <span class="font-bold tracking-wide">Execute</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                     </svg>
