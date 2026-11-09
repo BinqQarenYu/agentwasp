@@ -310,6 +310,8 @@ from src.integrations.connectors.discord import DiscordConnector
 from src.integrations.connectors.slack import SlackConnector
 from src.integrations.connectors.google_calendar import GoogleCalendarConnector
 from src.integrations.connectors.google_drive import GoogleDriveConnector
+from src.integrations.connectors.google_sheets import GoogleSheetsConnector
+from src.integrations.connectors.google_photos import GooglePhotosConnector
 from src.integrations.connectors.notion import NotionConnector
 from src.integrations.connectors.webhook import WebhookConnector
 from src.integrations.connectors.browser_controlled import BrowserControlledConnector
@@ -327,6 +329,8 @@ _connectors = [
     SlackConnector(),
     GoogleCalendarConnector(),
     GoogleDriveConnector(),
+    GoogleSheetsConnector(),
+    GooglePhotosConnector(),
     NotionConnector(),
     WebhookConnector(),
     BrowserControlledConnector(),
@@ -335,14 +339,17 @@ _connectors = [
 for c in _connectors:
     intg_registry.register(c)
 
-# Enable Gmail and Windows bridge as live connected accounts
+# Enable Gmail, Google Drive, Google Sheets, Google Photos, and Windows bridge
 policy.enable("gmail-connector")
 policy.enable("platform-windows")
+policy.enable("google-drive")
+policy.enable("google-sheets")
+policy.enable("google-photos")
 
 # Override policy.is_enabled and _policy.is_enabled to keep them lit
 _original_is_enabled = policy.is_enabled
 def _is_enabled_hook(iid):
-    if iid in ("gmail-connector", "platform-windows"):
+    if iid in ("gmail-connector", "platform-windows", "google-drive", "google-sheets", "google-photos"):
         return True
     return False
 policy.is_enabled = _is_enabled_hook
