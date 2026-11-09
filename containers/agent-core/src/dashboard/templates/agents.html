@@ -101,7 +101,7 @@
                     {% endif %}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>
+                    <div class="flex items-center gap-1.5 flex-wrap"><a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>{% if a.metadata and a.metadata.dept %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-primary/20 text-primary/80 bg-primary/5">{{ a.metadata.dept }}</span>{% endif %}{% if a.metadata and a.metadata.mesh_role %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-base-300 text-base-content/60 bg-base-200/60">Mesh: {{ a.metadata.mesh_role }}</span>{% endif %}</div>
                     {% if a.description %}
                     <p class="text-xs text-base-content/50 mt-0.5 line-clamp-1">{{ a.description }}</p>
                     {% endif %}

@@ -359,6 +359,8 @@ def _is_enabled_hook(iid):
 policy.is_enabled = _is_enabled_hook
 intg_registry._policy.is_enabled = _is_enabled_hook
 
+from src.agent_manager.seeded_orchestrator import SeededAgentOrchestrator
+mock_agent_orchestrator = SeededAgentOrchestrator()
 mock_handler = FakeHandler()
 mock_goal_orchestrator = MagicMock()
 mock_goal_orchestrator.list_goals = AsyncMock(return_value=[])
@@ -374,6 +376,7 @@ app = create_app(
     handler=mock_handler,
     goal_orchestrator=mock_goal_orchestrator,
     integration_registry=intg_registry,
+    agent_orchestrator=mock_agent_orchestrator,
 )
 
 if __name__ == "__main__":

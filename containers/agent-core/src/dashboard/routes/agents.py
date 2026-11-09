@@ -65,6 +65,7 @@ def _fmt_agent(agent) -> dict:
         "budget_pct_steps": round(budget_pct_steps, 1),
         "budget_exceeded": budget.budget_exceeded,
         "intent_description": (agent.intent.description[:120] if agent.intent and agent.intent.description else ""),
+        "metadata": getattr(agent, "metadata", {}) or {},
     }
 
 
