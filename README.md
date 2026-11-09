@@ -149,9 +149,15 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 - [docs/QUICKSTART.md](docs/QUICKSTART.md) — first 10 minutes
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — VPS + local + reverse-proxy guidance
 - [docs/SECURITY.md](docs/SECURITY.md) — threat model, fail-closed defaults, secret handling
-- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md)
+- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — honest map of what works and what's experimental
 - [docs/AGENT_MESH_ARCHITECTURE.md](docs/AGENT_MESH_ARCHITECTURE.md) — Grok-style UI/UX and 15-bot Agent Mesh architecture
- — **honest** map of what works and what's experimental
+- [docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md](docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md) — Google Workspace OAuth integration guide, Colab/Jules mapping, and kinetic UI telemetry
+- [docs/GITHUB_FLEET_AUDIT_SPEC.md](docs/GITHUB_FLEET_AUDIT_SPEC.md) — 4-parameter fleet audit spec, anti-parameters, and Common Sense cognitive heuristics
+- [docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md](docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md) — Athena (Bot 15): GitHub fleet steward, Copilot CLI synergy, code security
+- [docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md](docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md) — Prometheus: Antigravity capabilities broker, MCP server matrix, unified memory
+- [docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md](docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md) — Grand Accountability Charter for god-tier root access
+- [docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md](docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md) — Dr. Albert (Bot 09): Principal Scientist, 4-tier truth classification, anti-hype filter
+- [docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md](docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md) — Dr. Albert's 5-tier scientific lab workbench, scraper, visual chart forensics, statistical engine
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common errors with fixes
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, BSL implications
 - [CHANGELOG.md](CHANGELOG.md) — version history (v2.7 is the first public release; pre-OSS history at [docs.agentwasp.com/changelog](https://docs.agentwasp.com/changelog))
