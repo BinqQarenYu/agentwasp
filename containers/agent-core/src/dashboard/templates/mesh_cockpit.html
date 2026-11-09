@@ -1,0 +1,719 @@
+{% extends "base.html" %}
+{% block title %}GROK BOT MESH — Altair One-Person-Company{% endblock %}
+
+{% block page_css %}
+<style id="page-dyn-style" nonce="{{ request.state.csp_nonce }}">
+/* Altair Pure OLED Dark Canvas */
+body {
+    background-color: #050608 !important;
+}
+
+.altair-canvas-container {
+    background: radial-gradient(circle at 50% 30%, #0d1117 0%, #050608 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    min-height: calc(100vh - 120px);
+    width: 100%;
+    color: #e6edf3;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    user-select: none;
+}
+
+/* Header bar */
+.altair-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 17, 23, 0.7);
+    backdrop-filter: blur(12px);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.altair-tab {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.altair-tab.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.altair-tab:not(.active) {
+    color: rgba(255, 255, 255, 0.4);
+}
+.altair-tab:hover:not(.active) {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.altair-stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.altair-stat-pill:last-child {
+    border-right: none;
+}
+.altair-stat-val {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+.altair-stat-lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.5px;
+}
+
+/* Graph area */
+.altair-stage {
+    position: relative;
+    width: 100%;
+    height: 820px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* SVG Connection Lines overlay */
+#altair-wires-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Animated Glowing Fiber Wire */
+.fiber-wire {
+    fill: none;
+    stroke-width: 1.5;
+    opacity: 0.55;
+    transition: stroke 0.3s, opacity 0.3s, stroke-width 0.3s;
+}
+.fiber-wire.active {
+    opacity: 0.95;
+    stroke-width: 2.2;
+    filter: drop-shadow(0 0 6px currentColor);
+    stroke-dasharray: 8, 4;
+    animation: wireFlow 1s linear infinite;
+}
+@keyframes wireFlow {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Nodes & Cards */
+.node-circle-port {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #0d1117;
+    border: 2px solid #58a6ff;
+    position: absolute;
+    z-index: 10;
+}
+
+.input-node-badge {
+    background: #161b22;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #c9d1d9;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100px;
+    justify-content: space-between;
+}
+
+/* Grok Mask Bot Icon */
+.grok-mask-orb {
+    width: 68px;
+    height: 68px;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 0 35px rgba(255, 255, 255, 0.35), inset 0 0 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.grok-mask-orb:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
+}
+.grok-eyes {
+    display: flex;
+    gap: 12px;
+}
+.grok-eye {
+    width: 10px;
+    height: 18px;
+    background: #000000;
+    border-radius: 5px;
+}
+
+/* Gate Cards (Check & Splitter) */
+.gate-card {
+    background: #0d1117;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 11px;
+    width: 145px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.gate-card.check-gate {
+    border: 1px solid #d29922;
+}
+.gate-card.splitter-gate {
+    border: 1px solid #58a6ff;
+}
+
+/* 15 Employee Bot Pills */
+.bot-pill-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    background: #0d1117;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    width: 155px;
+}
+.bot-pill-row:hover {
+    transform: translateX(4px);
+    filter: brightness(1.2);
+}
+
+/* Micro Unit Execution Tags */
+.unit-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-family: inherit;
+    font-weight: 600;
+    margin: 2px 0;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: default;
+    white-space: nowrap;
+}
+.unit-tag:hover {
+    transform: scale(1.08);
+    z-index: 20;
+}
+
+/* Verified Output Orb */
+.verified-output-orb {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #238636 0%, #0d1117 75%);
+    border: 2px solid #3fb950;
+    box-shadow: 0 0 35px rgba(63, 185, 80, 0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.verified-output-orb:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 55px rgba(63, 185, 80, 0.7);
+}
+
+/* Telemetry Summary Cards */
+.altair-card-summary {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+/* Bottom Monospace Console Log */
+.altair-terminal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(9, 12, 16, 0.9);
+    padding: 8px 18px;
+    font-size: 10px;
+    color: #7ee787;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="altair-canvas-container flex flex-col">
+    <!-- Header Controls -->
+    <div class="altair-header">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-white font-bold text-xs tracking-wider">GROK BOT MESH</span>
+                <span class="text-zinc-500 text-xs">/</span>
+                <span class="text-zinc-400 text-xs font-semibold">one-person-company</span>
+                <button id="btn-replay-anim" class="btn btn-ghost btn-xs text-amber-400 border border-amber-400/30 hover:bg-amber-400/10 gap-1 ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Pulse Run
+                </button>
+            </div>
+            <div class="flex items-center gap-1.5 ml-4">
+                <span class="altair-tab active">Global</span>
+                <span class="altair-tab">Bots</span>
+                <span class="altair-tab">Runs</span>
+                <span class="altair-tab">Rules</span>
+                <span class="altair-tab">Memory</span>
+            </div>
+        </div>
+
+        <!-- Telemetry Stats -->
+        <div class="flex items-center">
+            <div class="altair-stat-pill">
+                <div class="altair-stat-val text-white" id="stat-bots">15</div>
+                <div class="altair-stat-lbl">bots online</div>
+            </div>
+            <div class="altair-stat-pill">
+                <div class="altair-stat-val text-amber-400" id="stat-units">412</div>
+                <div class="altair-stat-lbl">units</div>
+            </div>
+            <div class="altair-stat-pill">
+                <div class="altair-stat-val text-emerald-400" id="stat-verified">409</div>
+                <div class="altair-stat-lbl">verified</div>
+            </div>
+            <div class="altair-stat-pill">
+                <div class="altair-stat-val text-rose-400" id="stat-rejected">3</div>
+                <div class="altair-stat-lbl">rejected</div>
+            </div>
+            <div class="altair-stat-pill">
+                <div class="altair-stat-val text-sky-400" id="stat-rules">3</div>
+                <div class="altair-stat-lbl">rules</div>
+            </div>
+            <div class="pl-3 flex items-center gap-1.5 text-xs text-rose-500 font-mono">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                LIVE
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Visual Stage (Altair DAG Layout) -->
+    <div class="altair-stage flex-1" id="mesh-viewport">
+        <!-- SVG Canvas for all dynamic bezier wires -->
+        <svg id="altair-wires-svg"></svg>
+
+        <!-- STAGE 1: Left Inputs -->
+        <div class="absolute left-6 top-20 flex flex-col gap-10" id="col-inputs">
+            <div class="input-node-badge" id="node-in-task"><span>TASK</span><span class="w-2 h-2 rounded-full bg-emerald-400"></span></div>
+            <div class="input-node-badge" id="node-in-inbox"><span>INBOX</span><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span></div>
+            <div class="input-node-badge" id="node-in-cal"><span>CALENDAR</span><span class="w-2 h-2 rounded-full bg-sky-400"></span></div>
+            <div class="input-node-badge" id="node-in-mem"><span>MEMORY.MD</span><span class="w-2 h-2 rounded-full bg-purple-400"></span></div>
+        </div>
+
+        <!-- STAGE 2: Grok Master Orb & Dispatcher Gates -->
+        <div class="absolute left-44 top-36 flex flex-col items-center gap-6" id="col-dispatcher">
+            <!-- Check Gate -->
+            <div class="gate-card check-gate" id="node-gate-check">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-bold text-amber-400">Check</span>
+                    <span class="text-xs text-amber-400">✓ Enabled</span>
+                </div>
+                <div class="text-[9px] text-zinc-400 mb-1">Writes pass condition</div>
+                <div class="text-[9px] text-zinc-500">inbox zero · no auto-pay</div>
+                <div class="mt-2 text-[9px] font-bold text-amber-400 border-t border-amber-400/20 pt-1">Splitter → 15 bots</div>
+            </div>
+
+            <!-- Grok White Mask Icon -->
+            <div class="grok-mask-orb" id="node-grok-orb" title="Grok Coordinator">
+                <div class="grok-eyes">
+                    <div class="grok-eye"></div>
+                    <div class="grok-eye"></div>
+                </div>
+                <span class="text-[8px] font-bold text-black mt-1 font-sans tracking-tight">GROK BOT</span>
+            </div>
+
+            <!-- Splitter Gate -->
+            <div class="gate-card splitter-gate" id="node-gate-splitter">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-bold text-sky-400">Splitter</span>
+                    <span class="text-xs text-sky-400">✓ Enabled</span>
+                </div>
+                <div class="text-[9px] text-zinc-400 mb-1">Cuts task into units</div>
+                <div class="text-[9px] text-zinc-500">84 run in parallel</div>
+                <div class="mt-2 text-[9px] font-bold text-sky-400 border-t border-sky-400/20 pt-1">Task Graph</div>
+            </div>
+        </div>
+
+        <!-- STAGE 3: 15 Employee Bots (Vertical Mesh Rail) -->
+        <div class="absolute left-[380px] top-10 flex flex-col gap-2" id="col-15-bots">
+            <!-- 1. Inbox Triage -->
+            <div class="bot-pill-row border border-emerald-500/50 text-emerald-400" id="bot-01" data-color="#10b981">
+                <span>🟢 Inbox Triage</span><span class="text-[9px] font-mono text-zinc-400">32u</span>
+            </div>
+            <!-- 2. Meeting Prep -->
+            <div class="bot-pill-row border border-pink-500/50 text-pink-400" id="bot-02" data-color="#ec4899">
+                <span>🌸 Meeting Prep</span><span class="text-[9px] font-mono text-zinc-400">18u</span>
+            </div>
+            <!-- 3. Content Calendar -->
+            <div class="bot-pill-row border border-purple-500/50 text-purple-400" id="bot-03" data-color="#a855f7">
+                <span>🟣 Content Calendar</span><span class="text-[9px] font-mono text-zinc-400">45u</span>
+            </div>
+            <!-- 4. Expense Tracker -->
+            <div class="bot-pill-row border border-blue-500/50 text-blue-400" id="bot-04" data-color="#3b82f6">
+                <span>🔵 Expense Tracker</span><span class="text-[9px] font-mono text-zinc-400">24u</span>
+            </div>
+            <!-- 5. Bug Repro -->
+            <div class="bot-pill-row border border-amber-500/50 text-amber-400" id="bot-05" data-color="#f59e0b">
+                <span>🟠 Bug Repro</span><span class="text-[9px] font-mono text-zinc-400">12u</span>
+            </div>
+            <!-- 6. Competitor Watch -->
+            <div class="bot-pill-row border border-rose-500/50 text-rose-400" id="bot-06" data-color="#f43f5e">
+                <span>🔴 Competitor Watch</span><span class="text-[9px] font-mono text-zinc-400">20u</span>
+            </div>
+            <!-- 7. Travel Planner -->
+            <div class="bot-pill-row border border-fuchsia-500/50 text-fuchsia-400" id="bot-07" data-color="#d946ef">
+                <span>🌺 Travel Planner</span><span class="text-[9px] font-mono text-zinc-400">14u</span>
+            </div>
+            <!-- 8. Follow-up -->
+            <div class="bot-pill-row border border-indigo-500/50 text-indigo-400" id="bot-08" data-color="#6366f1">
+                <span>🟣 Follow-up</span><span class="text-[9px] font-mono text-zinc-400">29u</span>
+            </div>
+            <!-- 9. Research -->
+            <div class="bot-pill-row border border-orange-500/50 text-orange-400" id="bot-09" data-color="#ea580c">
+                <span>🟧 Research</span><span class="text-[9px] font-mono text-zinc-400">38u</span>
+            </div>
+            <!-- 10. Daily Digest -->
+            <div class="bot-pill-row border border-emerald-400/50 text-emerald-300" id="bot-10" data-color="#34d399">
+                <span>🟩 Daily Digest</span><span class="text-[9px] font-mono text-zinc-400">16u</span>
+            </div>
+            <!-- 11. Lead Scout -->
+            <div class="bot-pill-row border border-red-500/50 text-red-400" id="bot-11" data-color="#ef4444">
+                <span>🔴 Lead Scout</span><span class="text-[9px] font-mono text-zinc-400">52u</span>
+            </div>
+            <!-- 12. Invoice Bot -->
+            <div class="bot-pill-row border border-violet-500/50 text-violet-400" id="bot-12" data-color="#8b5cf6">
+                <span>🟣 Invoice Bot</span><span class="text-[9px] font-mono text-zinc-400">22u</span>
+            </div>
+            <!-- 13. Support Desk -->
+            <div class="bot-pill-row border border-amber-600/50 text-amber-500" id="bot-13" data-color="#d97706">
+                <span>🟠 Support Desk</span><span class="text-[9px] font-mono text-zinc-400">31u</span>
+            </div>
+            <!-- 14. Social Poster -->
+            <div class="bot-pill-row border border-teal-500/50 text-teal-400" id="bot-14" data-color="#14b8a6">
+                <span>🟢 Social Poster</span><span class="text-[9px] font-mono text-zinc-400">25u</span>
+            </div>
+            <!-- 15. Code Review -->
+            <div class="bot-pill-row border border-red-600/50 text-red-500" id="bot-15" data-color="#dc2626">
+                <span>🔴 Code Review</span><span class="text-[9px] font-mono text-zinc-400">32u</span>
+            </div>
+        </div>
+
+        <!-- STAGE 4: Micro Execution Units Waterfall (4 Columns of Tags) -->
+        <div class="absolute left-[580px] top-10 flex gap-2" id="col-micro-units">
+            <!-- Stream Col 1 -->
+            <div class="flex flex-col gap-1 w-24">
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">expense.log</span>
+                <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
+                <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">temp.check</span>
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">digest.write</span>
+                <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
+                <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">followup.send</span>
+                <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">hotel.hold</span>
+                <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">post.queue</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
+                <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">receipt.scan</span>
+                <span class="unit-tag bg-violet-950/60 text-violet-400 border-violet-500/30">cat.book</span>
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">crm.update</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">comp.scan</span>
+                <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
+            </div>
+            <!-- Stream Col 2 -->
+            <div class="flex flex-col gap-1 w-24">
+                <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">invoice.send</span>
+                <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">followup.send</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">vat.rate</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
+                <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
+                <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">post.queue</span>
+                <span class="unit-tag bg-violet-950/60 text-violet-400 border-violet-500/30">inbox.sort</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">lead.find</span>
+                <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
+                <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
+                <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
+            </div>
+            <!-- Stream Col 3 -->
+            <div class="flex flex-col gap-1 w-24">
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">digest.write</span>
+                <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">comp.scan</span>
+                <span class="unit-tag bg-pink-950/60 text-pink-400 border-pink-500/30">notes.prep</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">cat.book</span>
+                <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">test.run</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
+                <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">price.check</span>
+                <span class="unit-tag bg-orange-950/60 text-orange-400 border-orange-500/30">receipt.scan</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">pr.review</span>
+                <span class="unit-tag bg-sky-950/60 text-sky-400 border-sky-500/30">test.run</span>
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">cal.scan</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">media.cut</span>
+                <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
+            </div>
+            <!-- Stream Col 4 -->
+            <div class="flex flex-col gap-1 w-24">
+                <span class="unit-tag bg-blue-950/60 text-blue-400 border-blue-500/30">invoice.send</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">mail.reply</span>
+                <span class="unit-tag bg-purple-950/60 text-purple-400 border-purple-500/30">table.sync</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">ticket.reply</span>
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">bug.repro</span>
+                <span class="unit-tag bg-indigo-950/60 text-indigo-400 border-indigo-500/30">memory.save</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">trip.book</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">comp.scan</span>
+                <span class="unit-tag bg-red-950/60 text-red-400 border-red-500/30">bug.repro</span>
+                <span class="unit-tag bg-emerald-950/60 text-emerald-400 border-emerald-500/30">audit.cut</span>
+                <span class="unit-tag bg-fuchsia-950/60 text-fuchsia-400 border-fuchsia-500/30">hotel.hold</span>
+                <span class="unit-tag bg-amber-950/60 text-amber-400 border-amber-500/30">crm.update</span>
+                <span class="unit-tag bg-teal-950/60 text-teal-400 border-teal-500/30">crm.update</span>
+                <span class="unit-tag bg-rose-950/60 text-rose-400 border-rose-500/30">post.draft</span>
+            </div>
+        </div>
+
+        <!-- STAGE 5: Verified Output Orb & Altair Run Complete Dashboard -->
+        <div class="absolute left-[1010px] top-28 flex flex-col items-center gap-6" id="col-verified-orb">
+            <!-- Large Glowing Green Completion Orb -->
+            <div class="verified-output-orb" id="orb-verified">
+                <svg class="h-8 w-8 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span class="text-[9px] font-bold text-white tracking-widest uppercase">Verified</span>
+                <span class="text-[8px] text-emerald-200">409 / 412</span>
+            </div>
+
+            <!-- Run Complete Telemetry Panel -->
+            <div class="altair-card-summary w-80 text-xs font-mono" id="panel-run-summary">
+                <div class="flex items-center justify-between text-zinc-400 mb-2">
+                    <div class="flex items-center gap-1.5 text-emerald-400 font-bold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        RUN COMPLETE
+                    </div>
+                    <span class="text-[10px] text-zinc-500">one-person-company</span>
+                </div>
+                <div class="text-3xl font-extrabold text-white mb-2">412 units</div>
+                <div class="flex items-center gap-3 text-[10px] text-zinc-400 pb-3 border-b border-zinc-800 mb-3">
+                    <span class="text-white">15 bots</span>
+                    <span>·</span>
+                    <span class="text-rose-400">3 rejected</span>
+                    <span>·</span>
+                    <span class="text-sky-400">3 rules</span>
+                    <span>·</span>
+                    <span class="text-emerald-400">0 broken</span>
+                </div>
+
+                <!-- Sub-cards: Inbox & Posts -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
+                        <div class="flex items-center justify-between text-[10px] text-emerald-400 mb-1">
+                            <span>inbox · zero</span>
+                            <span>✓</span>
+                        </div>
+                        <div class="h-6 flex items-end gap-1">
+                            <span class="w-1.5 bg-emerald-500 h-2 rounded-t"></span>
+                            <span class="w-1.5 bg-emerald-500 h-3 rounded-t"></span>
+                            <span class="w-1.5 bg-emerald-500 h-5 rounded-t"></span>
+                            <span class="w-1.5 bg-emerald-500 h-1 rounded-t"></span>
+                            <span class="w-1.5 bg-emerald-500 h-6 rounded-t"></span>
+                        </div>
+                        <div class="text-[9px] text-zinc-500 mt-1">164 replied · 2 held</div>
+                    </div>
+                    <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
+                        <div class="flex items-center justify-between text-[10px] text-teal-400 mb-1">
+                            <span>posts · 21 queued</span>
+                            <span>✓</span>
+                        </div>
+                        <div class="h-6 flex items-end gap-1">
+                            <span class="w-1.5 bg-teal-500 h-3 rounded-t"></span>
+                            <span class="w-1.5 bg-teal-500 h-4 rounded-t"></span>
+                            <span class="w-1.5 bg-teal-500 h-6 rounded-t"></span>
+                            <span class="w-1.5 bg-teal-500 h-5 rounded-t"></span>
+                            <span class="w-1.5 bg-teal-500 h-2 rounded-t"></span>
+                        </div>
+                        <div class="text-[9px] text-zinc-500 mt-1">mon → sun · 9:00 slot</div>
+                    </div>
+                </div>
+
+                <!-- Memory Rules Learned -->
+                <div class="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 mb-3">
+                    <div class="flex items-center justify-between text-[10px] text-purple-400 mb-1">
+                        <span>MEMORY.md +3</span>
+                        <span>🧠</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-400 space-y-0.5">
+                        <div>• reply in my tone</div>
+                        <div>• trips under $1,200</div>
+                        <div>• set 20% on invoices</div>
+                    </div>
+                </div>
+
+                <!-- Human Gate: Payment Approval Notice -->
+                <div class="bg-amber-950/30 p-2.5 rounded-lg border border-amber-500/40">
+                    <div class="flex items-center justify-between text-[10px] text-amber-300 font-bold mb-1">
+                        <span>payment · needs you</span>
+                        <span>⚠️</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-300 mb-2">wire $1,840 — contractor waiting irreversible · your call</div>
+                    <div class="flex items-center gap-2">
+                        <button class="btn btn-xs bg-amber-500 hover:bg-amber-400 text-black border-none font-bold">Approve</button>
+                        <button class="btn btn-xs btn-ghost text-zinc-400 hover:text-white">Send Back</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monospace Live Event Terminal -->
+    <div class="altair-terminal-footer">
+        <div class="flex items-center gap-4">
+            <span class="text-zinc-500">09:48:12</span>
+            <span>bot_15 · code_review → pr.review · unit 295 / 295 completed</span>
+            <span class="text-zinc-500">|</span>
+            <span class="text-amber-400">check: rule written to MEMORY.md</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-zinc-500">Altair AI &bull; Grok Bot Mesh</span>
+            <span class="text-xs text-emerald-400 font-bold">100% OPERATIONAL</span>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Bezier Spline Engine (GPU-Accelerated) -->
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener("DOMContentLoaded", () => {
+    const svg = document.getElementById("altair-wires-svg");
+    const stage = document.getElementById("mesh-viewport");
+
+    function getCenter(el) {
+        const stageRect = stage.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
+        return {
+            x: rect.left - stageRect.left + (rect.width / 2),
+            y: rect.top - stageRect.top + (rect.height / 2)
+        };
+    }
+
+    function createWire(x1, y1, x2, y2, color, active = true) {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const dx = Math.abs(x2 - x1) * 0.55;
+        const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        path.setAttribute("d", d);
+        path.setAttribute("stroke", color);
+        path.setAttribute("class", active ? "fiber-wire active" : "fiber-wire");
+        svg.appendChild(path);
+        return path;
+    }
+
+    function renderAllWires() {
+        svg.innerHTML = "";
+        
+        // 1. Inputs -> Grok Orb & Gates
+        const grokOrb = document.getElementById("node-grok-orb");
+        const checkGate = document.getElementById("node-gate-check");
+        const splitGate = document.getElementById("node-gate-splitter");
+        
+        const gPos = getCenter(grokOrb);
+        const cPos = getCenter(checkGate);
+        const sPos = getCenter(splitGate);
+
+        const inTask = getCenter(document.getElementById("node-in-task"));
+        const inInbox = getCenter(document.getElementById("node-in-inbox"));
+        const inCal = getCenter(document.getElementById("node-in-cal"));
+        const inMem = getCenter(document.getElementById("node-in-mem"));
+
+        createWire(inTask.x + 40, inTask.y, cPos.x - 70, cPos.y, "#34d399", true);
+        createWire(inInbox.x + 40, inInbox.y, gPos.x - 34, gPos.y, "#38bdf8", true);
+        createWire(inCal.x + 40, inCal.y, sPos.x - 70, sPos.y, "#818cf8", true);
+        createWire(inMem.x + 40, inMem.y, sPos.x - 70, sPos.y, "#c084fc", true);
+
+        // 2. Grok & Gates -> 15 Bots
+        const bots = document.querySelectorAll(".bot-pill-row");
+        bots.forEach((bot, idx) => {
+            const bPos = getCenter(bot);
+            const color = bot.getAttribute("data-color") || "#58a6ff";
+            
+            // Connect from Splitter to each bot
+            createWire(sPos.x + 70, sPos.y, bPos.x - 75, bPos.y, color, true);
+        });
+
+        // 3. 15 Bots -> Micro Execution Units Waterfall
+        const unitCols = document.querySelectorAll("#col-micro-units > div");
+        bots.forEach((bot, bIdx) => {
+            const bPos = getCenter(bot);
+            const color = bot.getAttribute("data-color") || "#58a6ff";
+            
+            // Scatter a couple of wires into the micro-tags
+            const targetCol = unitCols[bIdx % unitCols.length];
+            const tags = targetCol.querySelectorAll(".unit-tag");
+            const tag = tags[bIdx % tags.length];
+            if (tag) {
+                const tPos = getCenter(tag);
+                createWire(bPos.x + 75, bPos.y, tPos.x - 45, tPos.y, color, false);
+            }
+        });
+
+        // 4. Micro Units -> Verified Output Orb
+        const verifiedOrb = document.getElementById("orb-verified");
+        const vPos = getCenter(verifiedOrb);
+        
+        bots.forEach((bot) => {
+            const bPos = getCenter(bot);
+            const color = bot.getAttribute("data-color") || "#3fb950";
+            createWire(bPos.x + 360, bPos.y, vPos.x - 45, vPos.y, color, true);
+        });
+    }
+
+    // Initial render
+    setTimeout(renderAllWires, 150);
+    window.addEventListener("resize", renderAllWires);
+
+    // Pulse Run replay button
+    document.getElementById("btn-replay-anim").addEventListener("click", () => {
+        svg.querySelectorAll(".fiber-wire").forEach(w => {
+            w.classList.remove("active");
+            void w.offsetWidth; // trigger reflow
+            w.classList.add("active");
+        });
+    });
+});
+</script>
+{% endblock %}

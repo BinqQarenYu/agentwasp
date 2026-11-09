@@ -128,6 +128,7 @@ def create_app(
     from .routes.subscriptions import router as subscriptions_router
     from .routes.config_center import router as config_center_router
     from .routes.traces import router as traces_router
+    from .routes.mesh import router as mesh_router
 
     app.include_router(auth_router)
     app.include_router(overview_router)
@@ -159,6 +160,7 @@ def create_app(
     app.include_router(subscriptions_router, prefix="/subscriptions")
     app.include_router(config_center_router, prefix="/config")
     app.include_router(traces_router, prefix="/traces")
+    app.include_router(mesh_router, prefix="/mesh")
     from .routes.workspaces import router as workspaces_router
     app.include_router(workspaces_router, prefix="/workspaces")
     
