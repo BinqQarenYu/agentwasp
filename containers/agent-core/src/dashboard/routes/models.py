@@ -21,16 +21,7 @@ async def models_page(request: Request):
 
     default_model = status.get("default_model", "")
     installed = []
-    for provider_name, info in status["providers"].items():
-        sizes = info.get("model_sizes", {})
-        for model in info.get("models", []):
-            installed.append({
-                "name": model,
-                "provider": provider_name,
-                "active": model == status["active_model"],
-                "is_default": model == default_model,
-                "size": sizes.get(model, ""),
-            })
+    installed_names_seen = set()
 
     # Ollama-specific data
     ollama = model_manager.providers.get("ollama")
@@ -56,6 +47,44 @@ async def models_page(request: Request):
             ollama_total_size = f"{total_bytes / 1_048_576:.0f} MB"
         elif total_bytes > 0:
             ollama_total_size = f"{total_bytes} B"
+
+        # Partition Ollama models into ollama:cloud and ollama:local
+        for m in ollama_installed:
+            m_name = m["name"]
+            info = (ollama._model_info or {}).get(m_name, {})
+            size_b = info.get("size_bytes", 0)
+            is_cloud = (
+                ":cloud" in m_name
+                or bool(info.get("remote_model"))
+                or bool(info.get("remote_host"))
+                or (0 < size_b < 10000)
+            )
+            prov_tag = "ollama:cloud" if is_cloud else "ollama:local"
+            installed.append({
+                "name": m_name,
+                "provider": prov_tag,
+                "active": m["active"],
+                "is_default": m_name == default_model,
+                "size": m["size"] or ("cloud" if is_cloud else ""),
+            })
+            installed_names_seen.add(m_name)
+
+    # Add models from other configured providers
+    for provider_name, info in status.get("providers", {}).items():
+        if provider_name in ("ollama", "ollama:local", "ollama:cloud"):
+            continue
+        sizes = info.get("model_sizes", {})
+        for model in info.get("models", []):
+            if model in installed_names_seen:
+                continue
+            installed.append({
+                "name": model,
+                "provider": provider_name,
+                "active": model == status.get("active_model"),
+                "is_default": model == default_model,
+                "size": sizes.get(model, ""),
+            })
+            installed_names_seen.add(model)
 
     # Mark catalog entries as installed
     installed_names = {m["name"] for m in ollama_installed}

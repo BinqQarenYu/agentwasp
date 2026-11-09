@@ -68,6 +68,8 @@
   "huggingface": {"color":"#FFD21E","label":"HF", "desc":"Open source models",           "icon":"light/huggingface-color"},
   "lmstudio":    {"color":"#8B5CF6","label":"LMS","desc":"Local (LM Studio)",             "icon":""},
   "ollama":      {"color":"#6EE7B7","label":"OLM","desc":"Local inference",               "icon":"dark/ollama"},
+  "ollama:local":{"color":"#6EE7B7","label":"OLM:LOC","desc":"Ollama local model",        "icon":"dark/ollama"},
+  "ollama:cloud":{"color":"#38BDF8","label":"OLM:CLD","desc":"Ollama cloud proxy",        "icon":"dark/ollama"},
   "moonshot":    {"color":"#6366F1","label":"KIM","desc":"Kimi K2 · Moonshot",            "icon":"dark/moonshot"},
 } %}
 
@@ -246,7 +248,7 @@
                                     title="{% if m.is_default %}Default model (persists on restart){% else %}Set as default{% endif %}"
                                     data-action="models:setDefaultModel" data-name="{{ m.name|e }}" data-idx="{{ loop.index }}">★</button>
                         </td>
-                        {% if m.provider == "ollama" %}
+                        {% if m.provider == "ollama" or m.provider.startswith("ollama:") %}
                         <td class="text-center">
                             <button class="btn btn-xs btn-ghost text-error opacity-40 hover:opacity-100"
                                     title="Uninstall — frees disk space"
@@ -628,6 +630,8 @@ var PROV_META = {
     huggingface:{color:'#FFD21E', label:'HF',  hint:'huggingface.co/settings/tokens'},
     lmstudio:   {color:'#8B5CF6', label:'LMS', hint:'Enter server URL (e.g. http://localhost:1234)'},
     ollama:     {color:'#6EE7B7', label:'OLM', hint:'Local — no key needed, use http://localhost:11434'},
+    'ollama:local': {color:'#6EE7B7', label:'OLM:LOC', hint:'Local offline model'},
+    'ollama:cloud': {color:'#38BDF8', label:'OLM:CLD', hint:'Cloud proxy model'},
     moonshot:   {color:'#6366F1', label:'KIM', hint:'platform.moonshot.cn/console/api-keys'},
 };
 
@@ -891,13 +895,13 @@ function updateHero(model, provider) {
         openai:'dark/openai', anthropic:'light/claude-color', google:'light/gemini-color',
         xai:'dark/grok', mistral:'light/mistral-color', deepseek:'light/deepseek-color',
         openrouter:'dark/openrouter', perplexity:'light/perplexity-color',
-        huggingface:'light/huggingface-color', ollama:'dark/ollama', moonshot:'dark/moonshot'
+        huggingface:'light/huggingface-color', ollama:'dark/ollama', 'ollama:local':'dark/ollama', 'ollama:cloud':'dark/ollama', moonshot:'dark/moonshot'
     };
     var descs = {
         openai:'GPT-4o · o1 · o3', anthropic:'Claude 3.5 · Claude 4', google:'Gemini 2.0 · Pro',
         xai:'Grok 3 · Beta', mistral:'Mistral · Codestral', deepseek:'DeepSeek R1 · V3',
         openrouter:'100+ models', perplexity:'Sonar · Pro', huggingface:'Open source models',
-        lmstudio:'Local (LM Studio)', ollama:'Local inference', moonshot:'Kimi 128k'
+        lmstudio:'Local (LM Studio)', ollama:'Local inference', 'ollama:local':'Local offline model', 'ollama:cloud':'Cloud proxy model', moonshot:'Kimi 128k'
     };
     var color = meta.color;
     var label = meta.label;

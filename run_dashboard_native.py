@@ -212,8 +212,24 @@ _PROVIDER_LIST = [
     {"name": "anthropic", "configured": False, "healthy": False, "masked_key": "", "models": ["claude-3-5-sonnet"]},
 ]
 
+from src.models.ollama_provider import OllamaProvider
+_real_ollama = OllamaProvider(base_url="http://127.0.0.1:11434")
+
 mock_model_manager = MagicMock()
 mock_model_manager.active_model = "gemini-2.5-flash"
+mock_model_manager.default_model = "gemini-2.5-flash"
+mock_model_manager.providers = {"ollama": _real_ollama}
+
+async def _fake_switch(model_name):
+    mock_model_manager.active_model = model_name
+    return f"Switched to {model_name}"
+mock_model_manager.switch_model = _fake_switch
+
+async def _fake_set_default(model_name):
+    mock_model_manager.default_model = model_name
+    mock_model_manager.active_model = model_name
+    return f"Default set to {model_name}"
+mock_model_manager.set_default_model = _fake_set_default
 mock_model_manager.get_available_models = AsyncMock(return_value=["gemini-2.5-flash", "grok-2", "gpt-4o"])
 mock_model_manager.get_catalog = MagicMock(return_value=[
     {"name": "gemma4:latest", "display_name": "Gemma 4 (Local)", "size": "4.8 GB", "description": "Local offline model", "installed": True},
@@ -231,7 +247,7 @@ mock_model_manager.get_status = MagicMock(return_value={
 })
 mock_model_manager.get_provider_info = AsyncMock(return_value=_PROVIDER_LIST)
 mock_model_manager.list_providers = MagicMock(return_value=["google", "xai", "openai", "anthropic"])
-mock_model_manager.providers = {}
+mock_model_manager.providers = {"ollama": _real_ollama}
 
 # Mock Skill Objects with category, params, capability_level, confirmation, timeout
 class ParamDef:
