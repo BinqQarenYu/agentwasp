@@ -5847,6 +5847,7 @@ class EventHandler:
                 _DIRECT_SKILLS = (
                     "create_reminder", "create_monitor",
                     "list_monitors", "list_reminders",
+                    "get_datetime", "get_weather", "skill_manager",
                 )
                 _ac0 = auto_calls[0] if auto_calls else None
                 # wipe_all: respond directly, skip LLM (action already complete)
@@ -11251,7 +11252,7 @@ class EventHandler:
                             if args.get("query"): extra["query"] = args["query"][:80]
                         progress_callback({"type": "skill_done", "skill": r.skill_name, "success": r.success, "ms": r.execution_ms, **extra})
                 # For direct-response skills
-                _DIRECT_SKILLS = ("create_reminder", "create_monitor", "list_monitors", "list_reminders")
+                _DIRECT_SKILLS = ("create_reminder", "create_monitor", "list_monitors", "list_reminders", "get_datetime", "get_weather", "skill_manager")
                 if auto_calls and auto_calls[0].skill_name in _DIRECT_SKILLS:
                     r = auto_results[0]
                     return r.output if r.success else f"Error: {r.error}"

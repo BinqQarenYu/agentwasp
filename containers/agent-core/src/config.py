@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3"
     ollama_load_timeout: float = 300.0
     ollama_client_timeout: float = 300.0
-    ollama_keep_alive: str = "10m"
+    ollama_keep_alive: str = "60m"
+    ollama_num_ctx: int = 2048
+    ollama_num_predict: int = 256
+    ollama_num_thread: int = 0
     ollama_is_remote: bool = False
     timezone: str = "America/Santiago"
     openai_api_key: str = ""

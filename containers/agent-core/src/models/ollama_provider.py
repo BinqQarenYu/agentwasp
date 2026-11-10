@@ -264,14 +264,28 @@ class OllamaProvider(LLMProvider):
                     logger.warning("ollama.image_inject_failed", error=str(e))
             messages.append(msg)
 
+        from ..config import settings
+
+        # Efficient token & context management for fast Ollama inference
+        # 1. num_ctx limits the KV cache size, preventing out-of-memory and long prompt evals
+        # 2. num_predict limits maximum output generation length
+        num_predict = request.max_tokens if request.max_tokens and request.max_tokens < 1024 else getattr(settings, "ollama_num_predict", 256)
+        num_ctx = getattr(settings, "ollama_num_ctx", 2048)
+
+        options = {
+            "temperature": request.temperature,
+            "num_predict": num_predict,
+            "num_ctx": num_ctx,
+        }
+        if getattr(settings, "ollama_num_thread", 0) > 0:
+            options["num_thread"] = settings.ollama_num_thread
+
         payload = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "options": {
-                "temperature": request.temperature,
-                "num_predict": request.max_tokens,
-            },
+            "keep_alive": getattr(settings, "ollama_keep_alive", "60m"),
+            "options": options,
         }
 
         from ..config import settings
