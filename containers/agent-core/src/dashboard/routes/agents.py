@@ -13,6 +13,8 @@ Endpoints:
   POST /agents/api/{id}/start        → Create initial goal from identity_prompt
   GET  /agents/api/{id}/messages     → Recent messages
   POST /agents/api/{id}/send_message → Assign a goal to another agent
+  POST /agents/api/{id}/spawn_subagent → Spawn Depth-1 Ephemeral Subagent
+  POST /agents/api/{id}/reap_subagent  → Reap & archive Ephemeral Subagent
 """
 
 from __future__ import annotations
@@ -31,40 +33,76 @@ def _ao(request: Request):
 
 def _fmt_agent(agent) -> dict:
     """Convert Agent object to template-friendly dict."""
-    budget = agent.cognitive_budget
+    budget = getattr(agent, "cognitive_budget", None)
     budget_pct_planning = 0.0
-    if budget.max_tokens_planning > 0:
-        budget_pct_planning = min(
-            100.0,
-            budget.tokens_used_planning / budget.max_tokens_planning * 100
-        )
+    budget_used_planning = 0
+    budget_max_planning = 0
+    budget_used_steps = 0
+    budget_max_steps = 0
     budget_pct_steps = 0.0
-    if budget.max_steps > 0:
-        budget_pct_steps = min(100.0, budget.steps_executed / budget.max_steps * 100)
+    budget_exceeded = False
+    if budget:
+        budget_used_planning = getattr(budget, "tokens_used_planning", 0)
+        budget_max_planning = getattr(budget, "max_tokens_planning", 0)
+        if budget_max_planning > 0:
+            budget_pct_planning = min(
+                100.0,
+                budget_used_planning / budget_max_planning * 100
+            )
+        budget_used_steps = getattr(budget, "steps_executed", 0)
+        budget_max_steps = getattr(budget, "max_steps", 0)
+        if budget_max_steps > 0:
+            budget_pct_steps = min(100.0, budget_used_steps / budget_max_steps * 100)
+        budget_exceeded = getattr(budget, "budget_exceeded", False)
+
+    autonomy = getattr(agent, "autonomy_mode", "semi")
+    autonomy_val = autonomy.value if hasattr(autonomy, "value") else str(autonomy)
+    status_obj = getattr(agent, "status", "idle")
+    status_val = status_obj.value if hasattr(status_obj, "value") else str(status_obj)
+    active_goals = getattr(agent, "active_goal_ids", []) or []
+    intent_obj = getattr(agent, "intent", None)
+    intent_desc = (intent_obj.description[:120] if intent_obj and getattr(intent_obj, "description", None) else "")
+
+    can_spawn = True
+    if hasattr(agent, "can_spawn_subagents"):
+        try:
+            can_spawn = agent.can_spawn_subagents()
+        except Exception:
+            can_spawn = (getattr(agent, "depth", 0) == 0)
+    else:
+        can_spawn = (getattr(agent, "depth", 0) == 0)
 
     return {
         "id": agent.id,
         "name": agent.name,
-        "description": agent.description,
-        "model_provider": agent.model_provider,
-        "model_name": agent.model_name,
-        "identity_prompt": agent.identity_prompt,
-        "autonomy_mode": agent.autonomy_mode.value,
-        "allowed_capabilities": agent.allowed_capabilities,
-        "memory_namespace": agent.effective_namespace,
-        "status": agent.status.value,
-        "created_at": agent.created_at[:19] if agent.created_at else "",
-        "updated_at": agent.updated_at[:19] if agent.updated_at else "",
-        "active_goal_count": len(agent.active_goal_ids),
-        "active_goal_ids": agent.active_goal_ids,
-        "budget_used_planning": budget.tokens_used_planning,
-        "budget_max_planning": budget.max_tokens_planning,
+        "description": getattr(agent, "description", ""),
+        "model_provider": getattr(agent, "model_provider", ""),
+        "model_name": getattr(agent, "model_name", ""),
+        "identity_prompt": getattr(agent, "identity_prompt", ""),
+        "autonomy_mode": autonomy_val,
+        "allowed_capabilities": getattr(agent, "allowed_capabilities", []) or [],
+        "memory_namespace": getattr(agent, "effective_namespace", getattr(agent, "memory_namespace", agent.id)),
+        "status": status_val,
+        "created_at": agent.created_at[:19] if getattr(agent, "created_at", None) else "",
+        "updated_at": agent.updated_at[:19] if getattr(agent, "updated_at", None) else "",
+        "active_goal_count": len(active_goals),
+        "active_goal_ids": active_goals,
+        "budget_used_planning": budget_used_planning,
+        "budget_max_planning": budget_max_planning,
         "budget_pct_planning": round(budget_pct_planning, 1),
-        "budget_used_steps": budget.steps_executed,
-        "budget_max_steps": budget.max_steps,
+        "budget_used_steps": budget_used_steps,
+        "budget_max_steps": budget_max_steps,
         "budget_pct_steps": round(budget_pct_steps, 1),
-        "budget_exceeded": budget.budget_exceeded,
-        "intent_description": (agent.intent.description[:120] if agent.intent and agent.intent.description else ""),
+        "budget_exceeded": budget_exceeded,
+        "intent_description": intent_desc,
+        "depth": getattr(agent, "depth", 0),
+        "parent_agent_id": getattr(agent, "parent_agent_id", None),
+        "is_ephemeral": getattr(agent, "is_ephemeral", False),
+        "spawned_subagents": getattr(agent, "spawned_subagents", []) or [],
+        "max_subagents": getattr(agent, "max_subagents", 3),
+        "task_timeout_seconds": getattr(agent, "task_timeout_seconds", 180),
+        "can_spawn_subagents": can_spawn,
+        "metadata": getattr(agent, "metadata", {}) or {},
     }
 
 
@@ -238,7 +276,6 @@ async def agent_messages(request: Request, agent_id: str):
             }
             for m in msgs
         ],
-
     })
 
 
@@ -250,13 +287,11 @@ async def agent_send_message(request: Request, agent_id: str):
         return JSONResponse({"ok": False, "error": "Agent orchestrator not available"}, status_code=503)
     try:
         body = await request.json()
-        # Support both 'content' (legacy) and 'message' params
         content = (body.get("content") or body.get("message") or "").strip()
         target_id = (body.get("to_agent_id") or agent_id).strip()
         if not content:
             return JSONResponse({"ok": False, "error": "content or message is required"}, status_code=400)
 
-        # Create a goal on the target agent so the instruction is actually executed
         goal = await ao.create_agent_goal(target_id, objective=content)
         return JSONResponse({"ok": True, "goal_id": goal.id, "agent_id": target_id})
     except Exception as e:
@@ -320,6 +355,162 @@ async def agent_get(request: Request, agent_id: str):
     if not agent:
         return JSONResponse({"ok": False, "error": "Agent not found"}, status_code=404)
     return JSONResponse({"ok": True, "agent": _fmt_agent(agent)})
+
+
+@router.post("/api/{agent_id}/spawn_subagent")
+async def agent_spawn_subagent(request: Request, agent_id: str):
+    """Spawns an Ephemeral Depth-1 Subagent for specialized workloads."""
+    ao = _ao(request)
+    if not ao:
+        return JSONResponse({"ok": False, "error": "Agent orchestrator not available"}, status_code=503)
+    try:
+        parent = await ao.get_agent(agent_id)
+        if not parent:
+            return JSONResponse({"ok": False, "error": f"Parent agent '{agent_id}' not found"}, status_code=404)
+
+        body = await request.json()
+        role = (body.get("role") or "").strip()
+        task_objective = (body.get("task_objective") or body.get("objective") or "").strip()
+        if not role:
+            return JSONResponse({"ok": False, "error": "role is required"}, status_code=400)
+        if not task_objective:
+            return JSONResponse({"ok": False, "error": "task_objective is required"}, status_code=400)
+
+        timeout_seconds = int(body.get("timeout_seconds") or 180)
+        token_budget = int(body.get("token_budget") or 2000)
+        model_provider = (body.get("model_provider") or "").strip()
+        model_name = (body.get("model_name") or "").strip()
+
+        # Rule 1: Depth-1 Boundary
+        if getattr(parent, "depth", 0) > 0:
+            return JSONResponse({
+                "ok": False,
+                "error": f"Depth limit exceeded: Agent '{parent.name}' (depth={parent.depth}) is a subagent and cannot spawn nested subagents."
+            }, status_code=400)
+
+        # Rule 2: Concurrency leash
+        spawned = getattr(parent, "spawned_subagents", []) or []
+        max_sub = getattr(parent, "max_subagents", 3)
+        if len(spawned) >= max_sub:
+            return JSONResponse({
+                "ok": False,
+                "error": f"Concurrency limit exceeded: Agent '{parent.name}' has reached its maximum of {max_sub} active subagents."
+            }, status_code=400)
+
+        # Rule 3: Ollama hardware safety on host CPU
+        if model_provider.lower() == "ollama" and model_name:
+            if model_name.lower().strip() not in {"llama3.2:latest", "llama3.2", "nemotron-mini:latest", "nemotron-mini"}:
+                model_name = "llama3.2:latest"
+
+        # Instantiate or fetch genesis
+        try:
+            from ...agent_manager.genesis import SubagentGenesis
+        except (ImportError, ValueError):
+            try:
+                from src.agent_manager.genesis import SubagentGenesis
+            except (ImportError, ValueError):
+                from agent_manager.genesis import SubagentGenesis
+
+        redis_url = getattr(request.app.state, "redis_url", "redis://localhost:6379/0")
+        redis_client = getattr(request.app.state, "redis_client", None)
+        genesis = SubagentGenesis(redis_url=redis_url, redis_client=redis_client)
+
+        subagent = await genesis.spawn_subagent(
+            parent=parent,
+            role=role,
+            task_objective=task_objective,
+            timeout_seconds=timeout_seconds,
+            token_budget=token_budget,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
+
+        # Register in in-memory orchestrator if present
+        if hasattr(ao, "_agents"):
+            ao._agents[subagent.id] = subagent
+
+        # Auto-create initial goal for child
+        if task_objective:
+            try:
+                await ao.create_agent_goal(subagent.id, objective=task_objective)
+            except Exception:
+                pass
+
+        logger.info(
+            "agents_route.subagent_spawned",
+            parent_id=parent.id,
+            subagent_id=subagent.id,
+            role=role,
+        )
+
+        return JSONResponse({
+            "ok": True,
+            "message": f"Ephemeral subagent '{subagent.name}' successfully spawned.",
+            "subagent": _fmt_agent(subagent),
+            "parent_id": parent.id,
+            "active_subagents_count": len(parent.spawned_subagents),
+        })
+
+    except Exception as exc:
+        logger.error("agents_route.spawn_subagent_error", error=str(exc)[:120])
+        return JSONResponse({"ok": False, "error": str(exc).splitlines()[0][:120]}, status_code=500)
+
+
+@router.post("/api/{agent_id}/reap_subagent")
+async def agent_reap_subagent(request: Request, agent_id: str):
+    """Reaps and archives an Ephemeral Subagent."""
+    ao = _ao(request)
+    if not ao:
+        return JSONResponse({"ok": False, "error": "Agent orchestrator not available"}, status_code=503)
+    try:
+        parent = await ao.get_agent(agent_id)
+        if not parent:
+            return JSONResponse({"ok": False, "error": f"Parent agent '{agent_id}' not found"}, status_code=404)
+
+        body = await request.json()
+        subagent_id = (body.get("subagent_id") or "").strip()
+        reason = (body.get("reason") or "operator_reap").strip()
+        if not subagent_id:
+            return JSONResponse({"ok": False, "error": "subagent_id is required"}, status_code=400)
+
+        try:
+            from ...agent_manager.genesis import SubagentGenesis
+            from ...agent_manager.types import AgentStatus
+        except (ImportError, ValueError):
+            try:
+                from src.agent_manager.genesis import SubagentGenesis
+                from src.agent_manager.types import AgentStatus
+            except (ImportError, ValueError):
+                from agent_manager.genesis import SubagentGenesis
+                from agent_manager.types import AgentStatus
+
+        redis_url = getattr(request.app.state, "redis_url", "redis://localhost:6379/0")
+        redis_client = getattr(request.app.state, "redis_client", None)
+        genesis = SubagentGenesis(redis_url=redis_url, redis_client=redis_client)
+
+        reaped = await genesis.reap_subagent(parent, subagent_id, reason=reason)
+
+        if hasattr(ao, "_agents") and subagent_id in ao._agents:
+            ao._agents[subagent_id].status = AgentStatus.ARCHIVED
+
+        logger.info(
+            "agents_route.subagent_reaped",
+            parent_id=parent.id,
+            subagent_id=subagent_id,
+            reason=reason,
+        )
+
+        return JSONResponse({
+            "ok": True,
+            "message": f"Subagent '{subagent_id}' successfully reaped and archived.",
+            "reaped": subagent_id,
+            "parent_id": parent.id,
+            "remaining_subagents_count": len(parent.spawned_subagents),
+        })
+
+    except Exception as exc:
+        logger.error("agents_route.reap_subagent_error", error=str(exc)[:120])
+        return JSONResponse({"ok": False, "error": str(exc).splitlines()[0][:120]}, status_code=500)
 
 
 @router.post("/api/{agent_id}/delete")

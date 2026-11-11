@@ -1,11 +1,15 @@
 # ── Secrets / runtime config ───────────────────────────────────────────
 .env
+*.env
+.env.*
 .env.local
 .env.*.local
 *.key
 *.pem
 *.crt
 secrets/
+*client_secret*.json
+google_client_secret*.json
 
 # ── Data / state ───────────────────────────────────────────────────────
 data/

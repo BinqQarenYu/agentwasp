@@ -303,6 +303,13 @@ class ModelManager:
                         request.messages = original_messages
 
                     try:
+                        # Free-tier Quota & RPM throttling guard (Gemini, Grok, OpenAI)
+                        try:
+                            from .quota_guard import quota_guard
+                            await quota_guard.acquire_slot(provider_name)
+                        except Exception as _q_err:
+                            logger.warning("model_manager.quota_guard_warning", error=str(_q_err))
+
                         response = await provider.generate(request)
                         # Non-blocking economics tracking
                         try:

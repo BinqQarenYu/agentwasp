@@ -7,7 +7,7 @@
 Self-hosted autonomous AI agent. Plans, executes, and improves itself running on infrastructure you own.
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-F5C542?style=flat-square)](LICENSE.md)
-[![Version](https://img.shields.io/badge/version-2.7-F5C542?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.7.1-F5C542?style=flat-square)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-agentwasp.com-F5C542?style=flat-square)](https://docs.agentwasp.com)
 [![Install](https://img.shields.io/badge/install-1%20line-F5C542?style=flat-square)](#install)
 [![Python](https://img.shields.io/badge/python-3.12-F5C542?style=flat-square)](https://www.python.org)
@@ -66,6 +66,7 @@ wasp health      # run health probes
 - **Goal orchestrator**: long-running plans broken into TaskGraph steps, retried on failure, replanned when blocked, validated by a Plan Critic before execution.
 - **Dashboard**: browser UI with 151 endpoints — chat, traces, tasks, scheduler, memory, knowledge graph, world model, agents, integrations, audit log, self-improve.
 - **Telegram bridge**: optional — natural language to your agent from your phone. Multi-language welcome (EN/ES/PT/FR).
+- **Autonomous Teleological Self-Evolution (ATSE)**: 24/7 background self-evolution daemon grounded in AST codebase entropy ($H_{\text{AST}} = 0.8451$), bounded by a quadratic Common-Sense Gate ($\Omega_{\text{sense}}$), Triad Adversarial Consensus (Athena Proposer $\to$ Ares Critic $\to$ Prometheus Judge with Security VETO), and shadow worktree staging with 1.27ms atomic rollback. See [docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md](docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md).
 - **Self-improvement loop**: corrections you write become persistent behavioral rules. Recurring action patterns get abstracted into reusable procedures. The agent can read, patch, and rebuild its own source.
 - **Truth layer**: response binding, URL substitution guard, scheduler honesty, capability-claim verification, prompt-leak redaction — designed to make the agent's text match the actions it actually took.
 
@@ -149,7 +150,16 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 - [docs/QUICKSTART.md](docs/QUICKSTART.md) — first 10 minutes
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — VPS + local + reverse-proxy guidance
 - [docs/SECURITY.md](docs/SECURITY.md) — threat model, fail-closed defaults, secret handling
-- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — **honest** map of what works and what's experimental
+- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — honest map of what works and what's experimental
+- [docs/AGENT_MESH_ARCHITECTURE.md](docs/AGENT_MESH_ARCHITECTURE.md) — Grok-style UI/UX and 15-bot Agent Mesh architecture
+- [docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md](docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md) — 24/7 autonomous employee self-evolution loop, AST Shannon entropy, Common-Sense Gate ($\Omega_{\text{sense}}$), Triad consensus, and shadow staging
+- [docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md](docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md) — Google Workspace OAuth integration guide, Colab/Jules mapping, and kinetic UI telemetry
+- [docs/GITHUB_FLEET_AUDIT_SPEC.md](docs/GITHUB_FLEET_AUDIT_SPEC.md) — 4-parameter fleet audit spec, anti-parameters, and Common Sense cognitive heuristics
+- [docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md](docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md) — Athena (Bot 15): GitHub fleet steward, Copilot CLI synergy, code security
+- [docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md](docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md) — Prometheus: Antigravity capabilities broker, MCP server matrix, unified memory
+- [docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md](docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md) — Grand Accountability Charter for god-tier root access
+- [docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md](docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md) — Dr. Albert (Bot 09): Principal Scientist, 4-tier truth classification, anti-hype filter
+- [docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md](docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md) — Dr. Albert's 5-tier scientific lab workbench, scraper, visual chart forensics, statistical engine
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common errors with fixes
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, BSL implications
 - [CHANGELOG.md](CHANGELOG.md) — version history (v2.7 is the first public release; pre-OSS history at [docs.agentwasp.com/changelog](https://docs.agentwasp.com/changelog))

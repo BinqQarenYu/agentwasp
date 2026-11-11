@@ -1171,6 +1171,22 @@ async def main():
 
         logger.info("agent_core.disk_cleanup_jobs_registered")
 
+        # Autonomous Teleological Self-Evolution (ATSE) — 24/7 background evolution
+        if getattr(settings, "autonomic_evolution_enabled", True):
+            try:
+                from .scheduler.autonomic_evolution_job import AutonomicEvolutionJob
+                scheduler.register(
+                    "autonomic_evolution",
+                    getattr(settings, "scheduler_autonomic_evolution_interval", 1800),
+                    AutonomicEvolutionJob(
+                        redis_url=settings.redis_url,
+                        bus=bus,
+                    ),
+                )
+                logger.info("agent_core.autonomic_evolution_job_registered")
+            except Exception as _atse_e:
+                logger.warning("agent_core.autonomic_evolution_register_failed", error=str(_atse_e))
+
         await scheduler.start()
         logger.info("agent_core.scheduler_started")
         # Late-register CronConnector now that scheduler is fully initialized

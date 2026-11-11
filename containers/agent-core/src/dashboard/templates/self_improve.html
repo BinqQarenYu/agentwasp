@@ -35,6 +35,10 @@
     </div>
   </div>
   <div class="flex gap-2 items-center">
+    <button id="btn-open-generate" class="btn btn-sm btn-primary gap-1.5" data-action="si:openGenerateModal">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Synthesize Proposal
+    </button>
     {% if proposal_count > 0 %}
     <span class="text-xs px-2 py-1 rounded-full font-mono font-semibold animate-pulse" data-ds="3">
       {{ proposal_count }} pending
@@ -44,6 +48,102 @@
       <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
       Refresh
     </button>
+  </div>
+</div>
+
+<!-- ── Teleological Curiosity & Common-Sense Governance Cockpit ── -->
+<div class="card bg-base-100 shadow-sm wasp-accent border border-purple-500/20 bg-gradient-to-br from-base-100 via-base-100 to-purple-950/10 mb-6">
+  <div class="card-body p-4 sm:p-5">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 pb-3 border-b border-base-content/10">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-base-content tracking-tight">Governance: Curiosity &amp; Common-Sense Equilibrium</h3>
+            <span class="badge badge-xs font-mono font-bold uppercase tracking-wider {% if governance_teleology.passes_gate %}badge-success text-black{% else %}badge-warning{% endif %}">
+              {{ governance_teleology.gate_status or "EQUILIBRIUM" }}
+            </span>
+          </div>
+          <p class="text-[11px] text-base-content/50 font-mono mt-0.5">
+            Active Teleological Alignment &middot; Autonomous Code Evolution Guardrail (&Omega;<sub>sense</sub> &ge; 0.20, &Delta;<sub>drift</sub> &le; 0.45)
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono px-2 py-1 rounded bg-base-200/50 border border-base-content/10 text-base-content/60">
+          Nodes: <strong class="text-base-content">{{ governance_teleology.total_ast_nodes or 3200 }}</strong> &middot; Edges: <strong class="text-base-content">{{ governance_teleology.total_ast_edges or 5961 }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- Governance Vector Metric Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <!-- 1. Intrinsic Curiosity Index (Ct) -->
+      <div class="p-3 rounded-lg bg-base-200/30 border border-base-content/5">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="text-base-content/50 font-mono uppercase text-[10px] tracking-wider">Curiosity (C<sub>t</sub>)</span>
+          <span class="font-mono text-purple-400 font-bold text-xs">{{ governance_teleology.curiosity_index or 0.6331 }}</span>
+        </div>
+        <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden mb-1.5">
+          <div class="bg-purple-400 h-full rounded-full transition-all duration-500" style="width: {{ (governance_teleology.curiosity_index or 0.6331) * 100 }}%"></div>
+        </div>
+        <span class="text-[10px] text-base-content/40 font-mono">H(X) &times; D<sub>KL</sub> &times; S(X)</span>
+      </div>
+
+      <!-- 2. Common-Sense Gate Factor (Omega_sense) -->
+      <div class="p-3 rounded-lg bg-base-200/30 border border-base-content/5">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="text-base-content/50 font-mono uppercase text-[10px] tracking-wider">Common-Sense (&Omega;)</span>
+          <span class="font-mono text-emerald-400 font-bold text-xs">{{ governance_teleology.omega_sense or 0.9119 }}</span>
+        </div>
+        <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden mb-1.5">
+          <div class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: {{ (governance_teleology.omega_sense or 0.9119) * 100 }}%"></div>
+        </div>
+        <span class="text-[10px] text-base-content/40 font-mono">1 - 2.5(&Delta;<sub>drift</sub>)<sup>2</sup></span>
+      </div>
+
+      <!-- 3. Teleological Drift (Delta_drift) -->
+      <div class="p-3 rounded-lg bg-base-200/30 border border-base-content/5">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="text-base-content/50 font-mono uppercase text-[10px] tracking-wider">Goal Drift (&Delta;)</span>
+          <span class="font-mono text-amber-400 font-bold text-xs">{{ governance_teleology.teleological_drift or 0.1667 }}</span>
+        </div>
+        <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden mb-1.5">
+          <div class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: {{ (governance_teleology.teleological_drift or 0.1667) * 100 }}%"></div>
+        </div>
+        <span class="text-[10px] text-base-content/40 font-mono">Ceiling: 0.45 max</span>
+      </div>
+
+      <!-- 4. Effective Bounded Score (C_eff) -->
+      <div class="p-3 rounded-lg bg-base-200/30 border border-base-content/5">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="text-base-content/50 font-mono uppercase text-[10px] tracking-wider">Effective (C<sub>eff</sub>)</span>
+          <span class="font-mono text-cyan-400 font-bold text-xs">{{ governance_teleology.effective_curiosity or 0.5773 }}</span>
+        </div>
+        <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden mb-1.5">
+          <div class="bg-cyan-400 h-full rounded-full transition-all duration-500" style="width: {{ (governance_teleology.effective_curiosity or 0.5773) * 100 }}%"></div>
+        </div>
+        <span class="text-[10px] text-base-content/40 font-mono">Threshold: &ge; 0.60</span>
+      </div>
+    </div>
+
+    <!-- Teleological Rationale & Guardrail Safeguards -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-2.5 rounded-lg bg-base-200/40 border border-base-content/5 text-xs font-mono">
+      <div class="flex items-center gap-2 text-base-content/70">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+        <span class="text-[11px] leading-tight">
+          <strong>Governance Rationale:</strong> {{ governance_teleology.rationale or "Proposals strictly adhere to Master Objectives with minimal drift and verified economic margin." }}
+        </span>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="badge badge-xs badge-ghost text-base-content/40 text-[9px] uppercase tracking-wider font-mono">Triad 3-Way Pass</span>
+        <span class="badge badge-xs badge-ghost text-base-content/40 text-[9px] uppercase tracking-wider font-mono">Shadow Staging</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -69,7 +169,18 @@
             <div class="flex items-center gap-2 flex-wrap mb-1">
               <span class="font-mono text-sm font-semibold text-base-content/80">{{ p.file or "unknown file" }}</span>
               <span class="text-xs text-base-content/30 font-mono">{{ p.created_at }}</span>
-              <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="9">pending</span>
+              <span class="text-xs px-1.5 py-0.5 rounded-full font-mono" data-ds="9">{{ p.status }}</span>
+              {% if p.consensus %}
+                {% if p.consensus.status == 'APPROVED' %}
+                <span class="badge badge-success badge-xs font-mono">Triad: APPROVED (Score: {{ p.consensus.score }})</span>
+                {% elif p.consensus.status == 'VETOED' %}
+                <span class="badge badge-error badge-xs font-mono" title="{{ p.consensus.judge_reason }}">Triad: VETOED</span>
+                {% else %}
+                <span class="badge badge-warning badge-xs font-mono" title="{{ p.consensus.critic_reason }}">Triad: REJECTED</span>
+                {% endif %}
+              {% else %}
+                <span class="badge badge-ghost badge-xs font-mono text-base-content/40">Triad: Unreviewed</span>
+              {% endif %}
             </div>
             <p class="text-xs text-base-content/55 mb-2 leading-relaxed">{{ p.change }}</p>
             {% if p.diff %}
@@ -83,6 +194,11 @@
             {% endif %}
           </div>
           <div class="flex flex-col gap-1.5 shrink-0">
+            <button class="btn btn-xs btn-outline btn-accent gap-1 font-semibold"
+                    data-action="si:reviewProposal" data-id="{{ p.id }}" title="Run Athena-Ares-Prometheus Triad Review">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              Triad Review
+            </button>
             <button class="btn btn-xs gap-1 font-semibold"
                     data-ds="11"
                     data-action="si:applyProposal" data-id="{{ p.id }}">
@@ -204,10 +320,108 @@ window.rejectProposal = async function(id) {
   }
 };
 
+window.openGenerateModal = function() {
+  document.getElementById('gen-objective').value = '';
+  document.getElementById('modal-generate-proposal').showModal();
+};
+
+window.execGenerateProposal = async function() {
+  var file = document.getElementById('gen-target-file').value.trim();
+  var obj = document.getElementById('gen-objective').value.trim();
+  if (!file) { showToast('Target file is required', 'error'); return; }
+  if (!obj) { showToast('Objective is required', 'error'); return; }
+
+  var btn = document.getElementById('btn-exec-generate');
+  if (btn) btn.disabled = true;
+
+  try {
+    var r = await fetch('/self-improve/api/generate_proposal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
+      body: JSON.stringify({ target_file: file, objective: obj })
+    });
+    var d = await r.json();
+    if (btn) btn.disabled = false;
+    if (d.ok) {
+      showToast('Proposal synthesized: ' + d.proposal.id, 'success');
+      document.getElementById('modal-generate-proposal').close();
+      setTimeout(function() { location.reload(); }, 600);
+    } else {
+      showToast('Generation failed: ' + (d.error || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    if (btn) btn.disabled = false;
+    showToast('Request failed: ' + e.message, 'error');
+  }
+};
+
+window.reviewProposal = async function(id) {
+  var card = document.getElementById('proposal-' + id);
+  if (card) card.style.opacity = '0.6';
+  showToast('Running Triad Adversarial Consensus...', 'info');
+
+  try {
+    var r = await fetch('/self-improve/api/' + encodeURIComponent(id) + '/review', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': getCsrf() }
+    });
+    var d = await r.json();
+    if (card) card.style.opacity = '1';
+    if (d.ok) {
+      var c = d.consensus;
+      showToast('Triad Review Complete: ' + c.status + ' (Score: ' + c.score.toFixed(2) + ')', c.status === 'APPROVED' ? 'success' : 'warning');
+      setTimeout(function() { location.reload(); }, 800);
+    } else {
+      showToast('Review failed: ' + (d.error || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    if (card) card.style.opacity = '1';
+    showToast('Request failed: ' + e.message, 'error');
+  }
+};
+
 registerWaspActions('si', {
-  'applyProposal':  function(el) { window.applyProposal(el.dataset.id); },
-  'rejectProposal': function(el) { window.rejectProposal(el.dataset.id); },
+  'applyProposal':       function(el) { window.applyProposal(el.dataset.id); },
+  'rejectProposal':      function(el) { window.rejectProposal(el.dataset.id); },
+  'reviewProposal':      function(el) { window.reviewProposal(el.dataset.id); },
+  'openGenerateModal':   function()   { window.openGenerateModal(); },
+  'execGenerateProposal':function()   { window.execGenerateProposal(); },
 });
 })();
 </script>
+<!-- ── Generate Self-Improvement Proposal Modal ── -->
+<dialog id="modal-generate-proposal" class="modal">
+    <div class="modal-box w-11/12 max-w-lg bg-base-200 border border-base-300">
+        <h3 class="font-bold text-lg font-mono flex items-center gap-2 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Synthesize Self-Improvement Proposal
+        </h3>
+        <p class="text-xs text-base-content/60 mb-4 font-mono">
+            Prometheus (<code>root-liaison</code>) and Athena (<code>bot-15</code>) will analyze codebase AST entropy and construct an atomic patch proposal bounded by the Common-Sense Gate (&Omega;_sense).
+        </p>
+
+        <div class="space-y-3 font-mono text-xs">
+            <div class="form-control">
+                <label class="label"><span class="label-text text-xs">Target File Relative Path <span class="text-error">*</span></span></label>
+                <input type="text" id="gen-target-file" class="input input-bordered input-sm font-mono text-xs" value="containers/agent-core/src/dashboard/routes/metrics.py" />
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text text-xs">Evolutionary Objective <span class="text-error">*</span></span></label>
+                <textarea id="gen-objective" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="3" placeholder="e.g. Optimize telemetry handler for zero-alloc JSON serialization and latency tracking..."></textarea>
+            </div>
+            <div class="p-2.5 bg-base-300 rounded border border-base-content/10 text-[11px] text-base-content/70">
+                <strong>ATSE Safety Pipeline:</strong> Proposals require Triad Consensus approval (&ge;2/3 score, Ares approval, Prometheus security enclave pass) before being promoted through Shadow Staging.
+            </div>
+        </div>
+
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-generate-proposal">Cancel</button>
+            <button id="btn-exec-generate" class="btn btn-primary btn-sm" data-action="si:execGenerateProposal">Synthesize</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 {% endblock %}

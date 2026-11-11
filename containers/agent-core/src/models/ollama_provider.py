@@ -6,6 +6,7 @@ import structlog
 
 from .base import LLMProvider
 from .types import Message, ModelRequest, ModelResponse, TokenUsage
+from ..utils.path_safety import validate_media_path
 
 logger = structlog.get_logger()
 
@@ -217,10 +218,11 @@ class OllamaProvider(LLMProvider):
             if self._loaded_model and self._loaded_model != model_name:
                 await self.unload_model(self._loaded_model)
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            from ..config import settings
+            async with httpx.AsyncClient(timeout=settings.ollama_load_timeout) as client:
                 resp = await client.post(
                     f"{self.base_url}/api/generate",
-                    json={"model": model_name, "keep_alive": "10m"},
+                    json={"model": model_name, "keep_alive": settings.ollama_keep_alive},
                 )
                 if resp.status_code == 200:
                     self._loaded_model = model_name
@@ -254,24 +256,47 @@ class OllamaProvider(LLMProvider):
                 and self.supports_vision(model)
             ):
                 try:
-                    with open(request.image_path, "rb") as f:
+                    safe_path = validate_media_path(request.image_path)
+                    with open(safe_path, "rb") as f:
                         img_b64 = base64.b64encode(f.read()).decode()
                     msg["images"] = [img_b64]
                 except Exception as e:
                     logger.warning("ollama.image_inject_failed", error=str(e))
             messages.append(msg)
 
+        from ..config import settings
+
+        # Efficient token & context management for fast Ollama inference
+        # 1. num_ctx limits the KV cache size, preventing out-of-memory and long prompt evals
+        # 2. num_predict limits maximum output generation length
+        num_predict = request.max_tokens if request.max_tokens and request.max_tokens < 1024 else getattr(settings, "ollama_num_predict", 256)
+        num_ctx = getattr(settings, "ollama_num_ctx", 2048)
+
+        options = {
+            "temperature": request.temperature,
+            "num_predict": num_predict,
+            "num_ctx": num_ctx,
+        }
+        if getattr(settings, "ollama_num_thread", 0) > 0:
+            options["num_thread"] = settings.ollama_num_thread
+
         payload = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "options": {
-                "temperature": request.temperature,
-                "num_predict": request.max_tokens,
-            },
+            "keep_alive": getattr(settings, "ollama_keep_alive", "60m"),
+            "options": options,
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        from ..config import settings
+        client_kwargs = {}
+        if settings.ollama_is_remote:
+            client_kwargs["limits"] = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+            client_kwargs["timeout"] = httpx.Timeout(settings.ollama_client_timeout, connect=10.0)
+        else:
+            client_kwargs["timeout"] = settings.ollama_client_timeout
+
+        async with httpx.AsyncClient(**client_kwargs) as client:
             resp = await client.post(f"{self.base_url}/api/chat", json=payload)
             resp.raise_for_status()
             data = resp.json()

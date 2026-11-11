@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+{% block title %}Resources — Agent Wasp{% endblock %}
+
+{% block page_css %}
+<style nonce="{{ request.state.csp_nonce }}">
+/* Resource page specific */
+.res-gauge-track { background: oklch(var(--b3)/0.6); }
+.res-gauge-fill  { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.core-pill       { font-size: 10px; border-radius: 4px; padding: 1px 4px; font-family: monospace; }
+.proc-row:hover  { background: oklch(var(--b2)/0.6); }
+/* Threshold slider labels */
+.thresh-label { font-size: 11px; }
+/* Animated status dot */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.dot-blink { animation: blink 1.4s ease-in-out infinite; }
+</style>
+{% endblock %}
+
+{% macro gauge(id, pct, warn, crit, label, sublabel="") %}
+{%- set color = "bg-error" if pct >= crit else "bg-warning" if pct >= warn else "bg-success" -%}
+{%- set text_color = "text-error" if pct >= crit else "text-warning" if pct >= warn else "text-success" -%}
+<div class="flex items-center justify-between mb-1">
+  <span class="text-xs font-semibold text-base-content/60">{{ label }}</span>
+  <span id="{{ id }}-pct" class="font-mono text-sm font-bold tabular-nums {{ text_color }}">{{ pct }}%</span>
+</div>
+<div class="res-gauge-track w-full rounded-full h-2 mb-1">
+  <div id="{{ id }}-bar" class="res-gauge-fill h-2 rounded-full {{ color }}" style="width:{{ pct }}%"></div>
+</div>
+{% if sublabel %}<p class="text-xs text-base-content/35 font-mono mb-3">{{ sublabel }}</p>{% endif %}
+{% endmacro %}
+
+{% block content %}
+
+{%- set cpu  = metrics.get("cpu",  {}) -%}
+{%- set ram  = metrics.get("ram",  {}) -%}
+{%- set disk = metrics.get("disk", {}) -%}
+{%- set thr  = thresholds -%}
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <div class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-info opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3 bg-info"></span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight leading-tight">Resource Management</h1>
+      <p class="text-xs text-base-content/40 font-mono mt-0.5">CPU · RAM · SSD/Disk · Thresholds · Top Processes</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <span id="res-refresh-ts" class="text-xs text-base-content/30 font-mono">loading…</span>
+    <button onclick="fetchSnapshot()" class="btn btn-xs btn-outline btn-primary gap-1">
+      <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error mb-4">
+  <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+  <span class="text-sm font-mono">{{ error }}</span>
+</div>
+{% endif %}
+
+<!-- ── Summary Stat Bar ────────────────────────────────────────────────────── -->
+<div class="flex flex-wrap gap-2 mb-5">
+  {% for key, val, unit, warn_t, crit_t in [
+      ("cpu",  cpu.get("percent", 0),  "%",   thr.get("cpu",{}).get("warn",70),  thr.get("cpu",{}).get("crit",90)),
+      ("ram",  ram.get("percent", 0),  "%",   thr.get("ram",{}).get("warn",75),  thr.get("ram",{}).get("crit",90)),
+      ("disk", disk.get("percent", 0), "%",   thr.get("disk",{}).get("warn",80), thr.get("disk",{}).get("crit",90)),
+  ] %}
+  {%- set tc = "text-error" if val >= crit_t else "text-warning" if val >= warn_t else "text-success" -%}
+  <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+    <span class="text-base-content/40 text-xs uppercase tracking-wide">{{ key }}</span>
+    <span id="stat-{{ key }}" class="font-bold font-mono text-sm {{ tc }}">{{ val }}{{ unit }}</span>
+  </div>
+  {% endfor %}
+
+  <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+    <span class="text-base-content/40 text-xs">Cores</span>
+    <span class="font-bold font-mono text-sm text-info">{{ cpu.get("cores_logical", "?") }}</span>
+    <span class="text-base-content/25 text-xs">/ {{ cpu.get("cores_physical", "?") }} phys</span>
+  </div>
+  <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+    <span class="text-base-content/40 text-xs">RAM Total</span>
+    <span class="font-bold font-mono text-sm text-accent">{{ ram.get("total_gb","?") }} GB</span>
+  </div>
+  <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+    <span class="text-base-content/40 text-xs">Disk Total</span>
+    <span class="font-bold font-mono text-sm text-secondary">{{ disk.get("total_gb","?") }} GB</span>
+  </div>
+</div>
+
+<!-- ── Three Resource Cards ────────────────────────────────────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+
+  <!-- CPU Card -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+          <span class="font-bold text-sm">CPU</span>
+        </div>
+        <span id="cpu-status-pill" class="text-xs font-mono px-2 py-0.5 rounded-full border">
+          {%- set cp = cpu.get("percent",0) -%}
+          {%- if cp >= thr.get("cpu",{}).get("crit",90) -%}
+          <span class="text-error border-error/40">CRITICAL</span>
+          {%- elif cp >= thr.get("cpu",{}).get("warn",70) -%}
+          <span class="text-warning border-warning/40">WARNING</span>
+          {%- else -%}
+          <span class="text-success border-success/40">HEALTHY</span>
+          {%- endif -%}
+        </span>
+      </div>
+
+      {{ gauge("cpu", cpu.get("percent",0), thr.get("cpu",{}).get("warn",70), thr.get("cpu",{}).get("crit",90), "Overall", cpu.get("freq_mhz","?")|string ~ " MHz · " ~ cpu.get("cores_logical","?") ~ " logical cores") }}
+
+      <!-- Per-core pills -->
+      {% if cpu.get("per_core") %}
+      <div class="mb-3">
+        <div class="text-xs font-semibold text-base-content/35 uppercase tracking-widest mb-1.5">Per Core</div>
+        <div id="cpu-cores-wrap" class="flex flex-wrap gap-1">
+          {% for c in cpu.per_core %}
+          {%- set cc = "bg-error/20 text-error" if c >= 90 else "bg-warning/20 text-warning" if c >= 70 else "bg-success/10 text-success" -%}
+          <span class="core-pill {{ cc }}">{{ c }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Time breakdown -->
+      <div class="space-y-1 text-xs">
+        {% for label, val in [
+            ("User",   cpu.get("user_pct",0)),
+            ("System", cpu.get("system_pct",0)),
+            ("Idle",   cpu.get("idle_pct",0)),
+        ] %}
+        <div class="flex items-center justify-between">
+          <span class="text-base-content/40">{{ label }}</span>
+          <span class="font-mono text-base-content/60">{{ val }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Load averages -->
+      {% if cpu.get("load_1m") is defined %}
+      <div class="mt-3 pt-3 border-t border-base-300/40 grid grid-cols-3 gap-1 text-center">
+        {% for lab, lk in [("1m","load_1m"),("5m","load_5m"),("15m","load_15m")] %}
+        <div>
+          <div id="cpu-{{ lk }}" class="text-sm font-bold font-mono tabular-nums">{{ cpu.get(lk,"?") }}</div>
+          <div class="text-xs text-base-content/35">{{ lab }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RAM Card -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+          <span class="font-bold text-sm">RAM</span>
+        </div>
+        <span id="ram-status-pill" class="text-xs font-mono px-2 py-0.5 rounded-full border">
+          {%- set rp = ram.get("percent",0) -%}
+          {%- if rp >= thr.get("ram",{}).get("crit",90) -%}
+          <span class="text-error">CRITICAL</span>
+          {%- elif rp >= thr.get("ram",{}).get("warn",75) -%}
+          <span class="text-warning">WARNING</span>
+          {%- else -%}
+          <span class="text-success">HEALTHY</span>
+          {%- endif -%}
+        </span>
+      </div>
+
+      {{ gauge("ram", ram.get("percent",0), thr.get("ram",{}).get("warn",75), thr.get("ram",{}).get("crit",90), "Physical RAM", ram.get("used_mb","?")|string ~ " / " ~ ram.get("total_mb","?") ~ " MB") }}
+
+      <!-- RAM breakdown -->
+      <div class="space-y-1 text-xs mb-3">
+        {% for label, val in [
+            ("Available", ram.get("available_mb","?")|string ~ " MB"),
+            ("Cached",    ram.get("cached_mb","?")|string    ~ " MB"),
+            ("Buffers",   ram.get("buffers_mb","?")|string   ~ " MB"),
+            ("Free",      ram.get("free_mb","?")|string      ~ " MB"),
+        ] %}
+        <div class="flex items-center justify-between">
+          <span class="text-base-content/40">{{ label }}</span>
+          <span id="ram-{{ label|lower }}" class="font-mono text-base-content/60">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Swap -->
+      {{ gauge("swap", ram.get("swap_percent",0), 50, 80, "Swap", ram.get("swap_used_mb","?")|string ~ " / " ~ ram.get("swap_total_mb","?") ~ " MB") }}
+    </div>
+  </div>
+
+  <!-- Disk / SSD Card -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12H3a2 2 0 00-2 2v4a2 2 0 002 2h18a2 2 0 002-2v-4a2 2 0 00-2-2h-2M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5M5 12h14"/></svg>
+          <span class="font-bold text-sm">SSD / Disk</span>
+        </div>
+        <span id="disk-status-pill" class="text-xs font-mono px-2 py-0.5 rounded-full border">
+          {%- set dp = disk.get("percent",0) -%}
+          {%- if dp >= thr.get("disk",{}).get("crit",90) -%}
+          <span class="text-error">CRITICAL</span>
+          {%- elif dp >= thr.get("disk",{}).get("warn",80) -%}
+          <span class="text-warning">WARNING</span>
+          {%- else -%}
+          <span class="text-success">HEALTHY</span>
+          {%- endif -%}
+        </span>
+      </div>
+
+      {{ gauge("disk", disk.get("percent",0), thr.get("disk",{}).get("warn",80), thr.get("disk",{}).get("crit",90), "Aggregate", disk.get("used_gb","?")|string ~ " / " ~ disk.get("total_gb","?") ~ " GB used") }}
+
+      <!-- I/O counters -->
+      {% set io = disk.get("io", {}) %}
+      {% if io %}
+      <div class="space-y-1 text-xs mb-3">
+        {% for label, val in [
+            ("Read total",  io.get("read_mb","?")|string ~ " MB"),
+            ("Write total", io.get("write_mb","?")|string ~ " MB"),
+            ("Read ops",    io.get("read_count","?")|string),
+            ("Write ops",   io.get("write_count","?")|string),
+        ] %}
+        <div class="flex items-center justify-between">
+          <span class="text-base-content/40">{{ label }}</span>
+          <span class="font-mono text-base-content/60">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Free space -->
+      <div class="bg-base-200/50 rounded-xl px-3 py-2 text-center">
+        <div class="text-lg font-bold font-mono tabular-nums text-accent" id="disk-free-gb">{{ disk.get("free_gb","?") }}</div>
+        <div class="text-xs text-base-content/35">GB free</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Partitions Table ────────────────────────────────────────────────────── -->
+{% if disk.get("partitions") %}
+<div class="card bg-base-100 shadow-sm wasp-accent mb-5">
+  <div class="card-body p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <svg class="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+      <span class="font-semibold text-sm">Mounted Partitions</span>
+      <span class="text-xs font-mono text-base-content/30">{{ disk.partitions | length }} partitions</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table table-sm w-full text-xs">
+        <thead>
+          <tr class="text-base-content/30 uppercase tracking-widest text-[10px]">
+            <th>Device</th><th>Mount</th><th>FS</th><th>Total</th><th>Used</th><th>Free</th><th class="text-right">Usage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in disk.partitions %}
+          {%- set pc = p.percent -%}
+          {%- set row_crit = pc >= thr.get("disk",{}).get("crit",90) -%}
+          {%- set row_warn = pc >= thr.get("disk",{}).get("warn",80) and not row_crit -%}
+          <tr class="{% if row_crit %}bg-error/5{% elif row_warn %}bg-warning/5{% else %}hover:bg-base-200/40{% endif %}">
+            <td class="font-mono text-base-content/60 max-w-[120px] truncate">{{ p.device }}</td>
+            <td class="font-mono text-primary/70">{{ p.mountpoint }}</td>
+            <td class="text-base-content/40">{{ p.fstype }}</td>
+            <td class="font-mono tabular-nums">{{ p.total_gb }} GB</td>
+            <td class="font-mono tabular-nums">{{ p.used_gb }} GB</td>
+            <td class="font-mono tabular-nums text-success">{{ p.free_gb }} GB</td>
+            <td class="text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div class="w-20 bg-base-300 rounded-full h-1.5">
+                  <div class="h-1.5 rounded-full {% if row_crit %}bg-error{% elif row_warn %}bg-warning{% else %}bg-success{% endif %}"
+                       style="width:{{ p.percent }}%"></div>
+                </div>
+                <span class="font-mono font-bold tabular-nums {% if row_crit %}text-error{% elif row_warn %}text-warning{% else %}text-base-content/60{% endif %}">{{ p.percent }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Top Processes ───────────────────────────────────────────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+
+  <!-- Top by CPU -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        <span class="font-semibold text-sm">Top Processes by CPU</span>
+      </div>
+      <div id="top-cpu-list" class="space-y-1">
+        {% for p in metrics.get("top_cpu", []) %}
+        <div class="proc-row flex items-center justify-between rounded-lg px-3 py-1.5 transition-colors">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="font-mono text-xs text-base-content/35 w-10 shrink-0">{{ p.pid }}</span>
+            <span class="font-mono text-xs text-base-content/70 truncate">{{ p.name }}</span>
+          </div>
+          <span class="font-mono text-xs font-bold tabular-nums shrink-0 {% if p.cpu >= 90 %}text-error{% elif p.cpu >= 70 %}text-warning{% else %}text-success{% endif %}">{{ p.cpu }}%</span>
+        </div>
+        {% else %}
+        <p class="text-xs text-base-content/30 italic">No process data</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top by Memory -->
+  <div class="card bg-base-100 shadow-sm wasp-accent">
+    <div class="card-body p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="h-4 w-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+        <span class="font-semibold text-sm">Top Processes by Memory</span>
+      </div>
+      <div id="top-mem-list" class="space-y-1">
+        {% for p in metrics.get("top_mem", []) %}
+        <div class="proc-row flex items-center justify-between rounded-lg px-3 py-1.5 transition-colors">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="font-mono text-xs text-base-content/35 w-10 shrink-0">{{ p.pid }}</span>
+            <span class="font-mono text-xs text-base-content/70 truncate">{{ p.name }}</span>
+          </div>
+          <span class="font-mono text-xs font-bold tabular-nums shrink-0 {% if p.mem >= 20 %}text-error{% elif p.mem >= 10 %}text-warning{% else %}text-secondary{% endif %}">{{ p.mem }}%</span>
+        </div>
+        {% else %}
+        <p class="text-xs text-base-content/30 italic">No process data</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Alert Threshold Management ─────────────────────────────────────────── -->
+<div class="card bg-base-100 shadow-sm wasp-accent mb-5">
+  <div class="card-body p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <svg class="h-4 w-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span class="font-semibold text-sm">Alert Thresholds</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="thresh-save-msg" class="text-xs font-mono text-success hidden">✓ Saved</span>
+        <button onclick="resetThresholds()" class="btn btn-xs btn-ghost gap-1 text-base-content/40 hover:text-base-content">
+          Reset defaults
+        </button>
+        <button onclick="saveThresholds()" class="btn btn-xs btn-primary gap-1">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Save
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% for res, label, icon_color in [
+          ("cpu",  "CPU",      "text-primary"),
+          ("ram",  "RAM",      "text-secondary"),
+          ("disk", "SSD/Disk", "text-accent"),
+      ] %}
+      {%- set t = thr.get(res, {}) -%}
+      <div>
+        <div class="text-xs font-bold {{ icon_color }} uppercase tracking-widest mb-3">{{ label }}</div>
+
+        <!-- Warning threshold -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <label class="thresh-label text-warning font-semibold">Warning</label>
+            <span id="{{ res }}-warn-val" class="thresh-label font-mono text-warning font-bold">{{ t.get("warn", 70) }}%</span>
+          </div>
+          <input id="{{ res }}-warn-input"
+                 type="range" min="0" max="99" step="1"
+                 value="{{ t.get('warn', 70) }}"
+                 class="range range-warning range-xs w-full"
+                 oninput="document.getElementById('{{ res }}-warn-val').textContent = this.value + '%'">
+          <div class="flex justify-between text-[9px] text-base-content/25 font-mono px-0.5 mt-0.5">
+            <span>0%</span><span>50%</span><span>99%</span>
+          </div>
+        </div>
+
+        <!-- Critical threshold -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="thresh-label text-error font-semibold">Critical</label>
+            <span id="{{ res }}-crit-val" class="thresh-label font-mono text-error font-bold">{{ t.get("crit", 90) }}%</span>
+          </div>
+          <input id="{{ res }}-crit-input"
+                 type="range" min="1" max="100" step="1"
+                 value="{{ t.get('crit', 90) }}"
+                 class="range range-error range-xs w-full"
+                 oninput="document.getElementById('{{ res }}-crit-val').textContent = this.value + '%'">
+          <div class="flex justify-between text-[9px] text-base-content/25 font-mono px-0.5 mt-0.5">
+            <span>1%</span><span>50%</span><span>100%</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Validation error -->
+    <div id="thresh-error" class="hidden mt-3">
+      <div class="alert alert-error py-2">
+        <span id="thresh-error-msg" class="text-xs font-mono"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+'use strict';
+
+// ── SSR snapshot for initial render ─────────────────────────────────────────
+let _thresholds = {{ thresholds | tojson }};
+
+// ── Gauge helpers ────────────────────────────────────────────────────────────
+function gaugeColor(pct, warn, crit) {
+  if (pct >= crit) return { bar: 'bg-error',   text: 'text-error'  };
+  if (pct >= warn) return { bar: 'bg-warning', text: 'text-warning' };
+  return               { bar: 'bg-success',  text: 'text-success'  };
+}
+
+function updateGauge(key, pct, warn, crit) {
+  const c = gaugeColor(pct, warn, crit);
+  const pctEl = document.getElementById(key + '-pct');
+  const barEl = document.getElementById(key + '-bar');
+  if (pctEl) {
+    pctEl.textContent = pct + '%';
+    pctEl.className = pctEl.className.replace(/\btext-(error|warning|success)\b/g, '') + ' ' + c.text;
+  }
+  if (barEl) {
+    barEl.style.width = pct + '%';
+    barEl.className = barEl.className.replace(/\bbg-(error|warning|success)\b/g, '') + ' ' + c.bar;
+  }
+}
+
+function statusPillHtml(pct, warn, crit) {
+  if (pct >= crit) return '<span class="text-error">CRITICAL</span>';
+  if (pct >= warn) return '<span class="text-warning">WARNING</span>';
+  return '<span class="text-success">HEALTHY</span>';
+}
+
+function updateStatBar(key, pct, warn, crit) {
+  const el = document.getElementById('stat-' + key);
+  if (!el) return;
+  el.textContent = pct + '%';
+  el.className = el.className.replace(/\btext-(error|warning|success)\b/g, '');
+  if (pct >= crit)      el.classList.add('text-error');
+  else if (pct >= warn) el.classList.add('text-warning');
+  else                  el.classList.add('text-success');
+}
+
+// ── Per-core pills ────────────────────────────────────────────────────────────
+function renderCores(perCore) {
+  const wrap = document.getElementById('cpu-cores-wrap');
+  if (!wrap || !perCore || !perCore.length) return;
+  wrap.innerHTML = perCore.map(c => {
+    const cls = c >= 90 ? 'bg-error/20 text-error' : c >= 70 ? 'bg-warning/20 text-warning' : 'bg-success/10 text-success';
+    return `<span class="core-pill ${cls}">${c}%</span>`;
+  }).join('');
+}
+
+// ── Top processes ─────────────────────────────────────────────────────────────
+function renderProcs(listId, procs, valueKey, colorFn) {
+  const wrap = document.getElementById(listId);
+  if (!wrap || !procs) return;
+  wrap.innerHTML = procs.map(p =>
+    `<div class="proc-row flex items-center justify-between rounded-lg px-3 py-1.5 transition-colors">
+       <div class="flex items-center gap-2 min-w-0">
+         <span class="font-mono text-xs text-base-content/35 w-10 shrink-0">${p.pid}</span>
+         <span class="font-mono text-xs text-base-content/70 truncate" title="${p.name}">${p.name}</span>
+       </div>
+       <span class="font-mono text-xs font-bold tabular-nums shrink-0 ${colorFn(p[valueKey])}">${p[valueKey]}%</span>
+     </div>`
+  ).join('') || '<p class="text-xs text-base-content/30 italic">No process data</p>';
+}
+
+function cpuColor(v) { return v >= 90 ? 'text-error' : v >= 70 ? 'text-warning' : 'text-success'; }
+function memColor(v) { return v >= 20 ? 'text-error' : v >= 10 ? 'text-warning' : 'text-secondary'; }
+
+// ── Full UI update from snapshot ──────────────────────────────────────────────
+function applySnapshot(data) {
+  const { metrics: m, thresholds: t } = data;
+  if (!m) return;
+  _thresholds = t || _thresholds;
+
+  const tCpu  = t?.cpu  || _thresholds.cpu  || { warn: 70, crit: 90 };
+  const tRam  = t?.ram  || _thresholds.ram  || { warn: 75, crit: 90 };
+  const tDisk = t?.disk || _thresholds.disk || { warn: 80, crit: 90 };
+
+  // ── CPU ──────────────────────────────────────────────────────────────────
+  if (m.cpu) {
+    const cp = m.cpu;
+    updateGauge('cpu', cp.percent, tCpu.warn, tCpu.crit);
+    updateStatBar('cpu', cp.percent, tCpu.warn, tCpu.crit);
+
+    const pill = document.getElementById('cpu-status-pill');
+    if (pill) pill.innerHTML = statusPillHtml(cp.percent, tCpu.warn, tCpu.crit);
+
+    // Load averages
+    for (const k of ['load_1m', 'load_5m', 'load_15m']) {
+      const el = document.getElementById('cpu-' + k);
+      if (el && cp[k] !== undefined) el.textContent = cp[k];
+    }
+
+    renderCores(cp.per_core);
+  }
+
+  // ── RAM ───────────────────────────────────────────────────────────────────
+  if (m.ram) {
+    const rp = m.ram;
+    updateGauge('ram',  rp.percent,      tRam.warn,  tRam.crit);
+    updateGauge('swap', rp.swap_percent, 50,          80);
+    updateStatBar('ram', rp.percent, tRam.warn, tRam.crit);
+
+    const pill = document.getElementById('ram-status-pill');
+    if (pill) pill.innerHTML = statusPillHtml(rp.percent, tRam.warn, tRam.crit);
+  }
+
+  // ── Disk ──────────────────────────────────────────────────────────────────
+  if (m.disk) {
+    const dp = m.disk;
+    updateGauge('disk', dp.percent, tDisk.warn, tDisk.crit);
+    updateStatBar('disk', dp.percent, tDisk.warn, tDisk.crit);
+
+    const pill = document.getElementById('disk-status-pill');
+    if (pill) pill.innerHTML = statusPillHtml(dp.percent, tDisk.warn, tDisk.crit);
+
+    const freeEl = document.getElementById('disk-free-gb');
+    if (freeEl && dp.free_gb !== undefined) freeEl.textContent = dp.free_gb;
+  }
+
+  // ── Processes ─────────────────────────────────────────────────────────────
+  renderProcs('top-cpu-list', m.top_cpu, 'cpu', cpuColor);
+  renderProcs('top-mem-list', m.top_mem, 'mem', memColor);
+
+  // ── Timestamp ─────────────────────────────────────────────────────────────
+  const ts = document.getElementById('res-refresh-ts');
+  if (ts) {
+    const d = new Date();
+    ts.textContent = 'Updated ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  }
+}
+
+// ── Live polling ──────────────────────────────────────────────────────────────
+let _polling = false;
+
+async function fetchSnapshot() {
+  if (_polling) return;
+  _polling = true;
+  try {
+    const r = await fetch('/resources/api/snapshot');
+    if (r.ok) {
+      const data = await r.json();
+      if (data.ok) applySnapshot(data);
+    }
+  } catch(e) {
+    console.warn('[resources] snapshot fetch error', e);
+  } finally {
+    _polling = false;
+  }
+}
+
+// Auto-refresh every 5 s
+setInterval(fetchSnapshot, 5000);
+// Initial fetch
+fetchSnapshot();
+
+// ── Threshold management ──────────────────────────────────────────────────────
+function getThresholdForm() {
+  const form = {};
+  for (const res of ['cpu', 'ram', 'disk']) {
+    form[res] = {
+      warn: parseInt(document.getElementById(res + '-warn-input')?.value || '0'),
+      crit: parseInt(document.getElementById(res + '-crit-input')?.value || '0'),
+    };
+  }
+  return form;
+}
+
+function showThreshError(msg) {
+  const box = document.getElementById('thresh-error');
+  const msgEl = document.getElementById('thresh-error-msg');
+  if (box && msgEl) { msgEl.textContent = msg; box.classList.remove('hidden'); }
+}
+
+function hideThreshError() {
+  document.getElementById('thresh-error')?.classList.add('hidden');
+}
+
+function showSaved() {
+  const el = document.getElementById('thresh-save-msg');
+  if (!el) return;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 2500);
+}
+
+async function saveThresholds() {
+  hideThreshError();
+  const body = getThresholdForm();
+
+  // Client-side validation: warn < crit
+  for (const [res, t] of Object.entries(body)) {
+    if (t.warn >= t.crit) {
+      showThreshError(`${res.toUpperCase()}: Warning (${t.warn}%) must be less than Critical (${t.crit}%)`);
+      return;
+    }
+  }
+
+  try {
+    const r = await fetch('/resources/api/thresholds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      _thresholds = data.thresholds;
+      showSaved();
+    } else {
+      showThreshError(data.error || 'Save failed');
+    }
+  } catch(e) {
+    showThreshError('Network error: ' + e.message);
+  }
+}
+
+async function resetThresholds() {
+  hideThreshError();
+  try {
+    const r = await fetch('/resources/api/thresholds/reset', { method: 'POST' });
+    const data = await r.json();
+    if (data.ok && data.thresholds) {
+      _thresholds = data.thresholds;
+      for (const [res, t] of Object.entries(data.thresholds)) {
+        const wi = document.getElementById(res + '-warn-input');
+        const ci = document.getElementById(res + '-crit-input');
+        const wv = document.getElementById(res + '-warn-val');
+        const cv = document.getElementById(res + '-crit-val');
+        if (wi) wi.value = t.warn;
+        if (ci) ci.value = t.crit;
+        if (wv) wv.textContent = t.warn + '%';
+        if (cv) cv.textContent = t.crit + '%';
+      }
+      showSaved();
+    }
+  } catch(e) {
+    showThreshError('Reset failed: ' + e.message);
+  }
+}
+
+// Expose to onclick handlers in template
+window.fetchSnapshot     = fetchSnapshot;
+window.saveThresholds    = saveThresholds;
+window.resetThresholds   = resetThresholds;
+
+})();
+</script>
+{% endblock %}

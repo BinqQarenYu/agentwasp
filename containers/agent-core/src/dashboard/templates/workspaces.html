@@ -19,12 +19,31 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <button class="btn btn-primary btn-sm rounded gap-2">
+            <button class="btn btn-primary btn-sm rounded gap-2" id="btn-rescan-graph">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                Index New Repository
+                <span id="btn-rescan-label">Rescan & Verify Graph</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Live Active Execution Node (Shown during active workflows) -->
+    <div id="ws-active-exec-card" class="card bg-base-100 shadow-xl border-2 border-emerald-500 connected-active-glow hidden mb-4">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="font-mono text-xs font-bold text-emerald-400 uppercase tracking-widest">Active AST Code Execution Node</span>
+                </div>
+                <span class="active-live-tag">EXECUTING</span>
+            </div>
+            <div class="font-mono text-sm mt-2 text-base-content/90 font-semibold">
+                <code class="text-emerald-300">containers/agent-core/src/integrations/connectors/gmail_connector.py</code>
+            </div>
+            <p class="text-xs text-base-content/60 font-mono mt-1">
+                AST Class: <span class="text-primary font-bold">GmailConnector</span> &middot; Method: <span class="text-accent font-bold">list_messages()</span> &middot; Risk: <span class="text-info font-bold">LOW</span>
+            </p>
         </div>
     </div>
 
@@ -61,10 +80,239 @@
 
                 <div class="card-actions justify-end mt-4">
                     <a href="/workspaces/visual" class="btn btn-outline btn-sm rounded nav-link">View Visual Graph</a>
-                    <button class="btn btn-secondary btn-sm rounded" onclick="alert('Feature coming soon: Ask a direct semantic question against this graph.')">Query Graph</button>
+                    <button class="btn btn-secondary btn-sm rounded gap-1.5" id="btn-open-query-modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Query Graph
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Query AST Graph Modal -->
+    <dialog id="modal-query-graph" class="modal">
+        <div class="modal-box max-w-3xl bg-base-200 border border-base-300">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-base-content/10">
+                <h3 class="font-bold text-lg font-mono flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    AST Semantic Graph Query
+                </h3>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="ws-graph-query-input" type="text" placeholder="Search AST symbols (e.g., router, teleology, AgentManager, execute)..." class="input input-bordered flex-1 font-mono text-sm" />
+                    <select id="ws-graph-type-filter" class="select select-bordered text-sm font-mono w-full sm:w-36">
+                        <option value="all" selected>All Types</option>
+                        <option value="class">Class</option>
+                        <option value="function">Function</option>
+                        <option value="file">File / Module</option>
+                    </select>
+                    <button id="btn-execute-query" class="btn btn-primary btn-md rounded gap-2">
+                        <span>Search</span>
+                    </button>
+                </div>
+
+                <div id="ws-query-status" class="text-xs font-mono text-base-content/60 min-h-[1.5rem]">
+                    Enter a symbol or keyword to inspect dependency degrees &amp; AST topology.
+                </div>
+
+                <div id="ws-query-results" class="max-h-96 overflow-y-auto space-y-2 pr-1 font-mono">
+                    <!-- Dynamic AST Results -->
+                </div>
+            </div>
+
+            <div class="modal-action mt-4 pt-2 border-t border-base-content/10 flex justify-between items-center">
+                <span class="text-xs text-base-content/50 font-mono">AgentWasp Native AST Graphify</span>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-outline">Close</button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+window.onWorkflowActive = function(data) {
+    var card = document.getElementById('ws-active-exec-card');
+    if (card) card.classList.remove('hidden');
+};
+window.onWorkflowIdle = function() {
+    var card = document.getElementById('ws-active-exec-card');
+    if (card) card.classList.add('hidden');
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('modal-query-graph');
+    var btnOpen = document.getElementById('btn-open-query-modal');
+    var btnExec = document.getElementById('btn-execute-query');
+    var inputQuery = document.getElementById('ws-graph-query-input');
+    var filterType = document.getElementById('ws-graph-type-filter');
+    var resultsBox = document.getElementById('ws-query-results');
+    var statusBox = document.getElementById('ws-query-status');
+    var btnRescan = document.getElementById('btn-rescan-graph');
+    var btnRescanLabel = document.getElementById('btn-rescan-label');
+
+    function getCsrfHeader() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', function() {
+            modal.showModal();
+            if (inputQuery) {
+                inputQuery.focus();
+                if (!inputQuery.value.trim()) {
+                    runQuery();
+                }
+            }
+        });
+    }
+
+    if (inputQuery) {
+        inputQuery.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runQuery();
+            }
+        });
+    }
+
+    if (filterType) {
+        filterType.addEventListener('change', function() {
+            runQuery();
+        });
+    }
+
+    if (btnExec) {
+        btnExec.addEventListener('click', function() {
+            runQuery();
+        });
+    }
+
+    function runQuery() {
+        if (!statusBox || !resultsBox) return;
+        var query = (inputQuery ? inputQuery.value : '').trim();
+        var typeFilter = (filterType ? filterType.value : 'all');
+
+        statusBox.innerHTML = '<span class="text-primary animate-pulse">Querying AST Knowledge Graph...</span>';
+        if (btnExec) btnExec.disabled = true;
+
+        var headers = { 'Content-Type': 'application/json' };
+        var csrf = getCsrfHeader();
+        if (csrf) headers['X-CSRF-Token'] = csrf;
+
+        fetch('/workspaces/api/query', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ query: query, type_filter: typeFilter, limit: 30 })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (btnExec) btnExec.disabled = false;
+            if (!data.ok) {
+                statusBox.innerHTML = '<span class="text-error">Error: ' + (data.error || 'Failed to query AST graph') + '</span>';
+                resultsBox.innerHTML = '';
+                return;
+            }
+
+            statusBox.innerHTML = '<span class="text-success">Found ' + data.total_matches + ' matching AST symbols (showing ' + data.results.length + ')</span>';
+
+            if (!data.results || data.results.length === 0) {
+                resultsBox.innerHTML = '<div class="p-6 text-center text-base-content/40 bg-base-300/40 rounded border border-base-content/5">No AST nodes matched query "' + (query || '*') + '"</div>';
+                return;
+            }
+
+            var html = '';
+            data.results.forEach(function(item) {
+                var badgeClass = 'badge-primary';
+                if (item.type === 'class') badgeClass = 'badge-accent';
+                else if (item.type === 'function') badgeClass = 'badge-info';
+                else if (item.type === 'file') badgeClass = 'badge-warning';
+
+                var neighborsHtml = '';
+                if (item.neighbors && item.neighbors.length > 0) {
+                    neighborsHtml = '<div class="flex flex-wrap gap-1 mt-1 text-[11px] text-base-content/50">' +
+                        '<span class="text-base-content/40 font-semibold">Links:</span> ' +
+                        item.neighbors.map(function(n) {
+                            return '<span class="badge badge-ghost badge-xs font-mono">' + n + '</span>';
+                        }).join(' ') +
+                        '</div>';
+                }
+
+                html += '<div class="p-3 bg-base-300/50 hover:bg-base-300 rounded border border-base-content/10 transition-colors">' +
+                    '<div class="flex items-start justify-between gap-2">' +
+                        '<div class="min-w-0 flex-1">' +
+                            '<div class="flex items-center gap-2">' +
+                                '<span class="badge ' + badgeClass + ' badge-xs uppercase font-mono">' + item.type + '</span>' +
+                                '<span class="font-bold text-sm text-base-content truncate">' + item.name + '</span>' +
+                            '</div>' +
+                            '<div class="text-xs text-base-content/60 truncate mt-0.5">' + (item.path || item.id) + '</div>' +
+                        '</div>' +
+                        '<div class="flex items-center gap-2 text-xs shrink-0 font-mono">' +
+                            '<span class="badge badge-outline badge-sm" title="In-degree (referenced by)">In: ' + item.in_degree + '</span>' +
+                            '<span class="badge badge-outline badge-sm" title="Out-degree (references)">Out: ' + item.out_degree + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    neighborsHtml +
+                '</div>';
+            });
+            resultsBox.innerHTML = html;
+        })
+        .catch(function(err) {
+            if (btnExec) btnExec.disabled = false;
+            statusBox.innerHTML = '<span class="text-error">Network error: ' + err.message + '</span>';
+        });
+    }
+
+    if (btnRescan) {
+        btnRescan.addEventListener('click', function() {
+            var originalText = btnRescanLabel ? btnRescanLabel.innerText : 'Rescan & Verify Graph';
+            if (btnRescanLabel) btnRescanLabel.innerText = 'Rescanning AST...';
+            btnRescan.disabled = true;
+
+            var headers = { 'Content-Type': 'application/json' };
+            var csrf = getCsrfHeader();
+            if (csrf) headers['X-CSRF-Token'] = csrf;
+
+            fetch('/workspaces/api/rescan', {
+                method: 'POST',
+                headers: headers
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                btnRescan.disabled = false;
+                if (btnRescanLabel) btnRescanLabel.innerText = originalText;
+                if (data.ok) {
+                    alert('AST Codebase Graph Synchronized!\n' +
+                          'Nodes: ' + data.node_count + '\n' +
+                          'Edges: ' + data.edge_count + '\n' +
+                          'Codebase Entropy: ' + data.codebase_entropy.toFixed(4) + ' bits\n' +
+                          'Graph Size: ' + data.graph_size_mb + ' MB');
+                } else {
+                    alert('Rescan failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(function(err) {
+                btnRescan.disabled = false;
+                if (btnRescanLabel) btnRescanLabel.innerText = originalText;
+                alert('Network error during graph rescan: ' + err.message);
+            });
+        });
+    }
+});
+</script>
 {% endblock %}
