@@ -102,6 +102,61 @@
         <!-- Main content area -->
         <!-- app.js must load BEFORE block-content so page scripts can call registerWaspActions -->
         <script src="/static/app.js" nonce="{{ request.state.csp_nonce }}"></script>
+
+        <!-- Global Workflow Heartbeat Ribbon (Omni-present Beating & Working Visualizer) -->
+        <div id="global-workflow-ribbon" class="px-4 pt-4 lg:px-8 max-w-full mx-auto w-full hidden">
+            <div class="relative overflow-hidden rounded-xl border border-emerald-500/80 bg-base-200/90 p-3 shadow-lg connected-active-glow backdrop-blur-md">
+                <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-emerald-500/15 to-emerald-500/5 animate-pulse pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex h-4 w-4 shrink-0 items-center justify-center">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="active-live-tag">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    LIVE EXECUTION
+                                </span>
+                                <span class="font-bold text-sm text-base-content" id="gw-title">Email Management &amp; Inbox Triage</span>
+                                <span class="text-xs font-mono text-emerald-400/90 font-semibold" id="gw-step-indicator">[Step 1/4]</span>
+                            </div>
+                            <p class="text-xs font-mono text-base-content/70 mt-0.5" id="gw-step-desc">
+                                Scanning INBOX via Gmail Connector (IMAP port 993)...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+                        <a href="/agents" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Agent Employee in charge">
+                            <span class="text-base-content/40 text-[10px]">WHO:</span>
+                            <span class="font-bold" id="gw-agent">Inbox Triage (IT)</span>
+                        </a>
+                        <a href="/models" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Model">
+                            <span class="text-base-content/40 text-[10px]">MODEL:</span>
+                            <span class="font-bold" id="gw-model">Claude 3.5 / Gemini</span>
+                        </a>
+                        <a href="/integrations" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Integration Tool">
+                            <span class="text-base-content/40 text-[10px]">TOOL:</span>
+                            <span class="font-bold" id="gw-intg">Gmail (IMAP/SMTP)</span>
+                        </a>
+                        <a href="/workspaces" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Codebase AST Node (Graphify)">
+                            <span class="text-base-content/40 text-[10px]">CODE:</span>
+                            <span class="font-bold max-w-[130px] truncate" id="gw-code">gmail_connector.py</span>
+                        </a>
+                        <a href="/mesh" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Grok Bot Mesh Node">
+                            <span class="text-base-content/40 text-[10px]">MESH:</span>
+                            <span class="font-bold" id="gw-mesh">Bot 01</span>
+                        </a>
+                        <button onclick="toggleGlobalEmailWorkflow()" class="btn btn-xs btn-outline btn-error ml-1 gap-1" title="Stop live workflow">
+                            ⏹ Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <main id="spa-main" class="flex-1 px-4 py-6 lg:px-8 max-w-full mx-auto w-full fade-in">
             {% block content %}{% endblock %}
         </main>
@@ -243,6 +298,10 @@
 
                 <!-- ── Observability ───────────────────────────────────── -->
                 <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 pt-1 pb-0">Observability</span></li>
+                <li><a href="/resources" class="nav-link rounded gap-2 py-[1px] {% if '/resources' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+                    Resources
+                </a></li>
                 <li><a href="/health" class="nav-link rounded gap-2 py-[1px] {% if '/health' in request.url.path %}active bg-primary/10 text-primary font-semibold{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                     Health
@@ -283,28 +342,32 @@
                     <a href="/integrations" class="text-[9px] font-mono text-primary hover:underline">Manage</a>
                 </div>
                 <div class="space-y-1">
-                    <!-- Gmail / Email account -->
-                    <a href="/integrations" class="flex items-center justify-between px-2 py-1 rounded bg-base-100 border border-emerald-500/30 text-xs hover:border-emerald-500 transition-colors group">
+                    <button onclick="toggleGlobalEmailWorkflow()" id="btn-simulate-email" class="w-full mb-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 text-xs font-mono font-semibold transition-all shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="btn-simulate-email-text">▶ Run Email Workflow</span>
+                    </button>
+                    <!-- Gmail / Email account (Active & Breathing) -->
+                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-base-100 border border-emerald-500/80 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Gmail: Integrated & Working">
                         <div class="flex items-center gap-1.5 truncate">
                             <span class="relative flex h-2 w-2 shrink-0">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
-                            <span class="text-xs font-semibold text-base-content/90 group-hover:text-primary">Gmail</span>
+                            <span class="text-xs font-semibold text-emerald-400 group-hover:text-primary">Gmail</span>
                             <span class="text-[10px] text-base-content/40 font-mono truncate max-w-[80px]">benjohncarino</span>
                         </div>
-                        <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">LIVE</span>
+                        <span class="active-live-tag">LIVE</span>
                     </a>
-                    <!-- Windows Host Platform -->
-                    <a href="/integrations" class="flex items-center justify-between px-2 py-1 rounded bg-base-100 border border-emerald-500/30 text-xs hover:border-emerald-500 transition-colors group">
+                    <!-- Windows Host Platform (Active & Breathing) -->
+                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-base-100 border border-emerald-500/80 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Windows Host: Active & Connected">
                         <div class="flex items-center gap-1.5 truncate">
                             <span class="relative flex h-2 w-2 shrink-0">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
-                            <span class="text-xs font-semibold text-base-content/90 group-hover:text-primary">Windows Host</span>
+                            <span class="text-xs font-semibold text-emerald-400 group-hover:text-primary">Windows Host</span>
                         </div>
-                        <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ONLINE</span>
+                        <span class="active-live-tag">ONLINE</span>
                     </a>
                 </div>
             </div>
@@ -966,5 +1029,77 @@ history.replaceState({}, '', location.href);
 // in each template's page_css block and re-injected on SPA navigation.
 }());
 </script>
+
+    <!-- Global Workflow Heartbeat Visualizer Script -->
+    <script nonce="{{ request.state.csp_nonce }}">
+    (function() {
+        window.toggleGlobalEmailWorkflow = async function() {
+            try {
+                var r = await fetch('/state/workflow/toggle-email', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                var data = await r.json();
+                pollWorkflowHeartbeat();
+            } catch(e) {
+                console.error('Workflow toggle error:', e);
+            }
+        };
+
+        window.pollWorkflowHeartbeat = async function() {
+            try {
+                var r = await fetch('/state/workflow');
+                var data = await r.json();
+                var ribbon = document.getElementById('global-workflow-ribbon');
+                var btnText = document.getElementById('btn-simulate-email-text');
+                var btnSim = document.getElementById('btn-simulate-email');
+                
+                if (data && data.active) {
+                    if (ribbon) ribbon.classList.remove('hidden');
+                    if (btnText) btnText.textContent = '⏹ Stop Email Workflow';
+                    if (btnSim) {
+                        btnSim.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/30');
+                        btnSim.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/30');
+                    }
+                    var set = function(id, val) { var el = document.getElementById(id); if (el && val) el.textContent = val; };
+                    set('gw-title', data.workflow_name);
+                    set('gw-step-indicator', '[Step ' + data.step_index + '/' + data.total_steps + ']');
+                    set('gw-step-desc', data.current_step);
+                    set('gw-agent', data.agent_name);
+                    set('gw-model', data.model_name);
+                    set('gw-intg', data.integration_name);
+                    set('gw-code', data.codebase_file);
+                    set('gw-mesh', data.mesh_bot_id ? data.mesh_bot_id.replace('bot-card-', 'Bot ') : 'Bot 01');
+
+                    // Highlight sidebar links engaged in this workflow
+                    ['mesh', 'models', 'agents', 'integrations', 'workspaces'].forEach(function(path) {
+                        var navA = document.querySelector('a[href="/' + path + '"]');
+                        if (navA && !navA.querySelector('.wf-active-beacon')) {
+                            var beacon = document.createElement('span');
+                            beacon.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-auto wf-active-beacon shadow-sm';
+                            navA.appendChild(beacon);
+                            navA.classList.add('border-r-2', 'border-emerald-400');
+                        }
+                    });
+
+                    if (window.onWorkflowActive) window.onWorkflowActive(data);
+                } else {
+                    if (ribbon) ribbon.classList.add('hidden');
+                    if (btnText) btnText.textContent = '▶ Run Email Workflow';
+                    if (btnSim) {
+                        btnSim.classList.remove('bg-rose-500/10', 'text-rose-400', 'border-rose-500/30');
+                        btnSim.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/30');
+                    }
+                    document.querySelectorAll('.wf-active-beacon').forEach(function(el) { el.remove(); });
+                    document.querySelectorAll('a.border-emerald-400').forEach(function(el) { el.classList.remove('border-r-2', 'border-emerald-400'); });
+                    if (window.onWorkflowIdle) window.onWorkflowIdle();
+                }
+            } catch(e) {}
+        };
+
+        setInterval(window.pollWorkflowHeartbeat, 2500);
+        window.pollWorkflowHeartbeat();
+    })();
+    </script>
 </body>
 </html>

@@ -8,10 +8,41 @@ Routes tasks intelligently across tiers:
 """
 
 import re
+import psutil
 import structlog
 from typing import Tuple, List, Optional
 
 logger = structlog.get_logger()
+
+# ── Hardware Capacity Guard: Models Prohibited for Local CPU Run on this Host ──
+# Prevents running 70B/32B/14B models on 32GB host without GPU acceleration,
+# which causes severe RAM paging, 100% CPU lock, and system freeze.
+_PROHIBITED_LOCAL_PATTERNS = re.compile(
+    r"(?:70b|675b|120b|32b|27b|31b|26b|80b|14b|cascade)",
+    re.IGNORECASE,
+)
+
+# Curated models verified to safely fit host PC RAM & CPU specs
+_PC_FITTED_LOCAL_MODELS = [
+    "llama3.2:latest", "llama3.2:3b", "nemotron-mini:latest", "qwen2.5-coder:latest", "llama3:latest"
+]
+
+
+def is_model_fit_for_host_pc(model_name: str) -> Tuple[bool, str]:
+    """Check if model can run locally without freezing or crashing the host PC."""
+    m = model_name.lower().strip()
+    if _PROHIBITED_LOCAL_PATTERNS.search(m):
+        return False, f"Model '{model_name}' exceeds host PC hardware limits (>=14B). Route to cloud tier instead."
+
+    try:
+        mem = psutil.virtual_memory()
+        available_gb = mem.available / (1024**3)
+        if available_gb < 4.0:
+            return False, f"Insufficient free RAM ({available_gb:.1f} GB < 4.0 GB required for local inference)."
+    except Exception:
+        pass
+
+    return True, "Model fits host PC hardware."
 
 # ── High-Risk Domain Patterns (Unconditional Cloud Escalation) ───────────────
 _SECURITY_AUDIT_PATTERNS = re.compile(
@@ -100,12 +131,15 @@ def suggest_hardened_model(
 
     elif task_type == "trivial_local_tier":
         metadata["tier"] = "local_ollama"
-        metadata["reason"] = "Trivial task routed to local/fast tier to conserve cloud quota"
+        metadata["reason"] = "Trivial task routed to PC-fitted local Ollama tier to conserve quota"
 
-        for candidate in _LOCAL_OR_FAST_MODELS:
+        # Prioritize lightweight models verified to fit host PC RAM/CPU
+        for candidate in _PC_FITTED_LOCAL_MODELS:
             for m in available_models:
                 if candidate in m.lower():
-                    return task_type, m, metadata
+                    is_fit, _ = is_model_fit_for_host_pc(m)
+                    if is_fit:
+                        return task_type, m, metadata
 
     return task_type, active_model, metadata
 

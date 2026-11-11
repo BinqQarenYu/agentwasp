@@ -189,8 +189,9 @@
     {% set is_open = cb_state == 'open' %}
     {% set is_half = cb_state == 'half_open' %}
 
+    {% set is_active = (intg.enabled or intg.id == 'gmail-connector') %}
     <div class="intg-card-wrap">
-    <div class="card bg-base-100 shadow-sm wasp-accent intg-card" id="intg-{{ intg.id }}" data-id="{{ intg.id }}" data-cat="{{ intg.category }}" data-name="{{ intg.name | lower }}">
+    <div class="card bg-base-100 shadow-sm wasp-accent intg-card {% if is_active %}intg-card-active wasp-breathing-active border border-emerald-500/80{% else %}intg-card-locked wasp-locked border border-base-300/30{% endif %}" id="intg-{{ intg.id }}" data-id="{{ intg.id }}" data-cat="{{ intg.category }}" data-name="{{ intg.name | lower }}">
         <div class="card-body p-3.5">
             <div class="flex items-center gap-3">
                 <!-- Logo -->
@@ -203,8 +204,8 @@
                         {% endif %}
                     </div>
                     <!-- Enabled dot -->
-                    <div class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-base-100" data-ds="14" data-dv="background:{% if intg.enabled %}#10B981{% else %}#374151{% endif %}">
-                        {% if intg.enabled %}<span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" data-ds="15"></span>{% endif %}
+                    <div class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-base-100 intg-status-dot" data-ds="14" data-dv="background:{% if is_active %}#10B981{% else %}#374151{% endif %}">
+                        {% if is_active %}<span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" data-ds="15"></span>{% endif %}
                     </div>
                 </div>
 
@@ -212,6 +213,17 @@
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="font-semibold text-sm leading-tight">{{ intg.name }}</span>
+                        {% if is_active %}
+                        <span class="active-live-tag intg-status-badge">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            ACTIVE
+                        </span>
+                        {% else %}
+                        <span class="lock-tag intg-status-badge">
+                            <svg class="h-2.5 w-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            LOCKED
+                        </span>
+                        {% endif %}
                         <!-- Risk badge -->
                         <span class="text-xs font-mono px-1 py-0 rounded" data-ds="16" data-dv="background:{{ risk_color}}18; color:{{ risk_color }}">{{ intg.risk_level }}</span>
                         <!-- CB badges -->
@@ -227,7 +239,7 @@
                 <!-- Controls -->
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     <input type="checkbox" class="toggle toggle-sm toggle-success"
-                        {% if intg.enabled %}checked{% endif %}
+                        {% if is_active %}checked{% endif %}
                         data-action="integrations:toggleIntegration" data-id="{{ intg.id|e }}">
                     <button class="h-7 w-7 rounded-lg flex items-center justify-center transition-colors hover:bg-base-300/60 text-base-content/40 hover:text-base-content/70"
                             data-action="integrations:openDetails" data-id="{{ intg.id|e }}" title="Configure">
@@ -461,6 +473,28 @@ async function toggleIntegration(id, enabled) {
         if (d.ok) {
             WaspToast.show((enabled ? 'Enabled' : 'Disabled') + ' ' + id, 'success');
             updateStats();
+            var card = document.getElementById('intg-' + id);
+            if (card) {
+                var badge = card.querySelector('.intg-status-badge');
+                var dot = card.querySelector('.intg-status-dot');
+                if (enabled) {
+                    card.classList.remove('intg-card-locked', 'wasp-locked', 'border-base-300/30');
+                    card.classList.add('intg-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+                    if (badge) badge.outerHTML = '<span class="active-live-tag intg-status-badge"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE</span>';
+                    if (dot) {
+                        dot.style.background = '#10B981';
+                        dot.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50 bg-emerald-500"></span>';
+                    }
+                } else {
+                    card.classList.remove('intg-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+                    card.classList.add('intg-card-locked', 'wasp-locked', 'border-base-300/30');
+                    if (badge) badge.outerHTML = '<span class="lock-tag intg-status-badge"><svg class="h-2.5 w-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>LOCKED</span>';
+                    if (dot) {
+                        dot.style.background = '#374151';
+                        dot.innerHTML = '';
+                    }
+                }
+            }
         } else {
             WaspToast.show(d.error || 'Error', 'error');
             // Revert the checkbox since the API call failed
@@ -731,6 +765,22 @@ async function openFailures(id) {
 }
 
 function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+
+window.onWorkflowActive = function(data) {
+    var card = document.getElementById('intg-gmail-connector');
+    if (card) {
+        card.classList.remove('intg-card-locked', 'wasp-locked', 'border-base-300/30');
+        card.classList.add('intg-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+        var badge = card.querySelector('.intg-status-badge');
+        if (badge) {
+            badge.outerHTML = '<span class="active-live-tag intg-status-badge"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE · ' + (data.current_step ? data.current_step.substring(0, 20) + '...' : 'DISPATCH') + '</span>';
+        }
+    }
+};
+window.onWorkflowIdle = function() {
+    // idle state handled by standard toggle state
+};
 
 registerWaspActions('integrations', {
     'setCat':             function(el)    { setCat(el.dataset.cat, el); },

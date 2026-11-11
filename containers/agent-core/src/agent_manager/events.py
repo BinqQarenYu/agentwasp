@@ -16,3 +16,7 @@ AGENT_SANDBOX_DENIED = "agent.sandbox_denied"
 AGENT_MESSAGE_SENT = "agent.message_sent"
 AGENT_GLOBAL_THROTTLE = "agent.global_throttle"
 AGENT_CPU_THROTTLE = "agent.cpu_throttle"
+
+# Ephemeral Subagent Genesis events
+SUBAGENT_SPAWNED = "agent.subagent_spawned"
+SUBAGENT_REAPED = "agent.subagent_reaped"

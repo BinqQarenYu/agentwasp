@@ -32,7 +32,8 @@ _STOP_WORDS = frozenset({
 
 # High-value domain semantic clusters for bridge similarity
 DOMAIN_CLUSTERS = {
-    "coding": {"code", "python", "bug", "audit", "test", "fix", "core", "agent", "agentwasp", "redis", "db", "architecture", "stability", "memory", "cache", "async", "service", "engine", "execution"},
+    "coding": {"code", "python", "bug", "audit", "test", "fix", "core", "agent", "agentwasp", "redis", "db", "architecture", "stability", "memory", "cache", "async", "service", "engine", "execution", "router", "endpoint", "routes", "dashboard", "telemetry", "metric", "metrics", "system", "performance", "api", "handler", "tool", "tools", "optimization", "optimize", "refactor", "refactoring", "helper", "patch"},
+    "operations": {"operations", "business", "automated", "workflow", "monitoring", "uptime", "deploy", "scheduler", "cron", "queue", "health", "reliable"},
     "trading": {"trade", "trading", "crypto", "binance", "bybit", "htx", "orderbook", "divergence", "arbitrage", "price", "market", "liquidity", "pair", "spread", "volume", "scanner", "quantitative"},
     "security": {"security", "threat", "sentinel", "phishing", "scam", "spam", "auth", "token", "sandbox", "audit", "safe", "quarantine", "password", "key", "vulnerability"},
     "email": {"email", "gmail", "inbox", "imap", "smtp", "mail", "sender", "clean", "triage", "message"},
@@ -46,6 +47,17 @@ class TeleologyDecision:
     alignment_score: float  # Alignment index [0.0 - 1.0]
     passes_threshold: bool
     status: str             # "APPROVED", "DORMANT_QUEUED", "REJECTED"
+    rationale: str
+
+
+@dataclass
+class CommonSenseDecision:
+    candidate_proposal: str
+    master_goals_summary: str
+    teleological_drift: float      # Delta_drift = 1.0 - similarity
+    economic_penalty: float        # estimated_tokens / remaining_budget
+    omega_sense: float             # [0.0, 1.0]
+    passes_gate: bool              # True if omega_sense >= 0.20 and teleological_drift <= max_allowed_drift
     rationale: str
 
 
@@ -159,5 +171,88 @@ class TeleologicalAligner:
             alignment_score=score_rounded,
             passes_threshold=passes,
             status=status,
+            rationale=rationale,
+        )
+
+    def calculate_common_sense_gate(
+        self,
+        candidate_proposal: str,
+        master_goals_summary: str,
+        estimated_tokens: int = 1500,
+        remaining_budget: int = 50000,
+        max_allowed_drift: float = 0.45,
+    ) -> CommonSenseDecision:
+        """Calculates the Common-Sense Gate factor Omega_sense.
+        
+        Mathematical Formulation:
+            Delta_drift = 1.0 - Similarity(v_candidate, v_master)
+            Omega_sense = max(0.0, 1.0 - 2.5 * (Delta_drift ** 2)) * (1.0 - min(1.0, TokenCost_est / TokenBudget_remain))
+            
+        If Delta_drift > max_allowed_drift, Omega_sense drops immediately to 0.0 (Immediate rejection).
+        """
+        if not master_goals_summary:
+            master_goals_summary = (
+                "Develop high-performance AI agent architecture, execute quantitative algorithmic trading, "
+                "secure communications, and maintain reliable automated business operations."
+            )
+        sim = self.calculate_similarity(candidate_proposal, master_goals_summary)
+        drift = max(0.0, min(1.0, 1.0 - sim))
+
+        # Hard boundary on teleological drift: prevent hallucinated / disconnected work
+        if drift > max_allowed_drift:
+            omega = 0.0
+            passes = False
+            rationale = (
+                f"REJECTED by Common-Sense Gate: Teleological drift {drift:.3f} "
+                f"exceeds maximum allowable drift threshold ({max_allowed_drift:.2f}). "
+                f"Candidate task deviates excessively from master goals."
+            )
+            return CommonSenseDecision(
+                candidate_proposal=candidate_proposal,
+                master_goals_summary=master_goals_summary,
+                teleological_drift=round(drift, 4),
+                economic_penalty=0.0,
+                omega_sense=0.0,
+                passes_gate=passes,
+                rationale=rationale,
+            )
+
+        # Economic consumption penalty
+        safe_budget = max(1, remaining_budget)
+        econ_penalty = min(1.0, max(0.0, estimated_tokens / safe_budget))
+
+        # Quadratic drift resistance * remaining economic margin
+        drift_factor = max(0.0, 1.0 - 2.5 * (drift ** 2))
+        economic_factor = max(0.0, 1.0 - econ_penalty)
+        omega = round(drift_factor * economic_factor, 4)
+
+        passes = (omega >= 0.20 and drift <= max_allowed_drift)
+        if passes:
+            rationale = (
+                f"PASSED Common-Sense Gate (Omega_sense={omega:.3f}): "
+                f"Low drift ({drift:.3f}) and manageable economic penalty ({econ_penalty:.3f})."
+            )
+        else:
+            rationale = (
+                f"BLOCKED by Common-Sense Gate (Omega_sense={omega:.3f}): "
+                f"Drift factor or economic budget penalty suppressed viability below threshold (0.20)."
+            )
+
+        logger.info(
+            "teleology.common_sense_evaluated",
+            candidate=candidate_proposal[:50],
+            drift=drift,
+            econ_penalty=econ_penalty,
+            omega_sense=omega,
+            passes=passes,
+        )
+
+        return CommonSenseDecision(
+            candidate_proposal=candidate_proposal,
+            master_goals_summary=master_goals_summary,
+            teleological_drift=round(drift, 4),
+            economic_penalty=round(econ_penalty, 4),
+            omega_sense=omega,
+            passes_gate=passes,
             rationale=rationale,
         )

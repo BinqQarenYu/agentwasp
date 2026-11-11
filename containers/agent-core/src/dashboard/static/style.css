@@ -1508,3 +1508,103 @@ body:not([data-wasp-mode="error"]) main .card:not(.wasp-breathing) {
   opacity: 0.8;
   margin-top: 0.15rem;
 }
+
+
+/* ==========================================================================
+   Living UI System — Active Breathing vs Grayscale Locked
+   ========================================================================== */
+
+@keyframes wasp-glow-emerald {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.45), 0 2px 8px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(16, 185, 129, 0.65), 0 0 0 1.5px rgba(16, 185, 129, 0.95), 0 4px 20px rgba(16, 185, 129, 0.3);
+  }
+}
+
+@keyframes wasp-pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.008); }
+}
+
+@keyframes wasp-radar-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0.2; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Active & Living Cards (Breathing highlighted state) */
+.wasp-breathing-active,
+.intg-card-active,
+.agent-card-active,
+.employee-card-mesh.mesh-active {
+  border-color: #10B981 !important;
+  animation: wasp-glow-emerald 3.2s ease-in-out infinite, wasp-pulse-subtle 3.2s ease-in-out infinite !important;
+  position: relative;
+  z-index: 2;
+  filter: none !important;
+  opacity: 1 !important;
+  background-color: rgba(16, 185, 129, 0.04) !important;
+}
+
+/* Grayscale Locked / Inactive / Idle Cards */
+.wasp-locked,
+.intg-card-locked,
+.agent-card-idle,
+.employee-card-mesh.mesh-idle {
+  filter: grayscale(1) opacity(0.48) contrast(0.85) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  user-select: none;
+}
+
+.wasp-locked:hover,
+.intg-card-locked:hover,
+.agent-card-idle:hover,
+.employee-card-mesh.mesh-idle:hover {
+  filter: grayscale(0.4) opacity(0.85) contrast(0.95) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Status Badges */
+.lock-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-size: 8.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.active-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  font-size: 8.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  padding: 1.5px 6.5px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+  white-space: nowrap;
+}
+
+.connected-active-glow {
+  box-shadow: 0 0 16px 2px rgba(16, 185, 129, 0.35);
+  animation: wasp-glow-emerald 3.2s ease-in-out infinite;
+}

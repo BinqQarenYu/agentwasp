@@ -2,13 +2,18 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import cast, Date, func, select
 
 from ...db.models import AuditLog
 from ...db.session import async_session
 
 router = APIRouter()
+
+
+@router.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/overview", status_code=302)
 
 
 @router.get("/overview", response_class=HTMLResponse)

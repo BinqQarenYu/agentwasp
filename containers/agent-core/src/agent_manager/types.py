@@ -13,7 +13,28 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from ..goal_orchestrator.types import AutonomyMode, CognitiveBudget
+try:
+    from ..goal_orchestrator.types import AutonomyMode, CognitiveBudget
+except (ImportError, ValueError):
+    try:
+        from src.goal_orchestrator.types import AutonomyMode, CognitiveBudget
+    except (ImportError, ValueError):
+        from goal_orchestrator.types import AutonomyMode, CognitiveBudget
+
+
+class GenesisError(Exception):
+    """Base class for agent genesis errors."""
+    pass
+
+
+class DepthLimitExceededError(GenesisError):
+    """Raised when an agent attempts to spawn beyond the allowed hierarchy depth (Depth > 0)."""
+    pass
+
+
+class ConcurrencyLimitExceededError(GenesisError):
+    """Raised when an agent exceeds its maximum concurrent subagent allocation."""
+    pass
 
 
 class AgentStatus(str, Enum):
@@ -57,6 +78,7 @@ class Agent(BaseModel):
     - Capability sandbox (allowed_capabilities allowlist)
     - Cognitive budget (tokens, replans, steps per goal)
     - Autonomy mode (assist/semi/full)
+    - Genesis hierarchy: Root agents (depth=0) vs Ephemeral Subagents (depth=1)
     """
 
     id: str = Field(default_factory=lambda: str(uuid4()))
@@ -87,6 +109,14 @@ class Agent(BaseModel):
     # Lifecycle
     status: AgentStatus = AgentStatus.IDLE
 
+    # Hierarchy & Bounded Genesis (Depth-1 Spawner)
+    parent_agent_id: str | None = None
+    depth: int = 0  # 0 = Root agent (Prometheus, Athena, Hermes), 1 = Ephemeral Subagent
+    is_ephemeral: bool = False
+    spawned_subagents: list[str] = Field(default_factory=list)
+    max_subagents: int = 3
+    task_timeout_seconds: int = 180
+
     # Timestamps
     created_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -113,3 +143,16 @@ class Agent(BaseModel):
     def effective_namespace(self) -> str:
         """Effective memory namespace — falls back to agent.id."""
         return self.memory_namespace or self.id
+
+    def can_spawn_subagents(self) -> bool:
+        """Determines if this agent is authorized to spawn subagents.
+
+        Strict Depth-1 Boundary:
+            Only root agents (depth == 0) can spawn subagents.
+            Subagents (depth >= 1) are strictly prohibited from spawning child agents.
+        """
+        if self.depth > 0:
+            return False
+        if len(self.spawned_subagents) >= self.max_subagents:
+            return False
+        return True

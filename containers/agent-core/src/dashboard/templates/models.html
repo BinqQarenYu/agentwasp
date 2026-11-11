@@ -103,6 +103,15 @@
     </div>
 </div>
 
+<!-- Live Active Inference Banner (Shown during active workflows) -->
+<div id="models-active-inference-banner" class="hidden mb-4">
+    <div class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/80 connected-active-glow">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="font-mono text-xs font-bold text-emerald-400 uppercase tracking-wider">⚡ Active LLM Inference</span>
+        <span class="text-xs text-base-content/70 font-mono ml-auto">Workflow: <span class="text-emerald-300 font-bold">Email Urgency &amp; Reply Generation</span></span>
+    </div>
+</div>
+
 <!-- ── Active Model Hero ───────────────────────────────────────────────────── -->
 <div class="card bg-base-100 shadow-sm wasp-accent wasp-breathing mb-5" data-ds="3" data-dv="border-left:3px solid {{ ap.color}}60">
     <div class="card-body p-5">
@@ -953,6 +962,20 @@ function updateHero(model, provider) {
 }
 
 // ── Switch active model ────────────────────────────────────────────────────
+
+window.onWorkflowActive = function(data) {
+    var b = document.getElementById('models-active-inference-banner');
+    if (b) b.classList.remove('hidden');
+    var hero = document.querySelector('.card.wasp-breathing');
+    if (hero) hero.classList.add('border-2', 'border-emerald-500', 'connected-active-glow');
+};
+window.onWorkflowIdle = function() {
+    var b = document.getElementById('models-active-inference-banner');
+    if (b) b.classList.add('hidden');
+    var hero = document.querySelector('.card.wasp-breathing');
+    if (hero) hero.classList.remove('border-2', 'border-emerald-500', 'connected-active-glow');
+};
+
 window.handleModelToggle = function(checkbox) {
     var model    = checkbox.getAttribute('data-model');
     var idx      = checkbox.getAttribute('data-idx');

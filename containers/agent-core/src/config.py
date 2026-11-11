@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     proactive_quiet_start: int = 23  # 11 PM local
     proactive_quiet_end: int = 8  # 8 AM local
     proactive_max_daily: int = 6
+    autonomic_evolution_enabled: bool = True
+    scheduler_autonomic_evolution_interval: int = 1800  # 30 min 24/7 ATSE loop
 
     # Dashboard
     dashboard_enabled: bool = True
