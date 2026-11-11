@@ -17,7 +17,6 @@ Injected into context as a compact block so the agent can make better decisions.
 
 import json
 import os
-import time
 import structlog
 from datetime import datetime, timezone
 from copy import deepcopy

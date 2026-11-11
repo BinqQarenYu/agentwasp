@@ -97,3 +97,64 @@ class TestCsrfAnonBypass:
         source = inspect.getsource(auth.validate_csrf_token)
         assert "anon" in source, "Should check for anon session"
         assert 'return False' in source, "Should return False for anon"
+
+class TestSandboxPathTraversalBypass:
+    """Verify _restricted_open and _restricted_os_open fail closed on realpath exceptions."""
+
+    @pytest.mark.asyncio
+    async def test_restricted_open_bypass_blocked(self):
+        from src.skills.builtin.sandbox import execute_sandboxed
+
+        code = """
+import builtins
+import os
+
+class MaliciousPath:
+    def __init__(self, sandbox, target):
+        self.sandbox = sandbox
+        self.target = target
+
+    def __str__(self):
+        return self.sandbox + "/\\0/fake"
+
+    def __fspath__(self):
+        return self.target
+
+_SANDBOX_DIR = os.environ.get("HOME")
+try:
+    with builtins.open(MaliciousPath(_SANDBOX_DIR, "/etc/passwd"), "r") as f:
+        print("EXPLOIT_SUCCESS")
+except PermissionError as e:
+    print("EXPLOIT_FAILED:", e)
+"""
+        result = await execute_sandboxed(code)
+        assert "EXPLOIT_SUCCESS" not in result.output, "Vulnerability exploited!"
+
+    @pytest.mark.asyncio
+    async def test_restricted_os_open_bypass_blocked(self):
+        from src.skills.builtin.sandbox import execute_sandboxed
+
+        code = """
+import os
+
+class MaliciousPath:
+    def __init__(self, sandbox, target):
+        self.sandbox = sandbox
+        self.target = target
+
+    def __str__(self):
+        return self.sandbox + "/\\0/fake"
+
+    def __fspath__(self):
+        return self.target
+
+_SANDBOX_DIR = os.environ.get("HOME")
+try:
+    fd = os.open(MaliciousPath(_SANDBOX_DIR, "/etc/passwd"), os.O_RDONLY)
+    os.close(fd)
+    print("EXPLOIT_SUCCESS")
+except PermissionError as e:
+    print("EXPLOIT_FAILED:", e)
+"""
+        result = await execute_sandboxed(code)
+        assert "EXPLOIT_SUCCESS" not in result.output, "Vulnerability exploited in os.open!"

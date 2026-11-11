@@ -36,6 +36,7 @@ Decision shape:
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import time
 from dataclasses import dataclass, field
@@ -55,11 +56,16 @@ _INTEGRITY_TTL = 60.0
 # get escalated notes + a small back-off delay.  This is NOT blocking — it
 # just slows down repeat-the-exact-same-mistake loops without forcing the LLM
 # to pivot.  TTL is 5 min so old signatures don't accumulate.
-import hashlib
 _WARN_REPEAT_KEY_PREFIX = "cognitive:warn_repeat:"
 _WARN_REPEAT_TTL = 300                # seconds
 _BACKOFF_SCHEDULE = (0.0, 3.0, 5.0, 8.0)  # by repeat count: 1st→0s, 2nd→3s, 3rd→5s, 4th+→8s
-_BACKOFF_MAX = 8.0
+
+_ESCALATION_NOTES = (
+    "",  # count 0 (unused)
+    "",  # count 1 (First warn -> empty)
+    "[STEERING: this is the 2nd attempt with the same parameters after a WARN. Strongly consider an alternative source / different parameters before retrying.]",
+    "[STEERING: 3rd identical retry after WARN. Pivot now — the failure pattern is clear; same input will not yield a different result.]"
+)
 
 
 def _hash_signature(sig: str) -> str:
@@ -344,11 +350,10 @@ async def _check_learning_examples(skill_name: str, arguments: dict) -> Cognitiv
     if skill_name not in _NETWORK_SKILLS:
         # Limit to the families where examples are most informative
         return None
-    sig_blob = _signature(skill_name, arguments)[:300]
     try:
         from ..db.session import async_session
         from ..db.models import LearningExample
-        from sqlalchemy import select, or_
+        from sqlalchemy import select
         async with async_session() as session:
             # Top-1 negative example whose recorded skill call mentions this skill
             stmt = (
@@ -398,6 +403,15 @@ async def _bump_warn_counter(redis_url: str, sig_hash: str) -> int:
         return 1
 
 
+_ESCALATION_NOTES = (
+    "",  # count <= 1
+    "[STEERING: this is the 2nd attempt with the same parameters after a WARN. "
+    "Strongly consider an alternative source / different parameters before retrying.]",
+    "[STEERING: 3rd identical retry after WARN. Pivot now — "
+    "the failure pattern is clear; same input will not yield a different result.]"
+)
+
+
 def _escalation_note(repeat_count: int) -> str:
     """Return an additional steering line keyed to repeat count.
 
@@ -406,16 +420,8 @@ def _escalation_note(repeat_count: int) -> str:
     """
     if repeat_count <= 1:
         return ""
-    if repeat_count == 2:
-        return (
-            "[STEERING: this is the 2nd attempt with the same parameters after a WARN. "
-            "Strongly consider an alternative source / different parameters before retrying.]"
-        )
-    if repeat_count == 3:
-        return (
-            "[STEERING: 3rd identical retry after WARN. Pivot now — "
-            "the failure pattern is clear; same input will not yield a different result.]"
-        )
+    if repeat_count <= 3:
+        return _ESCALATION_NOTES[repeat_count - 1]
     return (
         f"[STEERING: {repeat_count}th identical retry after WARN. Stop repeating this exact call; "
         "use a fundamentally different approach.]"
@@ -424,11 +430,8 @@ def _escalation_note(repeat_count: int) -> str:
 
 def _backoff_for_count(repeat_count: int) -> float:
     """Return the backoff (seconds) to apply before this retry executes."""
-    if repeat_count <= 0:
-        return 0.0
-    if repeat_count - 1 < len(_BACKOFF_SCHEDULE):
-        return _BACKOFF_SCHEDULE[repeat_count - 1]
-    return _BACKOFF_MAX
+    idx = max(0, min(repeat_count - 1, len(_BACKOFF_SCHEDULE) - 1))
+    return _BACKOFF_SCHEDULE[idx]
 
 
 # ── Public entrypoint ────────────────────────────────────────────────────────

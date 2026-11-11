@@ -152,8 +152,7 @@ class OpenClawSkill(SkillBase):
 
         lines = [f"Installed OpenClaw skills ({len(skills)}):\n"]
         for s in skills:
-            src = "[clawhub]" if s.source == "clawhub" else "[local]"
-            lines.append(f"  {s.display_name} v{s.version} {src}")
+            lines.append(f"  {s.display_name} v{s.version} [{s.source_label}]")
             if s.description:
                 lines.append(f"    {s.description[:80]}")
             missing = check_requirements(s)

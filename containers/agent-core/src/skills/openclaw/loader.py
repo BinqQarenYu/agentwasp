@@ -13,13 +13,14 @@ from .models import OpenClawMeta, OpenClawSkill
 
 logger = structlog.get_logger()
 
-SKILLS_DIR = "/data/skills"
+SKILLS_DIR = Path("/data/skills")
+BUNDLED_SKILLS_DIR = Path(__file__).with_name("bundled")
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
 def get_skills_dir() -> Path:
     """Return the skills directory, creating it if needed."""
-    p = Path(SKILLS_DIR)
+    p = SKILLS_DIR
     p.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -95,24 +96,32 @@ def load_skill(skill_dir: Path) -> OpenClawSkill | None:
 
 
 def load_installed_skills() -> list[OpenClawSkill]:
-    """Scan /data/skills/ and load all installed OpenClaw skills."""
-    skills_dir = get_skills_dir()
-    skills: list[OpenClawSkill] = []
+    """Load bundled prompt skills and user-installed skills from /data/skills/."""
+    skills_by_slug: dict[str, OpenClawSkill] = {}
 
-    for entry in sorted(skills_dir.iterdir()):
+    if BUNDLED_SKILLS_DIR.exists():
+        for entry in sorted(BUNDLED_SKILLS_DIR.iterdir()):
+            if not entry.is_dir():
+                continue
+            skill = load_skill(entry)
+            if skill:
+                skill.source = "builtin"
+                skills_by_slug[skill.slug] = skill
+
+    for entry in sorted(get_skills_dir().iterdir()):
         if not entry.is_dir():
             continue
-        # Skip disabled skills
         if (entry / ".disabled").exists():
             logger.debug("openclaw.skip_disabled", slug=entry.name)
+            skills_by_slug.pop(entry.name, None)
             continue
         skill = load_skill(entry)
         if skill:
             skill.source = "clawhub" if (entry / ".clawhub").exists() else "local"
-            skills.append(skill)
+            skills_by_slug[skill.slug] = skill
             logger.info("openclaw.loaded", slug=skill.slug, name=skill.name)
 
-    return skills
+    return list(skills_by_slug.values())
 
 
 def check_requirements(skill: OpenClawSkill) -> list[str]:

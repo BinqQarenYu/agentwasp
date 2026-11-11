@@ -2339,6 +2339,19 @@ _MODEL_SWITCH_PATTERNS = [
     re.compile(r"\bpon(?:me|er)?\s+((?:gpt|claude|gemini|llama|qwen|mistral|deepseek|grok|phi|sonnet|haiku|opus|moonshot|kimi)[\w\s.:-]*)", re.IGNORECASE),
 ]
 
+# Optimization: Combined pattern for faster C-level regex execution
+_COMBINED_SWITCH_PATTERN = re.compile("|".join(f"(?:{p.pattern})" for p in _MODEL_SWITCH_PATTERNS), re.IGNORECASE)
+
+# Optimization: Fast-path keywords to avoid regex evaluation entirely on most messages
+_SWITCH_KEYWORDS = {
+    "cambia", "cambiar", "cambiate", "cambies",
+    "necesito", "quiero", "please", "need", "want",
+    "change", "switch",
+    "usa", "usar", "use",
+    "pon", "poner", "ponme",
+    "activa", "activar"
+}
+
 # Canonical model name aliases for fuzzy matching
 _MODEL_ALIASES = {
     "gpt-4o-mini": ["gpt 4o mini", "gpt4o mini", "gpt-4o-mini", "gpt4omini", "4o mini", "4o-mini",
@@ -2393,14 +2406,26 @@ def _detect_model_switch(text: str) -> str | None:
     """Detect if user wants to switch model. Returns extracted model name or None."""
     # Normalize accents so 'cámbiate' matches 'cambia' pattern
     text_norm = _normalize_accents(text)
-    for pattern in _MODEL_SWITCH_PATTERNS:
-        m = pattern.search(text_norm)
-        if m:
-            candidate = m.group(1).strip().rstrip("?!.")
-            # Filter out false positives (too short, or common non-model words)
-            if len(candidate) < 2 or candidate.lower() in {"eso", "esto", "algo", "otro", "tema", "modo"}:
-                continue
-            return candidate
+    text_lower = text_norm.lower()
+
+    # Fast-path: Check for any required keyword before running complex regex
+    has_keyword = False
+    for kw in _SWITCH_KEYWORDS:
+        if kw in text_lower:
+            has_keyword = True
+            break
+
+    if not has_keyword:
+        return None
+
+    for m in _COMBINED_SWITCH_PATTERN.finditer(text_norm):
+        for g in m.groups():
+            if g is not None:
+                candidate = g.strip().rstrip("?!.")
+                # Filter out false positives (too short, or common non-model words)
+                if len(candidate) < 2 or candidate.lower() in {"eso", "esto", "algo", "otro", "tema", "modo"}:
+                    break  # Skip this match, check next finditer result
+                return candidate
     return None
 
 

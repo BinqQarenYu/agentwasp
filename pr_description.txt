@@ -1,0 +1,5 @@
+🔒 [security fix description] Security fix: Prevent Sandbox Path Traversal Bypass
+
+🎯 What: Fixed a vulnerability in `_restricted_open` and `_restricted_os_open` in `sandbox.py` where a failure during `os.path.realpath` evaluation fell back to an unsafe exception handler using `_p`.
+⚠️ Risk: An attacker could construct an object whose string representation starts with the sandbox directory, satisfying the `startswith()` check, but whose `__fspath__` returns an absolute path outside the sandbox. When `os.path.realpath` fails, this object falls back into the system's `open()` call allowing unauthorized file access.
+🛡️ Solution: Updated the exception handling for `os.path.realpath`. Instead of using an unsafe fallback, the functions now correctly fail closed and raise a `PermissionError` when the path validation throws an exception.
