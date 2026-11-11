@@ -45,6 +45,13 @@ class OpenClawSkill(BaseModel):
         return f"{prefix}{self.name}"
 
     @property
+    def source_label(self) -> str:
+        return {
+            "builtin": "bundled",
+            "clawhub": "clawhub",
+        }.get(self.source, "local")
+
+    @property
     def prompt_text(self) -> str:
         """Text to inject into the agent's system prompt."""
         header = f"## Skill: {self.display_name}"
