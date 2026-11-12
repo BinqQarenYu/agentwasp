@@ -35,6 +35,7 @@ try:
     )
     from ..agent_manager.genesis import SubagentGenesis
     from ..agent_manager.types import Agent, AgentStatus
+    from ..curiosity.ast_mutator import ASTMutator
     from ..curiosity.evaluator import CuriosityEvaluator, extract_ast_entropy
     from ..curiosity.teleology import TeleologicalAligner
     from ..utils.shadow_staging import ShadowStagingManager, StagingState
@@ -48,6 +49,7 @@ except (ImportError, ValueError):
         )
         from src.agent_manager.genesis import SubagentGenesis
         from src.agent_manager.types import Agent, AgentStatus
+        from src.curiosity.ast_mutator import ASTMutator
         from src.curiosity.evaluator import CuriosityEvaluator, extract_ast_entropy
         from src.curiosity.teleology import TeleologicalAligner
         from src.utils.shadow_staging import ShadowStagingManager, StagingState
@@ -60,6 +62,7 @@ except (ImportError, ValueError):
         )
         from agent_manager.genesis import SubagentGenesis
         from agent_manager.types import Agent, AgentStatus
+        from curiosity.ast_mutator import ASTMutator
         from curiosity.evaluator import CuriosityEvaluator, extract_ast_entropy
         from curiosity.teleology import TeleologicalAligner
         from utils.shadow_staging import ShadowStagingManager, StagingState
@@ -80,7 +83,16 @@ class AutonomicEvolutionJob:
         master_goals_summary: str = "",
         dry_run: bool = False,
     ):
-        self.workspace_root = Path(workspace_root) if workspace_root else Path(__file__).resolve().parent.parent.parent.parent
+        if workspace_root:
+            self.workspace_root = Path(workspace_root)
+        else:
+            curr = Path(__file__).resolve()
+            found = None
+            for pr in curr.parents:
+                if (pr / ".git").exists() or (pr / "MEMORY.md").exists() or (pr / "run_dashboard_native.py").exists():
+                    found = pr
+                    break
+            self.workspace_root = found or curr.parents[4]
         self.redis_url = redis_url
         self.bus = bus
         self._custom_redis = redis_client
@@ -105,6 +117,7 @@ class AutonomicEvolutionJob:
             redis_client=self._custom_redis,
         )
         self.staging_manager = ShadowStagingManager(workspace_root=self.workspace_root)
+        self.ast_mutator = ASTMutator(workspace_root=self.workspace_root)
 
         # Default Triad Agents
         self.prometheus = Agent(
@@ -152,11 +165,32 @@ class AutonomicEvolutionJob:
                 "    \"\"\"Return live ATSE subsystem health metric.\"\"\"\n"
                 "    return {'status': 'healthy', 'timestamp': int(time.time()), 'autonomous': True}\n"
             )
+            rationale = "Add autonomous telemetry health metric endpoint for router observability"
+
+            # Check if candidate route files can be optimized via AST mutation
+            candidate_files = [
+                "containers/agent-core/src/dashboard/routes/metrics.py",
+                "containers/agent-core/src/dashboard/routes/telemetry_atse.py",
+            ]
+            for cand_rel in candidate_files:
+                cand_path = self.workspace_root / cand_rel
+                if cand_path.exists() and cand_path.is_file():
+                    try:
+                        src_text = cand_path.read_text(encoding="utf-8")
+                        mut_prop = self.ast_mutator.mutate_source(src_text, cand_rel, strategy="all")
+                        if mut_prop.changes_made and mut_prop.mutated_source:
+                            target_rel = cand_rel
+                            proposed_code = mut_prop.mutated_source
+                            rationale = f"AST Code Optimization: {mut_prop.rationale}"
+                            break
+                    except Exception as e:
+                        logger.warning("atse.ast_mutator_skipped", error=str(e)[:80])
+
             candidate_proposal = CodeProposal(
                 proposal_id=proposal_id,
                 target_file=target_rel,
                 proposed_code=proposed_code,
-                rationale="Add autonomous telemetry health metric endpoint for router observability",
+                rationale=rationale,
                 proposer_agent_id=self.athena.id,
                 proposer_name=self.athena.name,
                 domain="task_execution",

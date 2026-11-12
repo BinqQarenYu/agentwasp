@@ -327,3 +327,8 @@ async def truth_metrics(request: Request) -> JSONResponse:
         out["error"] = str(e)[:200]
 
     return JSONResponse(out)
+
+
+def _safe_divide(a: float, b: float, default: float = 0.0) -> float:
+    """Divide safely, returning default when divisor is zero or nan."""
+    return a / b if abs(b) > 1e-12 else default

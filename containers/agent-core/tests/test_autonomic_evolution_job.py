@@ -170,6 +170,26 @@ class TestAutonomicEvolutionJob(unittest.IsolatedAsyncioTestCase):
         # Subagent reaped
         self.assertEqual(len(self.job.prometheus.spawned_subagents), 0)
 
+    async def test_atse_cycle_with_ast_mutator(self):
+        """Test ATSE cycle detects eligible AST mutations in target candidate file."""
+        target_dir = self.workspace / "containers" / "agent-core" / "src" / "dashboard" / "routes"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        metrics_file = target_dir / "metrics.py"
+        # Code with constant string concatenation eligible for constant folding
+        sample_code = (
+            'PREFIX = "agent_" + "wasp_" + "v2"\n'
+            'def get_prefix():\n'
+            '    return PREFIX\n'
+        )
+        metrics_file.write_text(sample_code, encoding="utf-8")
+
+        result = await self.job.execute_cycle(candidate_proposal=None)
+
+        self.assertEqual(result["status"], "PROMOTED_SUCCESSFULLY")
+        self.assertEqual(result["target_file"], "containers/agent-core/src/dashboard/routes/metrics.py")
+        promoted_text = metrics_file.read_text(encoding="utf-8")
+        self.assertIn("agent_wasp_v2", promoted_text)
+
     async def test_atse_scheduler_callable(self):
         """Test the __call__ interface used by background Scheduler runner."""
         # Run job as scheduler callback

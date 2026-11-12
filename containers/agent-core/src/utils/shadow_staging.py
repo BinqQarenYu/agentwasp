@@ -68,7 +68,16 @@ class ShadowStagingManager:
         staging_root: Optional[Path] = None,
         backup_root: Optional[Path] = None,
     ):
-        self.workspace_root = workspace_root or Path(__file__).resolve().parent.parent.parent.parent
+        if workspace_root:
+            self.workspace_root = workspace_root
+        else:
+            curr = Path(__file__).resolve()
+            found = None
+            for p in curr.parents:
+                if (p / ".git").exists() or (p / "MEMORY.md").exists() or (p / "run_dashboard_native.py").exists():
+                    found = p
+                    break
+            self.workspace_root = found or curr.parents[4]
         self.staging_root = staging_root or (self.workspace_root / "data" / "shadow_staging")
         self.backup_root = backup_root or (self.workspace_root / "data" / "staging_backups")
 
