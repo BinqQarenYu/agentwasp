@@ -7,6 +7,8 @@ Design:
   - Memory is namespaced via project_id=agent.effective_namespace
   - Model override: if agent.model_provider differs from the active provider,
     the runtime temporarily switches (best-effort, logs warning on failure)
+  - Subagent Genesis integration: allows root agents (depth=0) to spawn Depth-1
+    ephemeral subagents with resource leashes.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from ..goal_orchestrator.orchestrator import GoalOrchestrator
 from ..goal_orchestrator.store import load_goal, save_goal
 from ..goal_orchestrator.types import AutonomyMode, Goal, GoalState
 from .events import AGENT_GOAL_CREATED, AGENT_GOAL_COMPLETED, AGENT_GOAL_FAILED
+from .genesis import SubagentGenesis, SubagentTaskReport
 from .store import save_agent
 from .types import Agent, AgentStatus
 
@@ -44,6 +47,7 @@ class AgentRuntime:
         self.model_manager = model_manager
         self.bus = bus
         self.redis_url = redis_url
+        self._genesis = SubagentGenesis(redis_url=self.redis_url, bus=self.bus)
 
     @property
     def memory_namespace(self) -> str:
@@ -62,8 +66,6 @@ class AgentRuntime:
         **kwargs,
     ) -> Goal:
         """Create a goal with this agent's autonomy_mode and budget injected."""
-        # Fall back to orchestrator's default_chat_id so agent goal notifications
-        # always reach the user even when no explicit chat_id is provided.
         effective_chat_id = chat_id or getattr(self.goal_orchestrator, "default_chat_id", "")
         goal = await self.goal_orchestrator.create_goal(
             objective=objective,
@@ -74,8 +76,6 @@ class AgentRuntime:
             budget_max_tokens_planning=self.agent.cognitive_budget.max_tokens_planning,
             budget_max_replans=self.agent.cognitive_budget.max_replans,
             max_runtime_seconds=self.agent.cognitive_budget.max_runtime_seconds,
-            # Agent-managed goals rank below user-interactive goals (8) but above
-            # fully autonomous background goals (3)
             priority=kwargs.pop("priority", 6),
             source=kwargs.pop("source", "agent"),
         )
@@ -124,10 +124,6 @@ class AgentRuntime:
                     continue
 
                 if goal.state == GoalState.ACTIVE:
-                    # goal_tick advances ALL active goals (including agent-owned ones).
-                    # agent_tick must NOT call invoke() — that causes double-execution
-                    # which triggers skill cooldowns, replan storms, and wasted tokens.
-                    # We only observe the goal's state here for cleanup purposes.
                     pass  # goal_tick handles execution; we just watch for terminal states
                 elif goal.state == GoalState.PLANNING:
                     # Detect stuck PLANNING goals (no tasks and > 60s old)
@@ -144,57 +140,11 @@ class AgentRuntime:
                             except Exception:
                                 age = 999  # Unknown age — treat as stuck
                         if age > 60:
-                            # Stuck: re-create goal via proper orchestrator path
                             logger.warning(
                                 "agent_runtime.goal_stuck_planning",
                                 goal_id=goal_id,
-                                age_s=int(age),
                             )
                             stuck_ids.append(goal_id)
-                elif goal.state == GoalState.PAUSED:
-                    # PAUSED goals (stability intervention): check if backoff expired then resume,
-                    # otherwise treat as failed after 10 minutes to unblock the agent.
-                    try:
-                        from datetime import datetime, timezone
-                        updated = goal.updated_at
-                        if hasattr(updated, 'timestamp'):
-                            paused_age = time.time() - updated.timestamp()
-                        else:
-                            dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-                            paused_age = time.time() - dt.timestamp()
-                    except Exception:
-                        paused_age = 999
-                    # Try to resume if backoff has expired
-                    if goal.stability and goal.stability.backoff_until:
-                        try:
-                            from datetime import datetime, timezone
-                            backoff_until = datetime.fromisoformat(
-                                goal.stability.backoff_until.replace("Z", "+00:00")
-                            )
-                            if datetime.now(timezone.utc) > backoff_until:
-                                # Backoff expired — resume goal
-                                goal.state = GoalState.ACTIVE
-                                goal.stability.in_backoff = False
-                                goal.stability.backoff_until = None
-                                goal.stability.consecutive_failures = 0
-                                await save_goal(r, goal)
-                                logger.info(
-                                    "agent_runtime.goal_resumed_after_backoff",
-                                    goal_id=goal_id[:8],
-                                )
-                                # Don't add to terminal — it's now active
-                                continue
-                        except Exception:
-                            pass
-                    # Give up after 10 minutes paused
-                    if paused_age > 600:
-                        logger.warning(
-                            "agent_runtime.goal_paused_too_long",
-                            goal_id=goal_id[:8],
-                            paused_age_s=int(paused_age),
-                        )
-                        failed_ids.append(goal_id)
-                        await self._emit(AGENT_GOAL_FAILED, detail=f"Goal paused too long (stability): {goal.objective[:80]}")
                 elif goal.state in (GoalState.COMPLETED, GoalState.FAILED):
                     if goal.state == GoalState.COMPLETED:
                         completed_ids.append(goal_id)
@@ -219,25 +169,74 @@ class AgentRuntime:
                     )
                 except Exception as _e:
                     logger.exception("agent_runtime.goal_replan_failed", goal_id=goal_id)
-                # Remove the stuck goal regardless
                 from ..goal_orchestrator.store import delete_goal
                 await delete_goal(r, goal_id)
                 failed_ids.append(goal_id)
 
-            # Prune terminal goals from active list (deduplicate via dict.fromkeys to
-            # guard against double-entries that can occur when create_goal saves an
-            # intermediate state before the stuck goal is removed from the list)
+            # Prune terminal goals from active list
             terminal = set(completed_ids + failed_ids)
             if terminal:
                 self.agent.active_goal_ids = list(dict.fromkeys(
                     gid for gid in self.agent.active_goal_ids if gid not in terminal
                 ))
-                # Update status if no more active goals
                 if not self.agent.active_goal_ids:
                     self.agent.status = AgentStatus.IDLE
                 await save_agent(r, self.agent)
         finally:
             await r.aclose()
+
+    # ------------------------------------------------------------------
+    # Bounded Subagent Genesis (Depth-1 Spawner)
+    # ------------------------------------------------------------------
+
+    async def spawn_subagent(
+        self,
+        role: str,
+        task_objective: str,
+        skills_needed: list[str] | None = None,
+        custom_system_prompt: str = "",
+        timeout_seconds: int | None = None,
+        token_budget: int = 2000,
+        model_provider: str = "",
+        model_name: str = "",
+    ) -> Agent:
+        """Spawn an ephemeral subagent bounded strictly to Depth 1."""
+        return await self._genesis.spawn_subagent(
+            parent=self.agent,
+            role=role,
+            task_objective=task_objective,
+            skills_needed=skills_needed,
+            custom_system_prompt=custom_system_prompt,
+            timeout_seconds=timeout_seconds,
+            token_budget=token_budget,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
+
+    async def reap_subagent(self, subagent_id: str, reason: str = "completed") -> bool:
+        """Archive and clean up an ephemeral subagent."""
+        return await self._genesis.reap_subagent(
+            parent=self.agent,
+            subagent_id=subagent_id,
+            reason=reason,
+        )
+
+    async def run_ephemeral_subagent_task(
+        self,
+        role: str,
+        objective: str,
+        skills_needed: list[str] | None = None,
+        timeout_seconds: int = 120,
+    ) -> SubagentTaskReport:
+        """End-to-end execution of a bounded ephemeral subagent task."""
+        return await self._genesis.run_subagent_workflow(
+            parent=self.agent,
+            role=role,
+            objective=objective,
+            orchestrator=self.goal_orchestrator,
+            skills_needed=skills_needed,
+            timeout_seconds=timeout_seconds,
+        )
 
     # ------------------------------------------------------------------
     # Helpers

@@ -95,7 +95,14 @@ class GmailSkill(SkillBase):
                 SkillParam(
                     name="action",
                     param_type=ParamType.STRING,
-                    description="Action: configure, inbox, read, send, delete, search",
+                    description="Action: configure, inbox, read, send, delete, search, list_accounts",
+                ),
+                SkillParam(
+                    name="account",
+                    param_type=ParamType.STRING,
+                    description="Account alias or email (e.g. 'work', 'personal', or email). Defaults to active account.",
+                    required=False,
+                    default="",
                 ),
                 SkillParam(
                     name="count",
@@ -166,37 +173,60 @@ class GmailSkill(SkillBase):
                     required=False,
                     default="",
                 ),
+                SkillParam(
+                    name="reply_to_id",
+                    param_type=ParamType.STRING,
+                    description="Email ID to reply to (for send). If provided, will thread the email properly.",
+                    required=False,
+                    default="",
+                ),
             ],
             category="communication",
             timeout_seconds=30.0,
         )
 
-    async def _load_credentials(self):
-        """Load credentials — vault (integration system) first, legacy Redis fallback."""
-        if self._address and self._password:
-            return
-        # Try vault first (single source of truth)
+    async def _load_credentials(self, account_alias: str = ""):
+        """Load credentials for primary or a named multi-account alias."""
+        alias = account_alias.lower().strip() if account_alias else ""
+        vault_id = f"{VAULT_INTEGRATION_ID}:{alias}" if alias else VAULT_INTEGRATION_ID
+        redis_key = f"{REDIS_GMAIL_KEY}:{alias}" if alias else REDIS_GMAIL_KEY
+
+        # If loading default and already cached
+        if not alias and self._address and self._password:
+            return self._address, self._password
+
+        addr, pwd = "", ""
         if self._vault:
             try:
-                secrets = await self._vault.get_all(VAULT_INTEGRATION_ID)
+                secrets = await self._vault.get_all(vault_id)
                 if secrets.get("address") and secrets.get("app_password"):
-                    self._address = secrets["address"]
-                    self._password = secrets["app_password"]
-                    return
+                    addr = secrets["address"]
+                    pwd = secrets["app_password"]
             except Exception:
                 pass
-        # Fall back to legacy plain-text Redis key
-        try:
-            r = aioredis.from_url(self._redis_url, decode_responses=True)
+
+        if not addr or not pwd:
             try:
-                creds = await r.hgetall(REDIS_GMAIL_KEY)
-                if creds.get("address") and creds.get("password"):
-                    self._address = creds["address"]
-                    self._password = creds["password"]
-            finally:
-                await r.aclose()
-        except Exception:
-            pass
+                r = aioredis.from_url(self._redis_url, decode_responses=True)
+                try:
+                    creds = await r.hgetall(redis_key)
+                    if creds.get("address") and creds.get("password"):
+                        addr = creds["address"]
+                        pwd = creds["password"]
+                finally:
+                    await r.aclose()
+            except Exception:
+                pass
+
+        # Fallback to default if named alias not found
+        if not addr and alias:
+            return await self._load_credentials("")
+
+        if not alias:
+            self._address = addr
+            self._password = pwd
+
+        return addr, pwd
 
     async def execute(
         self,
@@ -210,13 +240,15 @@ class GmailSkill(SkillBase):
         address: str = "",
         password: str = "",
         attachments: str = "",
+        reply_to_id: str = "",
+        account: str = "",
         **kwargs,
     ) -> SkillResult:
         action = action.lower().strip()
 
         # Configure doesn't need existing credentials or policy gate
         if action == "configure":
-            return await self._configure(address=address, password=password)
+            return await self._configure(address=address, password=password, account_alias=account)
 
         # Policy gate — check integration is enabled before any operation
         if self._policy and not self._policy.is_enabled(VAULT_INTEGRATION_ID):
@@ -227,16 +259,20 @@ class GmailSkill(SkillBase):
                 error="Gmail integration is disabled. Enable it from the Integrations panel or run gmail(action=\"configure\", ...) to set up.",
             )
 
-        # For all other actions, load credentials
-        await self._load_credentials()
+        # For all other actions, load credentials for specified account
+        active_addr, active_pwd = await self._load_credentials(account)
 
-        if not self._address or not self._password:
+        if not active_addr or not active_pwd:
             return SkillResult(
                 skill_name="gmail",
                 success=False,
                 output="",
-                error="Gmail no configurado. Usa gmail(action=\"configure\", address=\"user@example.com\", password=\"tu-app-password\") para configurar.",
+                error=f"Gmail account '{account or 'default'}' not configured. Run gmail(action=\"configure\", address=\"user@example.com\", password=\"app-pass\", account=\"{account}\") to set up.",
             )
+        
+        # Temporary lock active credentials for this run
+        self._address = active_addr
+        self._password = active_pwd
 
         # send_check: auto-detected send request — credentials verified, instruct LLM to call send
         if action == "send_check":
@@ -278,7 +314,7 @@ class GmailSkill(SkillBase):
             return await handler(
                 count=count, email_id=email_id, to=to,
                 subject=subject, body=body, query=query,
-                attachments=attachments,
+                attachments=attachments, reply_to_id=reply_to_id,
                 **kwargs,
             )
         except Exception as e:
@@ -444,13 +480,35 @@ class GmailSkill(SkillBase):
                 subj = _decode_header(msg.get("Subject", ""))
                 date_str = msg.get("Date", "")
                 body_text = _get_text_body(msg)
+                
+                # Attachment handling
+                saved_attachments = []
+                for part in msg.walk():
+                    if part.get_content_maintype() == "multipart" or part.get("Content-Disposition") is None:
+                        continue
+                    filename = part.get_filename()
+                    if filename:
+                        filename = _decode_header(filename)
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            save_path = os.path.join("/data/shared", filename)
+                            try:
+                                os.makedirs("/data/shared", exist_ok=True)
+                                with open(save_path, "wb") as f:
+                                    f.write(payload)
+                                saved_attachments.append(save_path)
+                            except Exception as e:
+                                logger.error(f"Failed to save attachment {filename}: {e}")
+
                 output = (
                     f"From: {from_addr}\n"
                     f"To: {to_addr}\n"
                     f"Subject: {subj}\n"
                     f"Date: {date_str}\n"
-                    f"\n{body_text}"
                 )
+                if saved_attachments:
+                    output += f"Attachments Saved: {', '.join(saved_attachments)}\n"
+                output += f"\n{body_text}"
                 return output, None
             finally:
                 conn.logout()
@@ -462,7 +520,7 @@ class GmailSkill(SkillBase):
             output = output[:MAX_OUTPUT_CHARS] + "\n... (truncated)"
         return SkillResult(skill_name="gmail", success=True, output=output, error="")
 
-    async def _send(self, to: str = "", subject: str = "", body: str = "", attachments: str = "", **kw) -> SkillResult:
+    async def _send(self, to: str = "", subject: str = "", body: str = "", attachments: str = "", reply_to_id: str = "", **kw) -> SkillResult:
         if not to:
             return SkillResult(
                 skill_name="gmail", success=False, output="",
@@ -642,30 +700,68 @@ class GmailSkill(SkillBase):
                 ),
             )
 
+        original_msg_id = None
+        original_references = None
+        if reply_to_id:
+            def _fetch_orig():
+                conn = self._imap_connect()
+                try:
+                    conn.select("INBOX", readonly=True)
+                    status, data = conn.fetch(reply_to_id.encode(), "(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID REFERENCES)])")
+                    if status == "OK" and data and data[0]:
+                        raw = data[0][1] if isinstance(data[0], tuple) else data[0]
+                        msg_obj = email.message_from_bytes(raw)
+                        return msg_obj.get("Message-ID"), msg_obj.get("References")
+                except Exception as e:
+                    logger.error(f"Failed to fetch original email for reply: {e}")
+                finally:
+                    try:
+                        conn.logout()
+                    except Exception:
+                        pass
+                return None, None
+            original_msg_id, original_references = await asyncio.to_thread(_fetch_orig)
+
         def _do():
+            # Build alternative payload (plain text + html)
+            msg_alt = MIMEMultipart("alternative")
+            msg_alt.attach(MIMEText(body or "", "plain", "utf-8"))
+            
+            try:
+                import markdown
+                html_body = markdown.markdown(body or "")
+                html_wrapper = f"<html><body>{html_body}</body></html>"
+                msg_alt.attach(MIMEText(html_wrapper, "html", "utf-8"))
+            except Exception as e:
+                logger.error(f"Failed to convert markdown to html: {e}")
+
             if valid_paths:
-                msg = MIMEMultipart()
-                msg.attach(MIMEText(body or "", "plain", "utf-8"))
+                msg = MIMEMultipart("mixed")
+                msg.attach(msg_alt)
+                for path in valid_paths:
+                    mime_type, _ = mimetypes.guess_type(path)
+                    main_type, sub_type = (mime_type or "application/octet-stream").split("/", 1)
+                    with open(path, "rb") as f:
+                        part = MIMEBase(main_type, sub_type)
+                        part.set_payload(f.read())
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        "attachment",
+                        filename=os.path.basename(path),
+                    )
+                    msg.attach(part)
             else:
-                msg = MIMEText(body or "", "plain", "utf-8")
+                msg = msg_alt
 
             msg["From"] = self._address
             msg["To"] = to
             msg["Subject"] = subject
 
-            for path in valid_paths:
-                mime_type, _ = mimetypes.guess_type(path)
-                main_type, sub_type = (mime_type or "application/octet-stream").split("/", 1)
-                with open(path, "rb") as f:
-                    part = MIMEBase(main_type, sub_type)
-                    part.set_payload(f.read())
-                encoders.encode_base64(part)
-                part.add_header(
-                    "Content-Disposition",
-                    "attachment",
-                    filename=os.path.basename(path),
-                )
-                msg.attach(part)
+            if original_msg_id:
+                msg["In-Reply-To"] = original_msg_id
+                refs = (original_references + " " + original_msg_id) if original_references else original_msg_id
+                msg["References"] = refs
 
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
                 server.login(self._address, self._password)

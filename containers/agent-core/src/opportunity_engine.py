@@ -853,7 +853,7 @@ class OpportunityEngine:
                 e2 = self._extract_cluster_entities(g2)
                 s2 = self._extract_cluster_skills(g2)
                 entity_overlap = len(e1 & e2) >= 1
-                skill_overlap = len(s1 & s2) >= 1 and (s1 | s2) - {"web_search"}  # web_search alone not enough
+                skill_overlap = bool((s1 & s2) - {"web_search"})
                 if entity_overlap or (skill_overlap and len(s1 | s2) >= 2):
                     combined.extend(g2)
                     used[j] = True

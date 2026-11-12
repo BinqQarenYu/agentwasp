@@ -29,7 +29,7 @@ _SILENT_JOBS = frozenset({
     "execution_knowledge_sync", "cpi_monitor", "self_integrity",
     "skill_evolution", "capability_evolution", "capability_learner",
     "behavioral_learner", "procedural_pruner", "execution_reflection_pruner",
-    "opportunities_processor", "world_model",
+    "opportunities_processor", "world_model", "autonomic_evolution",
 })
 
 

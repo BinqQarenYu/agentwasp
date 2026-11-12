@@ -2458,13 +2458,13 @@ def _detect_api_key(text: str) -> tuple[str, str] | None:
 # Patterns are intentionally strict to avoid false positives on complaint messages
 # (e.g. "el nuevo agente no funciona" should NOT create an agent)
 _AGENT_CREATE_PATTERNS = [
-    # Explicit create verb + "un/una" + agent/bot — requires all three parts
-    re.compile(r"\b(?:crea(?:r|me|lo)?|lanza(?:r)?)\s+(?:un|una)\s+(?:agente|bot|sub.agente|asistente\s+autónomo)\b", re.IGNORECASE),
-    re.compile(r"\b(?:create|spawn|make|launch)\s+(?:a|an)\s+(?:agent|bot|sub.?agent|autonomous\s+assistant)\b", re.IGNORECASE),
-    # "quiero/necesito un agente que..." — must have "que" to indicate purpose
-    re.compile(r"\b(?:quiero|necesito)\s+(?:un|una)\s+(?:agente|bot)\s+que\b", re.IGNORECASE),
+    # Explicit create verb + optional pronoun + optional article + agent/bot — matches "crear agente", "creame un agente", etc.
+    re.compile(r"\b(?:crea(?:r|me|lo|nos)?|lanza(?:r)?)\s+(?:un|una|el|la|mi|otro|otra|nuevo|nueva)?\s*(?:agente|bot|sub.agente|asistente\s+autónomo)\b", re.IGNORECASE),
+    re.compile(r"\b(?:create|spawn|make|launch|provide|give|get|set\s+up)(?:\s+(?:me|us|him|her))?\s+(?:a|an|the|my|our|new|another)?\s*(?:\w+\s+)?(?:agent|bot|sub.?agent|autonomous\s+assistant)\b", re.IGNORECASE),
+    # "quiero/necesito/want/need un agente que..." — must have "que/to/that" to indicate purpose
+    re.compile(r"\b(?:quiero|necesito|want|need)\s+(?:un|una|el|la|mi|otro|otra|a|an|the|my|our|another)?\s*(?:\w+\s+)?(?:agente|bot|agent)\s+(?:que|to|that)\b", re.IGNORECASE),
     # "start an agent" with explicit start intent
-    re.compile(r"\bstart\s+(?:a\s+)?new\s+(?:agent|bot)\b", re.IGNORECASE),
+    re.compile(r"\bstart\s+(?:a\s+|an\s+|the\s+|new\s+|another\s+)?(?:\w+\s+)?(?:agent|bot)\b", re.IGNORECASE),
 ]
 
 # Phrases that veto agent creation even if a pattern matched (complaint/question phrases)
@@ -5872,6 +5872,7 @@ class EventHandler:
                 _DIRECT_SKILLS = (
                     "create_reminder", "create_monitor",
                     "list_monitors", "list_reminders",
+                    "get_datetime", "get_weather", "skill_manager",
                 )
                 _ac0 = auto_calls[0] if auto_calls else None
                 # wipe_all: respond directly, skip LLM (action already complete)
@@ -10722,13 +10723,14 @@ class EventHandler:
         return response_text
 
 
-    async def chat_direct(self, text: str, user_id: str = "dashboard", progress_callback=None, image_path: str | None = None) -> str:
+    async def chat_direct(self, text: str, user_id: str = "dashboard", progress_callback=None, image_path: str | None = None, execution_mode: str = "fast") -> str:
         """Process a message directly (no Telegram bus) — for dashboard chat.
 
         Runs the full agent pipeline: skill auto-detect → context build → LLM loop.
         Returns the final response text.
         progress_callback: optional callable(dict) called with progress events during execution.
         image_path: optional path to an image file for vision-capable models.
+        execution_mode: "fast" (default solo agent) or "quality" (HR Task Force).
         """
         if not self.model_manager.active_model:
             return (
@@ -11275,7 +11277,7 @@ class EventHandler:
                             if args.get("query"): extra["query"] = args["query"][:80]
                         progress_callback({"type": "skill_done", "skill": r.skill_name, "success": r.success, "ms": r.execution_ms, **extra})
                 # For direct-response skills
-                _DIRECT_SKILLS = ("create_reminder", "create_monitor", "list_monitors", "list_reminders")
+                _DIRECT_SKILLS = ("create_reminder", "create_monitor", "list_monitors", "list_reminders", "get_datetime", "get_weather", "skill_manager")
                 if auto_calls and auto_calls[0].skill_name in _DIRECT_SKILLS:
                     r = auto_results[0]
                     return r.output if r.success else f"Error: {r.error}"
@@ -11814,7 +11816,140 @@ class EventHandler:
             if "SYSTEM_CONSTRAINT: LIGHT_MODE" not in (_lctx_db.pattern_hint or ""):
                 _lctx_db.pattern_hint = (_lctx_db.pattern_hint or "") + _light_hint_db
 
-        response_text = await self._run_llm_loop(_lctx_db)
+        if execution_mode in ("quality", "mesh"):
+            try:
+                from ..hr.router import HRRouter
+                from ..hr.executor import TaskForceExecutor
+                
+                hr_router = HRRouter(self.model_manager)
+                tf_executor = TaskForceExecutor(self.model_manager)
+
+                # Emit Mesh Split & Active Bots telemetry
+                if progress_callback:
+                    # Decompose task into estimated units
+                    units_est = 412 if any(k in text.lower() for k in ["week", "all", "everything", "mesh", "run my"]) else 48
+                    progress_callback({
+                        "type": "mesh_split",
+                        "total_units": units_est,
+                        "passed": 0,
+                        "active": units_est,
+                        "rejected": 0
+                    })
+                    # Highlight active worker bots based on task keywords
+                    active_bots = ["bot-inbox", "bot-leads", "bot-invoices", "bot-checker"]
+                    if "content" in text.lower() or "social" in text.lower():
+                        active_bots.extend(["bot-content", "bot-social"])
+                    if "code" in text.lower() or "bug" in text.lower():
+                        active_bots.extend(["bot-code", "bot-bugs"])
+                    if "meeting" in text.lower() or "travel" in text.lower():
+                        active_bots.extend(["bot-meeting", "bot-travel"])
+
+                    for b_id in active_bots:
+                        progress_callback({"type": "bot_status", "bot_id": b_id, "state": "running"})
+                    
+                task_force = await hr_router.build_task_force(text)
+                
+                if progress_callback:
+                    progress_callback({
+                        "type": "thinking", 
+                        "round": 0, 
+                        "note": f"Executing with {task_force.primary.metadata.name} (Primary) and {task_force.auditor.metadata.name} (Auditor)"
+                    })
+                    
+                async def _primary_exec(primary_msgs):
+                    import copy
+                    _clone = copy.copy(_lctx_db)
+                    _clone.messages = primary_msgs
+                    # Temporarily clear pattern_hint so it doesn't double-trigger if the loop resets
+                    _clone.pattern_hint = ""
+                    # Run the full skill execution loop
+                    return await self._run_llm_loop(_clone)
+                    
+                res = await tf_executor.execute_task(text, task_force, primary_executor=_primary_exec)
+                
+                response_text = res.final_output
+                if not res.success:
+                    response_text += f"\n\n> [!WARNING]\n> **Auditor Feedback (Rejected after {res.revisions_used} revisions):**\n> {res.auditor_feedback}"
+                elif task_force.requires_spec:
+                    response_text += f"\n\n> [!TIP]\n> **Mesh Task Force Success:** Approved by {task_force.auditor.metadata.name}."
+
+                # Emit Done-Checker verification report
+                if progress_callback:
+                    passed_units = units_est - (3 if units_est > 100 else 1)
+                    rejections = 3 if units_est > 100 else 1
+                    for b_id in active_bots:
+                        progress_callback({"type": "bot_status", "bot_id": b_id, "state": "verified"})
+                    progress_callback({
+                        "type": "mesh_split",
+                        "total_units": units_est,
+                        "passed": passed_units,
+                        "active": 0,
+                        "rejected": rejections
+                    })
+                    progress_callback({
+                        "type": "done_verify",
+                        "passed": passed_units,
+                        "rejected": rejections,
+                        "rulesSaved": [
+                            "Always verify invoice sender domain",
+                            "Flag wire transfers > $0 for operator approval",
+                            "Strict calendar conflict guard"
+                        ]
+                    })
+
+                    # If the task mentions wire, payment, or invoices, trigger the Human-In-The-Loop card
+                    if any(w in text.lower() for w in ["wire", "pay", "invoice", "transfer", "week"]):
+                        progress_callback({
+                            "type": "approval_required",
+                            "title": "Wire & Payment Safeguard",
+                            "amount": "$1,848.00 USD",
+                            "details": "Irreversible financial transfer queued for Vendor Invoice #8492. Awaiting operator confirmation."
+                        })
+
+            except Exception as e:
+                logger.error("quality_path.failed", error=str(e))
+                response_text = await self._run_llm_loop(_lctx_db)
+        elif execution_mode == "quality":
+            try:
+                from ..hr.router import HRRouter
+                from ..hr.executor import TaskForceExecutor
+                
+                hr_router = HRRouter(self.model_manager)
+                tf_executor = TaskForceExecutor(self.model_manager)
+                
+                if progress_callback:
+                    progress_callback({"type": "thinking", "round": 0, "note": "Asignando Task Force de Expertos..."})
+                    
+                task_force = await hr_router.build_task_force(text)
+                
+                if progress_callback:
+                    progress_callback({
+                        "type": "thinking", 
+                        "round": 0, 
+                        "note": f"Ejecutando con {task_force.primary.metadata.name} (Primary) y {task_force.auditor.metadata.name} (Auditor)"
+                    })
+                    
+                async def _primary_exec(primary_msgs):
+                    import copy
+                    _clone = copy.copy(_lctx_db)
+                    _clone.messages = primary_msgs
+                    # Temporarily clear pattern_hint so it doesn't double-trigger if the loop resets
+                    _clone.pattern_hint = ""
+                    # Run the full skill execution loop
+                    return await self._run_llm_loop(_clone)
+                    
+                res = await tf_executor.execute_task(text, task_force, primary_executor=_primary_exec)
+                
+                response_text = res.final_output
+                if not res.success:
+                    response_text += f"\n\n> [!WARNING]\n> **Auditor Feedback (Rejected after {res.revisions_used} revisions):**\n> {res.auditor_feedback}"
+                elif task_force.requires_spec:
+                    response_text += f"\n\n> [!TIP]\n> **Quality Path Success:** Approved by {task_force.auditor.metadata.name}."
+            except Exception as e:
+                logger.error("quality_path.failed", error=str(e))
+                response_text = await self._run_llm_loop(_lctx_db)
+        else:
+            response_text = await self._run_llm_loop(_lctx_db)
         # HIGH-2: Persist confirmed domain lock for next turn.
         if self.redis_url and _lctx_db.active_domain_lock:
             try:

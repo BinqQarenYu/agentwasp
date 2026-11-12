@@ -7,7 +7,7 @@
 Self-hosted autonomous AI agent. Plans, executes, and improves itself running on infrastructure you own.
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-F5C542?style=flat-square)](LICENSE.md)
-[![Version](https://img.shields.io/badge/version-2.7-F5C542?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.7.1-F5C542?style=flat-square)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-agentwasp.com-F5C542?style=flat-square)](https://docs.agentwasp.com)
 [![Install](https://img.shields.io/badge/install-1%20line-F5C542?style=flat-square)](#install)
 [![Python](https://img.shields.io/badge/python-3.12-F5C542?style=flat-square)](https://www.python.org)
@@ -19,7 +19,9 @@ Self-hosted autonomous AI agent. Plans, executes, and improves itself running on
 
 ---
 
-WASP is not a chat-UI wrapper. There is real architecture underneath: an event bus, a goal orchestrator, a 41-job scheduler, layered memory, a truth/policy layer that grounds responses against actual actions, and a self-repair loop that can rewrite its own code.
+WASP is an **Autonomous Operational Workforce** — a unified digital staff designed to carry out the day-to-day work of real-world employees.
+
+Rather than being a traditional code-generation assistant like Cursor or Claude Code, WASP **operates as a team of autonomous digital employees**. It doesn't write monolithic software from scratch; instead, **it gets real work done by wielding powerful modern tools** — orchestrating Antigravity MCP servers, Claude, Gemini, Google Workspace (Gmail, Drive, Sheets, Photos), browsers, shell environments, and schedulers to accomplish end-to-end deliverables autonomously.
 
 ## Install
 
@@ -59,22 +61,33 @@ wasp logs        # tail logs
 wasp health      # run health probes
 ```
 
-## What WASP does
+## What WASP Does: True Autonomous Capabilities
 
-- **Conversational agent** with memory that persists across sessions: episodic, semantic, working, procedural, behavioral rules, knowledge graph, temporal world model.
-- **37 built-in skills**: web search, browser automation (nodriver + Selenium), email (Gmail with allowlist), scraping, scheduling, file ops, Python execution (sandboxed), reminders, RSS subscriptions, monitoring, self-improvement, and more.
-- **Goal orchestrator**: long-running plans broken into TaskGraph steps, retried on failure, replanned when blocked, validated by a Plan Critic before execution.
-- **Dashboard**: browser UI with 151 endpoints — chat, traces, tasks, scheduler, memory, knowledge graph, world model, agents, integrations, audit log, self-improve.
-- **Telegram bridge**: optional — natural language to your agent from your phone. Multi-language welcome (EN/ES/PT/FR).
-- **Self-improvement loop**: corrections you write become persistent behavioral rules. Recurring action patterns get abstracted into reusable procedures. The agent can read, patch, and rebuild its own source.
-- **Truth layer**: response binding, URL substitution guard, scheduler honesty, capability-claim verification, prompt-leak redaction — designed to make the agent's text match the actions it actually took.
+WASP transforms autonomous agents into an **operational enterprise staff**. It is built on the principle that the highest-leverage AI work is not syntax typing, but **tool orchestration, verification, common-sense teleology, and real-world execution**.
 
-## What WASP is not
+### 💼 Autonomous Employee Staff & Roles
+* **16 Specialized Digital Employees**: Defined across Operations, Architecture, Security, Communications, Research, and Executive Decision-Making (e.g. *Athena* for Fleet Governance, *Ares* for Red-Team Auditing, *Prometheus* as Enclave Broker, *Dr. Albert* for Anti-Hype Scientific Forensics).
+* **Cross-Departmental Collaboration**: Agents divide complex briefs, execute consensus reviews, challenge assumptions, and produce verified artifacts.
 
-- Not a hosted SaaS. You run it yourself on a server or workstation.
-- Not a coding agent like Claude Code or Cursor — it is a general-purpose agent.
-- Not multi-tenant. One operator per install.
-- Not magic. The underlying LLM is probabilistic; the policy and truth layers reduce — but don't eliminate — hallucinations.
+### 🛠️ Execution Through High-Leverage Tools
+WASP doesn't need to hand-code everything because it commands specialized execution engines:
+* **Antigravity & MCP Client Ecosystem**: Direct integration with Model Context Protocol (MCP) servers across databases, filesystems, browsers, and cloud runtimes.
+* **Multi-Model Orchestration**: Intelligently routes workloads to Claude 3.5, Gemini 2.0/2.5, xAI Grok, or local Ollama models based on task nature, quota budget, and required precision.
+* **Communications & Office Suite**: Full autonomous email triage (IMAP/SMTP with malicious-link quarantine), Google Workspace (Drive, Sheets, Photos, Calendar), Telegram, Discord, and Slack bridges.
+* **Deterministic Tool Execution**: Sandboxed Python execution, browser automation (nodriver/Selenium), automated REST webhooks, and direct OS bridges (Windows/Linux).
+
+### 🧠 Cognitive Architecture & Common Sense
+* **Curiosity & Common-Sense Governance Cockpit**: Enforces mathematical teleological equilibrium ($\Omega_{\text{sense}}$). Suppresses goal drift ($\Delta_{\text{drift}} \le 0.45$) and preserves token budgets before any autonomous task is triggered.
+* **Persistent Layered Memory**: Episodic, semantic, procedural, working memory, behavioral rules, knowledge graphs, and a temporal world model.
+* **Autonomous Teleological Self-Evolution (ATSE)**: 24/7 background self-evolution daemon grounded in AST codebase entropy ($H_{\text{AST}} = 0.8451$), Triad Adversarial Consensus (Proposer $\to$ Critic $\to$ Judge with Security VETO), and shadow worktree staging with 1.27ms atomic rollback. See [docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md](docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md).
+* **Truth & Verification Layer**: Prevents hallucinated claims by binding model outputs to actual tool receipts and system logs.
+
+## What WASP Is (and Is Not)
+
+* **An Autonomous Employee Operator**: Designed to execute business tasks, audit systems, handle client messages, manage schedules, and run continuous operations.
+* **NOT a Bare Syntax Generator / Code-Typing IDE**: It does not replace code editors like Claude Code or Cursor. When development or maintenance tasks arise, it coordinates developer tooling, reviews diffs, runs tests, and applies verified atomic patches.
+* **Self-Hosted & Sovereign**: Runs on your hardware, server, or cloud node without vendor lock-in or multi-tenant surveillance.
+* **Safe by Default**: Sandboxed execution, Quota Guard RPM pacing, and human-in-the-loop review for high-impact actions.
 
 ## Requirements
 
@@ -149,7 +162,16 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 - [docs/QUICKSTART.md](docs/QUICKSTART.md) — first 10 minutes
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — VPS + local + reverse-proxy guidance
 - [docs/SECURITY.md](docs/SECURITY.md) — threat model, fail-closed defaults, secret handling
-- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — **honest** map of what works and what's experimental
+- [docs/STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md) — honest map of what works and what's experimental
+- [docs/AGENT_MESH_ARCHITECTURE.md](docs/AGENT_MESH_ARCHITECTURE.md) — Grok-style UI/UX and 15-bot Agent Mesh architecture
+- [docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md](docs/AUTONOMOUS_TELEOLOGICAL_SELF_EVOLUTION.md) — 24/7 autonomous employee self-evolution loop, AST Shannon entropy, Common-Sense Gate ($\Omega_{\text{sense}}$), Triad consensus, and shadow staging
+- [docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md](docs/GOOGLE_WORKSPACE_AND_MESH_GUIDE.md) — Google Workspace OAuth integration guide, Colab/Jules mapping, and kinetic UI telemetry
+- [docs/GITHUB_FLEET_AUDIT_SPEC.md](docs/GITHUB_FLEET_AUDIT_SPEC.md) — 4-parameter fleet audit spec, anti-parameters, and Common Sense cognitive heuristics
+- [docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md](docs/EMPLOYEE_SPEC_GITHUB_FLEET_STEWARD.md) — Athena (Bot 15): GitHub fleet steward, Copilot CLI synergy, code security
+- [docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md](docs/EMPLOYEE_SPEC_PROMETHEUS_ANTIGRAVITY_BROKER.md) — Prometheus: Antigravity capabilities broker, MCP server matrix, unified memory
+- [docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md](docs/CHARTER_PROMETHEUS_RESPONSIBILITY.md) — Grand Accountability Charter for god-tier root access
+- [docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md](docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md) — Dr. Albert (Bot 09): Principal Scientist, 4-tier truth classification, anti-hype filter
+- [docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md](docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md) — Dr. Albert's 5-tier scientific lab workbench, scraper, visual chart forensics, statistical engine
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common errors with fixes
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, BSL implications
 - [CHANGELOG.md](CHANGELOG.md) — version history (v2.7 is the first public release; pre-OSS history at [docs.agentwasp.com/changelog](https://docs.agentwasp.com/changelog))

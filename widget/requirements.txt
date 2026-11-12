@@ -1,0 +1,2 @@
+Pillow>=10.0.0
+# pystray (optional for tray, but we'll stick to a clean floating widget for now)

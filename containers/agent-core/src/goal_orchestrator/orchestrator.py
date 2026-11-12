@@ -96,6 +96,29 @@ def _extract_title(objective: str) -> str:
     return t or objective[:MAX]
 
 
+async def _diagnose_error(raw_error: str, objective: str) -> str:
+    """Pass system errors to a fast LLM for a user-friendly explanation."""
+    try:
+        from ...models.manager import ModelManager
+        from ...models.types import Message
+        mm = ModelManager()
+        prompt = (
+            f"The goal engine crashed with this technical error:\n{raw_error}\n\n"
+            f"Objective: {objective}\n\n"
+            "Provide a 1-2 sentence plain-english explanation of what went wrong, "
+            "and 1 recommended action for the user to fix it. Do not use markdown formatting "
+            "like bolding or headers. Keep it very brief and actionable."
+        )
+        res = await mm.generate([Message(role="user", content=prompt)])
+        if res and not res.startswith("ERROR:"):
+            # Ensure it fits nicely in the dashboard UI
+            return f"{raw_error} | DIAGNOSIS: {res.strip()}"
+    except Exception as e:
+        import structlog
+        structlog.get_logger().error("goal_orchestrator.diagnose_failed", exc=str(e))
+    return raw_error
+
+
 class GoalOrchestrator:
     """Coordinates goal lifecycle: create → plan → execute → complete/fail.
 
@@ -297,7 +320,7 @@ class GoalOrchestrator:
                 check_planning_tokens(goal.budget)
             except BudgetError as e:
                 goal.state = GoalState.FAILED
-                goal.error = f"Budget exceeded before planning: {e}"
+                goal.error = await _diagnose_error(f"Budget exceeded before planning: {e}", goal.objective)
                 goal.completed_at = datetime.now(timezone.utc).isoformat()
                 await save_goal(r, goal)
                 logger.error("goal_orchestrator.budget_before_plan", goal_id=goal.id)
@@ -309,7 +332,7 @@ class GoalOrchestrator:
 
             if graph is None:
                 goal.state = GoalState.FAILED
-                goal.error = f"Planning failed: {error}"
+                goal.error = await _diagnose_error(f"Planning failed: {error}", goal.objective)
                 goal.completed_at = datetime.now(timezone.utc).isoformat()
                 await save_goal(r, goal)
                 logger.error("goal_orchestrator.plan_failed", goal_id=goal.id, error=error)
@@ -627,7 +650,8 @@ class GoalOrchestrator:
                 if _completed_outputs
                 else "No tasks completed before instability."
             )
-            goal.error = f"Replan storm detected after {goal.replan_count} replans — goal frozen. {_partial}"
+            raw_err = f"Replan storm detected after {goal.replan_count} replans — goal frozen. {_partial}"
+            goal.error = await _diagnose_error(raw_err, goal.objective)
             goal.completed_at = now_iso
             record_intervention(
                 goal.stability,
@@ -657,7 +681,7 @@ class GoalOrchestrator:
             check_replan(goal.budget)
         except BudgetError as e:
             goal.state = GoalState.FAILED
-            goal.error = f"Replan budget exhausted ({e.used}/{e.limit})"
+            goal.error = await _diagnose_error(f"Replan budget exhausted ({e.used}/{e.limit})", goal.objective)
             goal.completed_at = now_iso
             mark_exceeded(goal.budget, "replans")
             goal.telemetry.budget_exceeded_events += 1
@@ -677,7 +701,7 @@ class GoalOrchestrator:
         # ── Hard cap (legacy MAX_REPLAN_COUNT) ─────────────────────────
         if goal.replan_count >= MAX_REPLAN_COUNT:
             goal.state = GoalState.FAILED
-            goal.error = f"Replan limit ({MAX_REPLAN_COUNT}) exhausted"
+            goal.error = await _diagnose_error(f"Replan limit ({MAX_REPLAN_COUNT}) exhausted", goal.objective)
             goal.completed_at = now_iso
             logger.error(
                 "goal_orchestrator.replan_limit",
@@ -756,7 +780,7 @@ class GoalOrchestrator:
 
         if new_graph is None:
             goal.state = GoalState.FAILED
-            goal.error = f"Replanning failed: {error}"
+            goal.error = await _diagnose_error(f"Replanning failed: {error}", goal.objective)
             goal.completed_at = now_iso
             logger.error(
                 "goal_orchestrator.replan_failed", goal_id=goal.id, error=error

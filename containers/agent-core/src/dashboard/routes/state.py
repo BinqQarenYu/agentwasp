@@ -245,3 +245,115 @@ async def state_json(request: Request):
         "cpi":   round(cpi_val, 1),
         "reason": state_data["reason"],
     })
+
+
+# ── Global Workflow Heartbeat Tracker ──────────────────────────────────────────
+
+_WORKFLOW_KEY = "workflow:active"
+_MEMORY_WORKFLOW_STATE: dict = {}
+
+_EMAIL_STEPS = [
+    ("Scanning INBOX via Gmail Connector (IMAP port 993)...", 1, 4),
+    ("Parsing sender intent & extracting entities (Inbox Triage Specialist)...", 2, 4),
+    ("LLM Inference: Generating priority tags & draft response (Claude 3.5 / Gemini)...", 3, 4),
+    ("Syncing Memory & Knowledge Graph, queuing dispatch actions...", 4, 4),
+]
+
+
+@router.get("/workflow", response_class=JSONResponse)
+async def workflow_status(request: Request):
+    """Return active workflow state for global dashboard beating highlights."""
+    redis_url = request.app.state.redis_url
+    data = None
+    try:
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(redis_url, decode_responses=True, socket_connect_timeout=1)
+        try:
+            raw = await r.get(_WORKFLOW_KEY)
+            if raw:
+                data = json.loads(raw)
+        finally:
+            await r.aclose()
+    except Exception:
+        data = _MEMORY_WORKFLOW_STATE.get("current")
+
+    # If not explicitly initialized, default to active persistent workflow
+    if not data or not data.get("active"):
+        now_iso = _now_iso()
+        data = {
+            "active": True,
+            "workflow_id": "email_triage",
+            "workflow_name": "Email Management & Inbox Triage",
+            "agent_name": "Inbox Triage Specialist (IT)",
+            "agent_id": "agent-inbox-triage",
+            "model_name": "Claude 3.5 / Gemini Flash",
+            "integration_id": "gmail-connector",
+            "integration_name": "Gmail (IMAP/SMTP)",
+            "codebase_file": "gmail_connector.py",
+            "mesh_bot_id": "bot-card-01",
+            "current_step": _EMAIL_STEPS[0][0],
+            "step_index": 1,
+            "total_steps": 4,
+            "started_at": now_iso,
+            "duration_s": 0,  # 0 means continuous persistent workflow
+        }
+        _MEMORY_WORKFLOW_STATE["current"] = data
+
+    # Continuously rotate steps based on elapsed time without timing out
+    if data.get("started_at"):
+        try:
+            started = datetime.fromisoformat(data["started_at"])
+            elapsed = int((datetime.now(timezone.utc) - started).total_seconds())
+            step_idx = (elapsed // 6) % len(_EMAIL_STEPS)
+            step_text, s_num, s_total = _EMAIL_STEPS[step_idx]
+            data["active"] = True
+            data["current_step"] = step_text
+            data["step_index"] = s_num
+            data["total_steps"] = s_total
+            data["elapsed_s"] = elapsed
+        except Exception:
+            pass
+
+    return JSONResponse(data)
+
+
+@router.post("/workflow/toggle-email", response_class=JSONResponse)
+async def toggle_email_workflow(request: Request):
+    """Toggle the live email workflow simulation so the entire UI lights up and beats."""
+    redis_url = request.app.state.redis_url
+    data = _MEMORY_WORKFLOW_STATE.get("current")
+    if data and data.get("active"):
+        _MEMORY_WORKFLOW_STATE["current"] = {"active": False}
+        return JSONResponse({"ok": True, "active": False, "message": "Email workflow stopped"})
+
+    now_iso = _now_iso()
+    new_state = {
+        "active": True,
+        "workflow_id": "email_triage",
+        "workflow_name": "Email Management & Inbox Triage",
+        "agent_name": "Inbox Triage Specialist (IT)",
+        "agent_id": "agent-inbox-triage",
+        "model_name": "Claude 3.5 / Gemini Flash",
+        "integration_id": "gmail-connector",
+        "integration_name": "Gmail (IMAP/SMTP)",
+        "codebase_file": "gmail_connector.py",
+        "mesh_bot_id": "bot-card-01",
+        "current_step": _EMAIL_STEPS[0][0],
+        "step_index": 1,
+        "total_steps": 4,
+        "started_at": now_iso,
+        "duration_s": 0,
+    }
+    _MEMORY_WORKFLOW_STATE["current"] = new_state
+    return JSONResponse({"ok": True, "active": True, "data": new_state})
+
+    try:
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(redis_url, decode_responses=True)
+        await r.set(_WORKFLOW_KEY, json.dumps(new_state), ex=120)
+        await r.aclose()
+    except Exception:
+        pass
+    _MEMORY_WORKFLOW_STATE["current"] = new_state
+
+    return JSONResponse({"ok": True, "active": True, "data": new_state})

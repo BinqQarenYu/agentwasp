@@ -9,6 +9,7 @@ Redis key: agent:epistemic
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 
 import structlog
@@ -68,6 +69,14 @@ _DOMAIN_KEYWORDS: dict[str, list[str]] = {
         "politics", "gobierno", "government", "elección", "election", "guerra",
         "war", "economía", "economy", "mercado", "market",
     ],
+}
+
+_DOMAIN_PATTERNS = {
+    domain: [
+        re.compile(rf"(?<!\w){re.escape(keyword)}(?!\w)")
+        for keyword in keywords
+    ]
+    for domain, keywords in _DOMAIN_KEYWORDS.items()
 }
 
 _DEFAULT_STATE = {
@@ -132,8 +141,8 @@ def detect_domains(text: str) -> list[str]:
     """Detect which knowledge domains are relevant to a piece of text."""
     text_lower = text.lower()
     detected = []
-    for domain, keywords in _DOMAIN_KEYWORDS.items():
-        if any(kw in text_lower for kw in keywords):
+    for domain, patterns in _DOMAIN_PATTERNS.items():
+        if any(pattern.search(text_lower) for pattern in patterns):
             detected.append(domain)
     return detected
 

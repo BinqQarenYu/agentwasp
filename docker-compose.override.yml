@@ -1,0 +1,53 @@
+
+# ==============================================================================
+# Agent WASP Resource Governor & Safety Enforcement Override
+# ==============================================================================
+# Prevents PC lockups, freezes, or runaway CPU/RAM saturation.
+# Limits memory allocations and CPU quota shares so the host Windows OS and
+# desktop apps always have priority.
+# ==============================================================================
+
+services:
+  agent-core:
+    volumes:
+      - ./containers/agent-core/src:/app/src:ro
+      - ./containers/agent-core/config:/app/config:ro
+      - ./containers/agent-core/tests:/app/tests:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'        # Max 3 cores out of 8 (prevents freezing the PC)
+          memory: 4096M      # 4 GB max memory limit
+        reservations:
+          cpus: '0.5'
+          memory: 1024M
+
+  agent-redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M      # 1 GB hard limit
+
+  agent-postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M      # 2 GB hard limit
+
+  agent-telegram:
+    volumes:
+      - ./containers/agent-telegram/src:/app/src:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  agent-broker:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M

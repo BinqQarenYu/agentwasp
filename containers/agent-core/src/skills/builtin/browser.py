@@ -377,8 +377,18 @@ def _do_navigate(url: str, session_name: str = "", _extended_timeout: bool = Fal
         timeout_note = f"\n[Note: page load timed out after {'50' if _extended_timeout else '30'}s — content may be partial]"
 
     try:
-        body = driver.find_element(By.TAG_NAME, "body")
-        text = body.text[:MAX_TEXT] if body else ""
+        try:
+            import markdownify
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            for tag in soup(["script", "style", "noscript", "svg"]):
+                tag.decompose()
+            text = markdownify.markdownify(str(soup), heading_style="ATX")
+            text = re.sub(r'\n{3,}', '\n\n', text).strip()
+            text = text[:MAX_TEXT]
+        except Exception:
+            body = driver.find_element(By.TAG_NAME, "body")
+            text = body.text[:MAX_TEXT] if body else ""
     except Exception:
         text = "(page content not yet available)"
 
@@ -394,14 +404,56 @@ def _do_navigate(url: str, session_name: str = "", _extended_timeout: bool = Fal
     return f"Navigated to: {current}\nTitle: {title}{timeout_note}\n---\n{_truncate(text)}"
 
 
+def _find_element_fuzzy(driver, selector: str):
+    """Find element by CSS selector, or fallback to fuzzy text/label matching via JS."""
+    try:
+        wait = WebDriverWait(driver, 3)
+        return wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+    except Exception:
+        pass
+    
+    js = """
+    function findEl(text) {
+        text = text.toLowerCase();
+        for (let el of document.querySelectorAll('button, a, input, select, textarea, [role="button"]')) {
+            if (el.innerText && el.innerText.toLowerCase().includes(text)) return el;
+            if (el.placeholder && el.placeholder.toLowerCase().includes(text)) return el;
+            if (el.getAttribute('aria-label') && el.getAttribute('aria-label').toLowerCase().includes(text)) return el;
+            if (el.value && typeof el.value === 'string' && el.value.toLowerCase().includes(text)) return el;
+        }
+        for (let el of document.querySelectorAll('*')) {
+            if (el.innerText && el.innerText.trim().toLowerCase() === text && el.children.length === 0) return el;
+        }
+        return null;
+    }
+    return findEl(arguments[0]);
+    """
+    el = driver.execute_script(js, selector)
+    if el:
+        return el
+    raise Exception(f"Could not find element matching CSS or text: '{selector}'")
+
+
 def _do_click(selector: str, session_name: str = "") -> str:
     driver = _get_driver(session_name)
-    wait = WebDriverWait(driver, 10)
-    el = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+    el = _find_element_fuzzy(driver, selector)
+    
+    # Scroll into view and click
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'instant'});", el)
+    time.sleep(0.5)
+    
     tag = el.tag_name
     text = el.text[:100] if el.text else el.get_attribute("value") or ""
-    el.click()
+    
+    try:
+        el.click()
+    except Exception:
+        # Fallback to JS click if obscured
+        driver.execute_script("arguments[0].click();", el)
+        
+    _wait_for_page(driver)
     time.sleep(1)
+    
     title = driver.title or ""
     current = driver.current_url
     return f"Clicked: <{tag}> '{text}'\nNow at: {current} - {title}"
@@ -409,25 +461,44 @@ def _do_click(selector: str, session_name: str = "") -> str:
 
 def _do_type(selector: str, text: str, submit: bool = False, session_name: str = "") -> str:
     driver = _get_driver(session_name)
-    wait = WebDriverWait(driver, 10)
-    el = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+    el = _find_element_fuzzy(driver, selector)
+    
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'instant'});", el)
+    time.sleep(0.5)
+    
     el.clear()
     el.send_keys(text)
     if submit:
         el.send_keys(Keys.RETURN)
+        _wait_for_page(driver)
         time.sleep(2)
-    return f"Typed '{text}' into {selector}" + (" and submitted" if submit else "")
+    return f"Typed '{text}' into '{selector}'" + (" and submitted" if submit else "")
 
 
 def _do_get_text(selector: str = "", session_name: str = "") -> str:
     driver = _get_driver(session_name)
     if selector:
-        wait = WebDriverWait(driver, 10)
-        el = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-        text = el.text
+        el = _find_element_fuzzy(driver, selector)
+        html = el.get_attribute("outerHTML")
     else:
-        body = driver.find_element(By.TAG_NAME, "body")
-        text = body.text
+        html = driver.page_source
+        
+    try:
+        import markdownify
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup(["script", "style", "noscript", "svg"]):
+            tag.decompose()
+        text = markdownify.markdownify(str(soup), heading_style="ATX")
+        text = re.sub(r'\n{3,}', '\n\n', text).strip()
+    except Exception:
+        if selector:
+            el = _find_element_fuzzy(driver, selector)
+            text = el.text
+        else:
+            body = driver.find_element(By.TAG_NAME, "body")
+            text = body.text
+            
     current = driver.current_url
     title = driver.title or ""
     return f"Page: {current} - {title}\n---\n{_truncate(text)}"
