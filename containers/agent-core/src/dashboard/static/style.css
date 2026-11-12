@@ -14,13 +14,13 @@
   --a: 90.69% 0.1 95;
   --af: 82.89% 0.16 86.85;
   --ac: 17.02% 0.02 67.56;
-  --n: 22% 0.01 67;
-  --nf: 27% 0.012 67;
-  --nc: 93% 0.005 67;
-  --b1: 15% 0.006 67;
-  --b2: 11% 0.004 67;
-  --b3: 20% 0.01 67;
-  --bc: 93% 0.005 67;
+  --n: 4% 0.005 67;
+  --nf: 6% 0.008 67;
+  --nc: 85% 0.005 67;
+  --b1: 0% 0 0;
+  --b2: 2% 0.002 67;
+  --b3: 5% 0.005 67;
+  --bc: 85% 0.005 67;
   --su: 72.3% 0.191 149.58;
   --suc: 17% 0.02 150;
   --wa: 82.89% 0.16 86.85;
@@ -1226,3 +1226,385 @@ body:not([data-wasp-mode="error"]) main .card:not(.wasp-breathing) {
 
 /* ---- Mini-brain canvas DPI display size (set via CSS, not JS style mutation) ---- */
 #brain-mini { width: 64px; height: 64px; }
+
+/* ============================================
+   Grok-Style Agent Mesh & Cockpit System
+   ============================================ */
+.grok-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 6rem);
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Hero Omni-Input Bar */
+.grok-input-wrapper {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 40;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.grok-input-card {
+  background: rgba(18, 18, 22, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.grok-input-card:focus-within {
+  border-color: rgba(245, 197, 66, 0.65);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 197, 66, 0.25);
+}
+
+.grok-mode-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 12, 0.5);
+  font-size: 0.78rem;
+}
+
+.grok-mode-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.grok-mode-chip {
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: #a1a1aa;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  user-select: none;
+  font-size: 0.75rem;
+}
+
+.grok-mode-chip:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.grok-mode-chip.active {
+  background: rgba(245, 197, 66, 0.12);
+  color: #f5c542;
+  border-color: rgba(245, 197, 66, 0.3);
+}
+
+.grok-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #f4f4f5;
+  padding: 0.75rem 1rem 0.5rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.grok-textarea::placeholder {
+  color: #71717a;
+}
+
+.grok-action-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.85rem 0.6rem 0.85rem;
+}
+
+/* Agent Mesh Visualizer Card */
+.mesh-status-bar {
+  background: rgba(18, 18, 22, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.mesh-progress-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  flex-grow: 1;
+}
+
+.mesh-progress-fill-done {
+  background: #10b981;
+  transition: width 0.3s ease;
+}
+
+.mesh-progress-fill-active {
+  background: #f5c542;
+  transition: width 0.3s ease;
+}
+
+.mesh-progress-fill-fail {
+  background: #ef4444;
+  transition: width 0.3s ease;
+}
+
+.mesh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mesh-bot-card {
+  background: rgba(24, 24, 27, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.mesh-bot-card.running {
+  border-color: rgba(245, 197, 66, 0.5);
+  background: rgba(245, 197, 66, 0.05);
+}
+
+.mesh-bot-card.verified {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* Thinking & Trace Accordion */
+.thought-drawer {
+  background: rgba(15, 15, 18, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.65rem;
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+
+.thought-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  user-select: none;
+}
+
+.thought-summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #e4e4e7;
+}
+
+.thought-content {
+  padding: 0.6rem 0.85rem;
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #d4d4d8;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.35);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Human In The Loop Approval Card */
+.approval-card {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(20, 20, 24, 0.9) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+}
+/* ============================================
+   Grok Cockpit Capabilities Drawer & Tabs
+   ============================================ */
+.cockpit-caps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.cockpit-cap-card {
+  background: rgba(22, 22, 26, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cockpit-cap-card:hover {
+  background: rgba(30, 30, 36, 0.85);
+  border-color: rgba(245, 197, 66, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.cockpit-cap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cockpit-cap-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #f4f4f5;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cockpit-cap-badge {
+  font-size: 0.6rem;
+  font-family: monospace;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #a1a1aa;
+}
+
+.cockpit-cap-desc {
+  font-size: 0.68rem;
+  color: #71717a;
+  line-height: 1.35;
+}
+
+.cockpit-cap-action {
+  font-size: 0.64rem;
+  font-family: monospace;
+  color: #f5c542;
+  opacity: 0.8;
+  margin-top: 0.15rem;
+}
+
+
+/* ==========================================================================
+   Living UI System — Active Breathing vs Grayscale Locked
+   ========================================================================== */
+
+@keyframes wasp-glow-emerald {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.45), 0 2px 8px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(16, 185, 129, 0.65), 0 0 0 1.5px rgba(16, 185, 129, 0.95), 0 4px 20px rgba(16, 185, 129, 0.3);
+  }
+}
+
+@keyframes wasp-pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.008); }
+}
+
+@keyframes wasp-radar-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0.2; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Active & Living Cards (Breathing highlighted state) */
+.wasp-breathing-active,
+.intg-card-active,
+.agent-card-active,
+.employee-card-mesh.mesh-active {
+  border-color: #10B981 !important;
+  animation: wasp-glow-emerald 3.2s ease-in-out infinite, wasp-pulse-subtle 3.2s ease-in-out infinite !important;
+  position: relative;
+  z-index: 2;
+  filter: none !important;
+  opacity: 1 !important;
+  background-color: rgba(16, 185, 129, 0.04) !important;
+}
+
+/* Grayscale Locked / Inactive / Idle Cards */
+.wasp-locked,
+.intg-card-locked,
+.agent-card-idle,
+.employee-card-mesh.mesh-idle {
+  filter: grayscale(1) opacity(0.48) contrast(0.85) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  user-select: none;
+}
+
+.wasp-locked:hover,
+.intg-card-locked:hover,
+.agent-card-idle:hover,
+.employee-card-mesh.mesh-idle:hover {
+  filter: grayscale(0.4) opacity(0.85) contrast(0.95) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Status Badges */
+.lock-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-size: 8.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.active-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  font-size: 8.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  padding: 1.5px 6.5px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+  white-space: nowrap;
+}
+
+.connected-active-glow {
+  box-shadow: 0 0 16px 2px rgba(16, 185, 129, 0.35);
+  animation: wasp-glow-emerald 3.2s ease-in-out infinite;
+}

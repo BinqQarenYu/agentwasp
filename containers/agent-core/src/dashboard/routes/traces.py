@@ -20,7 +20,8 @@ from ...config import settings
 
 router = APIRouter()
 logger = structlog.get_logger()
-templates = Jinja2Templates(directory="src/dashboard/templates")
+from pathlib import Path
+templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
 
 @router.get("/", response_class=HTMLResponse)

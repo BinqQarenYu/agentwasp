@@ -192,6 +192,7 @@ async def chat_stream(request: Request):
 
     text = (body.get("text") or "").strip()
     attachments = body.get("attachments") or []
+    execution_mode = body.get("execution_mode", "fast")
 
     if not text and not attachments:
         return JSONResponse({"ok": False, "error": "Message cannot be empty"}, status_code=400)
@@ -295,6 +296,7 @@ async def chat_stream(request: Request):
                 full_text,
                 progress_callback=_enriched_cb,
                 image_path=image_path,
+                execution_mode=execution_mode,
             )
             response = _rewrite_paths(response)
             context: dict = {}

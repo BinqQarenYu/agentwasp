@@ -83,7 +83,8 @@
 {% else %}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="agents-grid">
 {% for a in agents %}
-<div class="card bg-base-100 shadow-sm wasp-accent agent-card" data-agent-id="{{ a.id }}">
+{% set is_active = (a.status == 'running') %}
+<div class="card bg-base-100 shadow-sm wasp-accent agent-card {% if is_active %}agent-card-active wasp-breathing-active border border-emerald-500/80{% else %}agent-card-idle wasp-locked border border-base-300/30{% endif %}" data-agent-id="{{ a.id }}" data-status="{{ a.status }}">
     <div class="card-body p-5">
 
         <!-- Row 1: status dot + name + link -->
@@ -101,13 +102,25 @@
                     {% endif %}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>
+                        {% if a.metadata and a.metadata.dept %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-primary/20 text-primary/80 bg-primary/5">{{ a.metadata.dept }}</span>{% endif %}
+                        {% if a.metadata and a.metadata.mesh_role %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-base-300 text-base-content/60 bg-base-200/60">Mesh: {{ a.metadata.mesh_role }}</span>{% endif %}
+                        {% if a.depth == 0 %}
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-primary/40 text-primary bg-primary/10 font-mono">Depth 0 (Root)</span>
+                        {% else %}
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-accent/40 text-accent bg-accent/10 font-mono">Depth 1 (Subagent)</span>
+                        {% endif %}
+                        {% if a.is_ephemeral %}
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-warning/40 text-warning bg-warning/10 font-mono">Ephemeral (TTL: {{ a.task_timeout_seconds }}s)</span>
+                        {% endif %}
+                    </div>
                     {% if a.description %}
                     <p class="text-xs text-base-content/50 mt-0.5 line-clamp-1">{{ a.description }}</p>
                     {% endif %}
                 </div>
             </div>
-            <a href="/agents/{{ a.id }}" class="btn btn-ghost btn-xs flex-shrink-0 text-base-content/30 hover:text-primary" title="Detail">
+            <a href="/agents/{{ a.id }}" class="btn btn-ghost btn-xs flex-shrink-0 text-base-content/30 hover:text-primary" title="Detail" aria-label="View agent details">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
@@ -117,13 +130,13 @@
         <!-- Row 2: badges -->
         <div class="flex flex-wrap items-center gap-1 mt-1.5 agent-badges">
             {% if a.status == 'running' %}
-            <span class="pill pill-sm pill-success"><span class="pill-pulse"></span>running</span>
+            <span class="active-live-tag agent-live-badge"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE · WORKING</span>
             {% elif a.status == 'paused' %}
-            <span class="pill pill-sm pill-warning">paused</span>
+            <span class="lock-tag text-warning border-warning/30 agent-live-badge">PAUSED</span>
             {% elif a.status == 'archived' %}
-            <span class="pill pill-sm pill-neutral">archived</span>
+            <span class="lock-tag agent-live-badge"><svg class="h-2.5 w-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>LOCKED</span>
             {% else %}
-            <span class="pill pill-sm pill-ghost">idle</span>
+            <span class="lock-tag agent-live-badge"><span class="w-1.5 h-1.5 rounded-full bg-base-content/25"></span>IDLE / STANDBY</span>
             {% endif %}
 
             {% if a.autonomy_mode == 'full' %}
@@ -205,25 +218,40 @@
             </div>
             <div class="flex items-center gap-1">
                 {% if a.status != 'archived' %}
+                {% if a.depth == 0 %}
+                <button class="btn btn-xs btn-outline btn-accent gap-1 btn-spawn-subagent" data-action="agents:openSpawnSubagent" data-id="{{ a.id }}" data-name="{{ a.name|e }}" data-max="{{ a.max_subagents }}" data-current="{{ a.spawned_subagents|length }}" title="Spawn Depth-1 Subagent">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Spawn
+                </button>
+                {% elif a.depth == 1 %}
+                <button class="btn btn-xs btn-outline btn-warning gap-1 btn-reap-subagent" data-action="agents:confirmReapSubagent" data-id="{{ a.id }}" data-parent-id="{{ a.parent_agent_id or '' }}" data-name="{{ a.name|e }}" title="Reap Subagent">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                    </svg>
+                    Reap
+                </button>
+                {% endif %}
                 {% if a.status in ['paused', 'idle'] %}
-                <button class="btn btn-xs btn-ghost text-success" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="resume" title="Resume">
+                <button class="btn btn-xs btn-ghost text-success" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="resume" title="Resume" aria-label="Resume agent">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
                     </svg>
                 </button>
                 {% else %}
-                <button class="btn btn-xs btn-ghost text-warning" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="pause" title="Pause">
+                <button class="btn btn-xs btn-ghost text-warning" data-action="agents:agentAction" data-id="{{ a.id }}" data-op="pause" title="Pause" aria-label="Pause agent">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
                     </svg>
                 </button>
                 {% endif %}
-                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-warning" data-action="agents:confirmArchive" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Archive">
+                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-warning" data-action="agents:confirmArchive" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Archive" aria-label="Archive agent">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
                     </svg>
                 </button>
-                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-error" data-action="agents:confirmDeleteAgent" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Delete permanently">
+                <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-error" data-action="agents:confirmDeleteAgent" data-id="{{ a.id }}" data-name="{{ a.name|e }}" title="Delete permanently" aria-label="Delete agent permanently">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
@@ -332,6 +360,77 @@
     <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
 </dialog>
 
+<!-- ── Spawn Subagent Modal ── -->
+<dialog id="modal-spawn-subagent" class="modal">
+    <div class="modal-box w-11/12 max-w-lg bg-base-200 border border-base-300">
+        <h3 class="font-bold text-lg font-mono flex items-center gap-2 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Spawn Ephemeral Subagent (Depth-1)
+        </h3>
+        <p class="text-xs text-base-content/60 mb-4 font-mono">
+            Parent Agent: <strong id="spawn-parent-name" class="text-primary font-bold"></strong>
+            <span id="spawn-parent-capacity" class="ml-2 badge badge-xs badge-outline"></span>
+        </p>
+
+        <div class="space-y-3 font-mono text-xs">
+            <input type="hidden" id="spawn-parent-id" />
+            <div class="form-control">
+                <label class="label"><span class="label-text text-xs">Subagent Role <span class="text-error">*</span></span></label>
+                <input type="text" id="spawn-role" class="input input-bordered input-sm font-mono text-xs" placeholder="e.g., Security Auditor, AST Graph Optimizer, Route Verifier" />
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text text-xs">Task Objective <span class="text-error">*</span></span></label>
+                <textarea id="spawn-objective" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="3" placeholder="Provide specific, bounded instructions for this ephemeral worker..."></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text text-xs">TTL / Timeout (seconds)</span></label>
+                    <input type="number" id="spawn-timeout" class="input input-bordered input-sm font-mono text-xs" value="180" min="10" max="1800" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text text-xs">Token Budget</span></label>
+                    <input type="number" id="spawn-budget" class="input input-bordered input-sm font-mono text-xs" value="2000" min="500" max="8000" />
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text text-xs">Model Provider</span></label>
+                    <input type="text" id="spawn-provider" class="input input-bordered input-sm font-mono text-xs" placeholder="Default: parent model" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text text-xs">Model Name</span></label>
+                    <input type="text" id="spawn-model" class="input input-bordered input-sm font-mono text-xs" placeholder="e.g. llama3.2:latest" />
+                </div>
+            </div>
+            <div class="p-2 bg-base-300 rounded border border-base-content/10 text-[11px] text-base-content/70">
+                <strong>Depth-1 Guardrail:</strong> Subagents are strictly bounded. They cannot spawn child agents and are automatically archived upon task completion or timeout.
+            </div>
+        </div>
+
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-spawn-subagent">Cancel</button>
+            <button id="btn-exec-spawn-subagent" class="btn btn-primary btn-sm" data-action="agents:execSpawnSubagent">Spawn Subagent</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ── Reap Subagent Modal ── -->
+<dialog id="modal-reap-subagent" class="modal">
+    <div class="modal-box max-w-sm bg-base-200 border border-base-300">
+        <h3 class="font-bold text-base text-warning mb-2 font-mono">Reap Ephemeral Subagent</h3>
+        <p class="text-sm text-base-content/70">Reap and archive <strong id="reap-subagent-name"></strong>?</p>
+        <p class="text-xs text-base-content/45 mt-1 font-mono">This terminates the subagent's active task, cleans up its memory namespace, and removes it from the parent agent's active subagent allocation.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-ghost btn-sm" data-dialog-close="modal-reap-subagent">Cancel</button>
+            <button id="btn-exec-reap-subagent" class="btn btn-warning btn-sm" data-action="agents:execReapSubagent">Reap Subagent</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -385,6 +484,30 @@
         agents.forEach(function(a) {
             var card = document.querySelector('.agent-card[data-agent-id="' + a.id + '"]');
             if (!card) return;
+            var isRunning = (a.status === 'running');
+            if (isRunning) {
+                card.classList.remove('agent-card-idle', 'wasp-locked', 'border-base-300/30');
+                card.classList.add('agent-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+            } else {
+                card.classList.remove('agent-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+                card.classList.add('agent-card-idle', 'wasp-locked', 'border-base-300/30');
+            }
+            var liveBadge = card.querySelector('.agent-live-badge');
+            if (liveBadge) {
+                if (isRunning) {
+                    liveBadge.className = 'active-live-tag agent-live-badge';
+                    liveBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE · WORKING';
+                } else if (a.status === 'paused') {
+                    liveBadge.className = 'lock-tag text-warning border-warning/30 agent-live-badge';
+                    liveBadge.innerHTML = 'PAUSED';
+                } else if (a.status === 'archived') {
+                    liveBadge.className = 'lock-tag agent-live-badge';
+                    liveBadge.innerHTML = '<svg class="h-2.5 w-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>LOCKED';
+                } else {
+                    liveBadge.className = 'lock-tag agent-live-badge';
+                    liveBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-base-content/25"></span>IDLE / STANDBY';
+                }
+            }
             // status dot
             var dotWrap = card.querySelector('.agent-dot-wrap');
             if (dotWrap) {
@@ -413,6 +536,27 @@
             })
             .catch(function() {});
     }
+
+
+    window.onWorkflowActive = function(data) {
+        var card = document.querySelector('.agent-card[data-agent-id="agent-inbox-triage"]') || document.querySelector('.agent-card');
+        if (card) {
+            card.classList.remove('agent-card-idle', 'wasp-locked', 'border-base-300/30');
+            card.classList.add('agent-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+            var liveBadge = card.querySelector('.agent-live-badge');
+            if (liveBadge) {
+                liveBadge.className = 'active-live-tag agent-live-badge';
+                liveBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE · ' + (data.current_step ? data.current_step.substring(0, 24) + '...' : 'WORKING');
+            }
+        }
+    };
+    window.onWorkflowIdle = function() {
+        var card = document.querySelector('.agent-card[data-agent-id="agent-inbox-triage"]');
+        if (card && card.dataset.status !== 'running') {
+            card.classList.remove('agent-card-active', 'wasp-breathing-active', 'border-emerald-500/80');
+            card.classList.add('agent-card-idle', 'wasp-locked', 'border-base-300/30');
+        }
+    };
 
     setInterval(refreshNow, 10000);
 
@@ -498,6 +642,85 @@
             showToast('Request failed', 'error');
         }
     };
+    // ── Subagent Genesis actions ─────────────────────────────────────────────
+    window.openSpawnSubagent = function(agentId, name, maxSub, currentSub) {
+        document.getElementById('spawn-parent-id').value = agentId;
+        document.getElementById('spawn-parent-name').textContent = name;
+        var capEl = document.getElementById('spawn-parent-capacity');
+        if (capEl) capEl.textContent = currentSub + ' / ' + maxSub + ' Active Subagents';
+        document.getElementById('spawn-role').value = '';
+        document.getElementById('spawn-objective').value = '';
+        document.getElementById('spawn-timeout').value = '180';
+        document.getElementById('spawn-budget').value = '2000';
+        document.getElementById('spawn-provider').value = '';
+        document.getElementById('spawn-model').value = '';
+        document.getElementById('modal-spawn-subagent').showModal();
+    };
+
+    window.execSpawnSubagent = async function() {
+        var parentId = document.getElementById('spawn-parent-id').value;
+        var role = document.getElementById('spawn-role').value.trim();
+        var objective = document.getElementById('spawn-objective').value.trim();
+        if (!role) { showToast('Subagent role is required', 'error'); return; }
+        if (!objective) { showToast('Task objective is required', 'error'); return; }
+
+        var body = {
+            role: role,
+            task_objective: objective,
+            timeout_seconds: parseInt(document.getElementById('spawn-timeout').value || '180', 10),
+            token_budget: parseInt(document.getElementById('spawn-budget').value || '2000', 10),
+            model_provider: document.getElementById('spawn-provider').value.trim(),
+            model_name: document.getElementById('spawn-model').value.trim()
+        };
+
+        var btn = document.getElementById('btn-exec-spawn-subagent');
+        if (btn) btn.disabled = true;
+
+        try {
+            var data = await apiCall('/agents/api/' + parentId + '/spawn_subagent', body);
+            if (btn) btn.disabled = false;
+            if (data.ok) {
+                showToast('Subagent spawned: ' + (data.subagent ? data.subagent.name : 'Success'), 'success');
+                document.getElementById('modal-spawn-subagent').close();
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Spawn failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+        } catch(e) {
+            if (btn) btn.disabled = false;
+            showToast('Request failed: ' + e.message, 'error');
+        }
+    };
+
+    var _pendingReapId = null;
+    var _pendingReapParentId = null;
+    window.confirmReapSubagent = function(subagentId, parentId, name) {
+        _pendingReapId = subagentId;
+        _pendingReapParentId = parentId;
+        document.getElementById('reap-subagent-name').textContent = name || subagentId;
+        document.getElementById('modal-reap-subagent').showModal();
+    };
+
+    window.execReapSubagent = async function() {
+        if (!_pendingReapId) return;
+        document.getElementById('modal-reap-subagent').close();
+        var targetParent = _pendingReapParentId || _pendingReapId;
+        try {
+            var data = await apiCall('/agents/api/' + targetParent + '/reap_subagent', {
+                subagent_id: _pendingReapId,
+                reason: 'operator_reap'
+            });
+            if (data.ok) {
+                showToast('Subagent reaped and archived', 'success');
+                setTimeout(function() { location.reload(); }, 700);
+            } else {
+                showToast('Reap failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+        } catch(e) {
+            showToast('Request failed: ' + e.message, 'error');
+        }
+    };
+
 registerWaspActions('agents', {
     'agentAction':        function(el) { agentAction(el.dataset.id, el.dataset.op); },
     'confirmArchive':     function(el) { confirmArchive(el.dataset.id, el.dataset.name || ''); },
@@ -505,6 +728,10 @@ registerWaspActions('agents', {
     'createAgent':        function()   { createAgent(); },
     'execArchiveAgent':   function()   { execArchiveAgent(); },
     'execDeleteAgent':    function()   { execDeleteAgent(); },
+    'openSpawnSubagent':  function(el) { openSpawnSubagent(el.dataset.id, el.dataset.name || '', el.dataset.max || '3', el.dataset.current || '0'); },
+    'execSpawnSubagent':  function()   { execSpawnSubagent(); },
+    'confirmReapSubagent':function(el) { confirmReapSubagent(el.dataset.id, el.dataset.parentId || '', el.dataset.name || ''); },
+    'execReapSubagent':   function()   { execReapSubagent(); },
 });
 })();
 </script>

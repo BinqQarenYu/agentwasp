@@ -279,17 +279,30 @@ async def scheduler_status(request: Request):
     return JSONResponse({"jobs": jobs, "total": total, "running": running, "paused": paused, "failed": failed})
 
 
-@router.post("/trigger")
+@router.api_route("/trigger", methods=["GET", "POST"])
 async def trigger_job(request: Request):
     import urllib.parse
-    form = await request.form()
-    job_name = str(form.get("job", ""))
-    from_overview = str(form.get("from_overview", "")) == "1"
-    ajax = request.headers.get("x-requested-with") == "xmlhttprequest"
+    job_name = ""
+    from_overview = False
+
+    if request.method == "GET":
+        job_name = str(request.query_params.get("job", "")).strip()
+        from_overview = str(request.query_params.get("from_overview", "")).strip() == "1"
+    else:
+        try:
+            form = await request.form()
+            job_name = str(form.get("job", "")).strip()
+            from_overview = str(form.get("from_overview", "")).strip() == "1"
+        except Exception:
+            pass
+
+    if not job_name:
+        job_name = "health_check"
+
+    ajax = request.headers.get("x-requested-with") == "xmlhttprequest" or request.headers.get("accept", "").startswith("application/json")
 
     result = ""
-    if job_name and request.app.state.scheduler:
-        # Manual trigger of Proactive bypasses quiet-hours and daily-limit
+    if job_name and getattr(request.app.state, "scheduler", None):
         if job_name == "proactive":
             try:
                 import redis.asyncio as aioredis
@@ -298,11 +311,18 @@ async def trigger_job(request: Request):
                 await _r.aclose()
             except Exception:
                 pass
-        result = await request.app.state.scheduler.trigger(job_name)
+        try:
+            res = request.app.state.scheduler.trigger(job_name)
+            if hasattr(res, "__await__"):
+                result = await res
+            else:
+                result = str(res)
+        except Exception as e:
+            result = f"Error: {e}"
 
-    if ajax:
-        ok = not result.startswith("Error")
-        return JSONResponse({"ok": ok, "result": result})
+    if ajax or request.method == "GET":
+        ok = not (result and result.startswith("Error"))
+        return JSONResponse({"ok": ok, "job": job_name, "result": result or f"Job '{job_name}' triggered successfully"})
 
     if from_overview or job_name == "digest":
         ok_flag = "0" if result.startswith("Error") else "1"

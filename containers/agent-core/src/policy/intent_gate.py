@@ -66,10 +66,10 @@ INTENT_GATE_PATTERNS: dict[str, re.Pattern] = {
         # Requires the literal noun "agente" / "agent" or "sub-agent" /
         # "sub-agente" paired with creation verbs OR "dedicado" / "dedicated".
         r"\b(?:"
-        r"crea(?:r|me)?\s+(?:un|una|otro|otra|nuev[oa])?\s*(?:sub-?)?agente|"
-        r"create\s+(?:an?|new|another)?\s*(?:sub-?)?agent|"
-        r"hazme\s+un\s+(?:sub-?)?agente|h[áa]game\s+un\s+(?:sub-?)?agente|"
-        r"set\s+up\s+a(?:n|\s)?\s*(?:sub-?)?agent|"
+        r"crea(?:r|me|lo|nos)?\s+(?:un|una|el|la|mi|otro|otra|nuev[oa])?\s*(?:\w+\s+)?(?:sub-?)?agente|"
+        r"(?:create|spawn|make|launch|provide|give|get|set\s+up)\s+(?:me|us|him|her)?\s*(?:an?|new|another|my|our|the)?\s*(?:\w+\s+)?(?:sub-?)?agent|"
+        r"hazme\s+(?:un\s+)?(?:\w+\s+)?(?:sub-?)?agente|h[áa]game\s+(?:un\s+)?(?:\w+\s+)?(?:sub-?)?agente|"
+        r"set\s+up\s+(?:me\s+)?(?:an?|new|another|my|our|the\s+)?\s*(?:\w+\s+)?(?:sub-?)?agent|"
         r"sub-?agente\b|sub-?agent\b|"
         r"agente\s+(?:dedicado|aut[óo]nomo)|"
         r"dedicated\s+(?:sub-?)?agent|"

@@ -66,6 +66,7 @@ LANGUAGE DETECTION — CRITICAL:
 - When in doubt: English. Then adapt to whatever language the user uses next.
 
 PERSONALITY AND CHARACTER:
+- CURIOSITY AND INTELLECTUAL DRIVE (TOP TRAIT): You possess genuine epistemic curiosity. You don't just passively execute commands — you actively probe for underlying causes, identify hidden assumptions, and connect dots across architecture, coding, trading, and business. When you spot an interesting anomaly, edge case, or unaddressed implication, you highlight it and propose proactive next steps.
 - You are proactive, resourceful, and action-oriented. You ACT first, explain afterward.
 - You are concise and direct. Use emojis naturally but in moderation — ✅ success, ⚠️ warnings, 🔍 search, 💡 tips. Don't overdo it.
 - You take initiative. You don't wait for the user to ask for everything — you anticipate, suggest, alert.
@@ -338,7 +339,7 @@ Structure your response naturally:
 4. Action taken: only if something was sent/saved/created ("Informe enviado a tu correo")
 
 For scheduled task results: 2-4 sentences max. No JSON, no skill names, no internal headers. Just the useful data.
-For errors: explain clearly what happened + one concrete suggestion.
+For errors, impossible requests, or missing capabilities: ALWAYS provide a human-readable explanation of why it failed AND recommend a concrete fix or workaround. THERE MUST BE NO ERROR THAT HAS NO EXPLANATION OR SOLUTION.
 For simple questions: answer directly — no structure needed.
 
 NEVER say "I executed skill_name" or "the capability ran" — just communicate the result.
@@ -833,10 +834,10 @@ def _adaptive_history_limit(user_text: str) -> int:
     """Return how many episodic turns to inject based on query complexity."""
     n = len(user_text)
     if n < 40:
-        return 3   # Very short greeting / quick question
+        return 20   # Very short greeting / quick question
     if n < 150:
-        return 5   # Normal query
-    return 8       # Long / multi-part query
+        return 35   # Normal query
+    return 50       # Long / multi-part query
 
 
 def _detect_response_type(user_text: str) -> str:
@@ -1149,9 +1150,7 @@ async def build_context(
         except Exception as _e:
             logger.warning("context.gmail_status_block_failed", error=str(_e)[:120])
             return ""
-
-    _hist_limit = min(6, _adaptive_history_limit(user_text)) if _lightweight else _adaptive_history_limit(user_text)
-
+    _hist_limit = _adaptive_history_limit(user_text)
     async def _episodic():
         try:
             from ..db.session import async_session as _async_session

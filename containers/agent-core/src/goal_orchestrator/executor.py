@@ -127,7 +127,7 @@ class GoalStepExecutor:
 
         # ── Safety guard: step limit (hard limit on goal) ──────────────
         if goal.is_steps_exceeded():
-            return self._fail_goal(
+            return await self._fail_goal(
                 goal,
                 now_iso,
                 f"Step limit reached ({goal.max_steps})",
@@ -142,7 +142,7 @@ class GoalStepExecutor:
 
         # ── Safety guard: runtime limit ────────────────────────────────
         if goal.is_runtime_exceeded():
-            return self._fail_goal(
+            return await self._fail_goal(
                 goal,
                 now_iso,
                 f"Runtime limit exceeded ({goal.max_runtime_seconds}s)",
@@ -156,7 +156,7 @@ class GoalStepExecutor:
             if goal.task_graph.has_permanently_failed():
                 failed = goal.task_graph.get_failed_tasks()
                 err = f"Tasks failed permanently: {', '.join(t.id for t in failed)}"
-                return self._fail_goal(goal, now_iso, err, "goal_failed")
+                return await self._fail_goal(goal, now_iso, err, "goal_failed")
 
             if goal.task_graph.is_complete():
                 goal.state = GoalState.COMPLETED
@@ -538,12 +538,13 @@ class GoalStepExecutor:
     # Error state helpers
     # ------------------------------------------------------------------
 
-    def _fail_goal(
+    async def _fail_goal(
         self, goal: Goal, now_iso: str, error: str, action: str
     ) -> StepResult:
+        from .orchestrator import _diagnose_error
         goal.state = GoalState.FAILED
         goal.completed_at = now_iso
-        goal.error = error
+        goal.error = await _diagnose_error(error, goal.objective)
         event = GoalEvent(
             event_name="goal.failed",
             goal_id=goal.id,

@@ -34,7 +34,11 @@ async def memory_list(
 
     memory = request.app.state.memory
     per_page = 20
-    offset = (page - 1) * per_page
+    try:
+        page_val = int(page)
+    except Exception:
+        page_val = 1
+    offset = (page_val - 1) * per_page
 
     # ── Counts (all from DB for coherence with search results) ────────────
     layer_counts = {}

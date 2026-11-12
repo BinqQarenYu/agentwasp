@@ -60,8 +60,8 @@ async def save_agent(r, agent: Agent) -> None:
             )
             await session.execute(stmt)
             await session.commit()
-    except Exception:
-        logger.exception("agent_store.pg_write_error", agent_id=agent.id)
+    except Exception as _e:
+        logger.debug("agent_store.pg_write_skipped", agent_id=agent.id, error=str(_e)[:80])
 
 
 async def load_agent(r, agent_id: str) -> Agent | None:
@@ -100,9 +100,9 @@ async def delete_agent(r, agent_id: str) -> bool:
                 sql_delete(AgentRecord).where(AgentRecord.id == agent_id)
             )
             await session.commit()
-    except Exception:
-        logger.exception("agent_store.pg_delete_error", agent_id=agent_id)
-    return result > 0
+    except Exception as _e:
+        logger.debug("agent_store.pg_delete_skipped", agent_id=agent_id, error=str(_e)[:80])
+    return bool(result)
 
 
 async def list_active_agents(r) -> list[Agent]:

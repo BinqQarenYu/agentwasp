@@ -63,7 +63,9 @@ COPY --from=tailwind-builder /build/tailwind.css ./src/dashboard/static/css/tail
 RUN pip install --no-cache-dir pytest pytest-asyncio \
     && python -m pytest tests/test_policy_regressions.py --tb=short -q
 
-RUN chown -R agent:agent /app
+RUN mkdir -p /data/memory /data/logs /data/config /data/backups /data/shared /data/screenshots /data/chat-uploads /data/browser_sessions /data/skills \
+    && chown -R agent:agent /data
+
 
 USER agent
 

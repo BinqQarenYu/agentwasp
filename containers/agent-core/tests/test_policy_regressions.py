@@ -122,6 +122,29 @@ def test_agent_create_allowed_when_explicit():
     assert ok
 
 
+def test_agent_create_allowed_with_pronouns_and_missing_articles():
+    sc = FakeSkillCall(skill_name="agent_manager", arguments={"action": "create"})
+    # English with pronoun in middle and missing article
+    user1 = "Create me Agent specialized in managing my gmail read it and knows what it is"
+    ok1, _, _ = intent_gate_check(sc, user1)
+    assert ok1
+
+    # Spanish with pronoun and missing article
+    user2 = "creame agente para enviar correos"
+    ok2, _, _ = intent_gate_check(sc, user2)
+    assert ok2
+
+    # English with provide verb
+    user3 = "provide me email agent specialized in managing email"
+    ok3, _, _ = intent_gate_check(sc, user3)
+    assert ok3
+
+    # English with give verb
+    user4 = "give me agent for scraping"
+    ok4, _, _ = intent_gate_check(sc, user4)
+    assert ok4
+
+
 def test_task_create_allowed_with_recurring_keyword():
     sc = FakeSkillCall(skill_name="task_manager", arguments={"action": "create"})
     ok, _, _ = intent_gate_check(sc, "envíame el precio del bitcoin cada hora")

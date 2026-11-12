@@ -33,6 +33,9 @@ from .google_calendar import GoogleCalendarSkill
 from .render_report import RenderReportSkill
 from .extract_fields import ExtractFieldsSkill
 from .deep_scraper import DeepScraperSkill
+from .google_notebooklm import GoogleNotebookLMSkill
+from .graphify_skill import GraphifySkill
+
 
 # Capability level declarations for all builtin skills
 _CAPABILITY_MAP: dict[str, CapabilityLevel] = {
@@ -42,6 +45,7 @@ _CAPABILITY_MAP: dict[str, CapabilityLevel] = {
     "get_weather":    CapabilityLevel.SAFE,
     "translate":      CapabilityLevel.SAFE,
     "system_info":    CapabilityLevel.SAFE,
+    "graphify":       CapabilityLevel.SAFE,
     # MONITORED — read-only external access
     "web_search":     CapabilityLevel.MONITORED,
     "fetch_url":      CapabilityLevel.MONITORED,
@@ -78,7 +82,9 @@ _CAPABILITY_MAP: dict[str, CapabilityLevel] = {
     "delete_reminder":  CapabilityLevel.CONTROLLED,
     "meta_orchestrate": CapabilityLevel.CONTROLLED,
     "deep_scraper":     CapabilityLevel.MONITORED,
+    "google_notebooklm": CapabilityLevel.MONITORED,
 }
+
 
 
 def register_builtin_skills(registry: SkillRegistry, memory: MemoryManager, settings=None, vault=None):
@@ -111,6 +117,7 @@ def register_builtin_skills(registry: SkillRegistry, memory: MemoryManager, sett
     registry.register(ShellSkill())
     registry.register(PythonExecSkill())
     registry.register(HttpRequestSkill())
+    registry.register(GraphifySkill())
     registry.register(BrowserSkill())
     registry.register(BrowserScreenshotFullPageSkill())
     registry.register(BrowserDeepScrapeSkill())
@@ -170,6 +177,10 @@ def register_builtin_skills(registry: SkillRegistry, memory: MemoryManager, sett
 
     # Deep scraper (Playwright/Crawlee containerized — YouTube transcripts + JS-heavy pages)
     registry.register(DeepScraperSkill())
+
+    # Google NotebookLM (Synthesis + Web Interface)
+    registry.register(GoogleNotebookLMSkill())
+
 
     # Load persisted Python skills from /data/skills/*/skill.py
     try:

@@ -169,6 +169,12 @@ Saved at `/data/skills/<slug>/skill.py`. `load_all_python_skills()` at startup s
 
 Custom skills run in-process and inherit the agent's permissions. Review carefully before enabling.
 
+## Bundled prompt skills
+
+WASP also bundles prompt-only guidance using the OpenClaw `SKILL.md` format. The engineering TDD skill is included with the application and injected into the agent context alongside user-installed prompt skills. It guides requested code changes through a focused failing-test/implementation loop; it is not an executable tool. A user-installed skill with the same slug overrides the bundled copy, and a `.disabled` marker for that slug suppresses it.
+
+TDD was selected from the reviewed engineering workflows because it complements WASP's existing coding and test tools without assuming a project-specific glossary/ADR process or parallel review agents. The guidance is adapted from [Matt Pocock's TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd) under the MIT license; the bundled skill directory contains its license notice.
+
 ## Adding a new built-in skill
 
 1. Create `src/skills/builtin/<your_skill>.py` implementing `SkillBase`.
