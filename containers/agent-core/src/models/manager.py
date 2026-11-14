@@ -465,10 +465,12 @@ class ModelManager:
 
     async def set_default_model(self, model_name: str) -> str:
         """Switch to model and persist it as the default across restarts."""
+        previous_provider = self.active_provider
+        previous_model = self.active_model
+        previous_default = self.default_model
         result = await self.switch_model(model_name)
         if "not found" in result:
             return result
-        self.default_model = model_name
         if self.redis_url:
             try:
                 import redis.asyncio as aioredis
@@ -478,7 +480,12 @@ class ModelManager:
                 finally:
                     await r.aclose()
             except Exception as e:
-                logger.warning("model_manager.set_default_failed", error=str(e))
+                self.active_provider = previous_provider
+                self.active_model = previous_model
+                self.default_model = previous_default
+                logger.error("model_manager.set_default_failed", error=str(e))
+                return "Could not persist default model"
+        self.default_model = model_name
         logger.info("model_manager.default_set", model=model_name)
         return f"Default model set to {model_name}"
 

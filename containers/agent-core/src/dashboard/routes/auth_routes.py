@@ -1,5 +1,7 @@
 """Login, register, and logout routes."""
 
+import ipaddress
+import os
 from uuid import uuid4
 
 import structlog
@@ -17,6 +19,52 @@ from ...db.session import async_session
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+def _local_auto_login_enabled(request: Request) -> bool:
+    """Allow opt-in env-credential sign-in only from a loopback client and host."""
+    if os.environ.get("DASHBOARD_LOCAL_AUTO_LOGIN", "").strip().lower() not in {
+        "1", "true", "yes",
+    }:
+        return False
+    client = request.client
+    if not client:
+        return False
+    try:
+        if not ipaddress.ip_address(client.host).is_loopback:
+            return False
+        hostname = request.url.hostname
+        if hostname == "localhost":
+            return True
+        return bool(hostname and ipaddress.ip_address(hostname).is_loopback)
+    except ValueError:
+        return False
+
+
+async def _try_local_auto_login(request: Request) -> RedirectResponse | None:
+    if not _local_auto_login_enabled(request):
+        return None
+
+    username = os.environ.get("DASHBOARD_USER", "").strip()
+    password = os.environ.get("DASHBOARD_PASSWORD", "")
+    if not username or not password:
+        return None
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(AdminUser).where(AdminUser.username == username)
+        )
+        user = result.scalar_one_or_none()
+
+    if not user or not verify_password(password, user.password_hash):
+        return None
+
+    token = await create_session(request, user.id)
+    response = RedirectResponse("/overview", status_code=303)
+    response.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400)
+    logger.info("dashboard.local_auto_login")
+    await _audit("security.login_success", "local_auto_login")
+    return response
 
 
 async def _audit(event_type: str, action: str, username: str = "", error: str = ""):
@@ -38,6 +86,9 @@ async def _audit(event_type: str, action: str, username: str = "", error: str = 
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
+    auto_login = await _try_local_auto_login(request)
+    if auto_login:
+        return auto_login
     if not await admin_exists():
         return RedirectResponse("/register", status_code=303)
     csrf = await generate_csrf_token(request)

@@ -247,5 +247,14 @@ async def set_default_model(request: Request):
     if not model_name:
         return JSONResponse({"ok": False, "error": "model is required"}, status_code=400)
     result = await request.app.state.model_manager.set_default_model(model_name)
-    ok = "not found" not in result
-    return JSONResponse({"ok": ok, "model": model_name, "message": result})
+    ok = result.startswith("Default model set to ")
+    if ok:
+        status_code = 200
+    elif result == "Could not persist default model":
+        status_code = 503
+    else:
+        status_code = 404
+    return JSONResponse(
+        {"ok": ok, "model": model_name, "message": result},
+        status_code=status_code,
+    )

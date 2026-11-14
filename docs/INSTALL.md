@@ -83,6 +83,7 @@ See `.env.example` for the canonical, commented list. Highlights:
 | `DASHBOARD_SECRET` | HMAC signing key for dashboard sessions (auto-generated). |
 | `MEDIA_SIGNING_SECRET` | HMAC signing key for media URLs (auto-generated). |
 | `DASHBOARD_USER` / `DASHBOARD_PASSWORD` | Login for the dashboard. If unset on first boot, a temporary password is generated and printed to stderr. |
+| `DASHBOARD_LOCAL_AUTO_LOGIN` | Set to `true` for local development to sign in automatically using the configured dashboard credentials. Works only from a loopback client and loopback host; the configured password must still verify against the stored admin account. |
 | `TIMEZONE` | IANA timezone, e.g. `America/Santiago`. Default `UTC`. |
 | `TELEGRAM_BOT_TOKEN` | From @BotFather. Empty = bot disabled (the bridge exits cleanly). |
 | `TELEGRAM_ALLOWED_USERS` | **Required if** `TELEGRAM_BOT_TOKEN` is set. Comma-separated numeric Telegram user IDs. Empty + token set = bridge **refuses to start** (fail-closed; no public-bot mode). |
@@ -93,6 +94,8 @@ See `.env.example` for the canonical, commented list. Highlights:
 | `LOG_LEVEL` | `INFO` (default), `DEBUG`, `WARNING`. |
 | `SOVEREIGN_MODE` | `true` (default) — full skill round budget + operator prime block. |
 | `WASP_HOST_DIR` | Path on the host where WASP is installed. Used by the agent's self-repair prompts so they reference the correct rebuild directory. The installer / wizard sets this automatically. |
+
+`DASHBOARD_LOCAL_AUTO_LOGIN` is disabled unless explicitly enabled. To use it locally, configure `DASHBOARD_USER`, `DASHBOARD_PASSWORD`, and `DASHBOARD_LOCAL_AUTO_LOGIN=true` before starting the dashboard. It does not create or reset an admin account, and normal password login remains available if auto sign-in is unavailable.
 
 After editing `.env`, apply changes with `wasp restart`.
 

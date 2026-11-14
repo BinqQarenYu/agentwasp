@@ -140,7 +140,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                     <span id="hero-model-name" class="text-xl font-bold font-mono tracking-tight" data-ds="10" data-dv="color:{{ ap.color}}">{{ status.active_model or "No model active" }}</span>
                     {% if status.active_model == default_model %}
-                    <span class="text-xs px-2 py-0.5 rounded-full font-mono" data-ds="11">★ default</span>
+                    <span id="hero-default-badge" class="text-xs px-2 py-0.5 rounded-full font-mono" data-ds="11">★ default</span>
                     {% endif %}
                 </div>
                 <div id="hero-provider-desc" class="text-sm text-base-content/50 mt-0.5">{{ status.active_provider or "—" }} · {{ ap.desc }}</div>
@@ -993,16 +993,33 @@ window.handleModelToggle = function(checkbox) {
     var csrfMeta = document.querySelector('meta[name="csrf-token"]');
     var headers = {'Content-Type':'application/json','Accept':'application/json'};
     if (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;
-    fetch('/models/switch',{method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'})
+    fetch('/models/set-default',{method:'POST',headers:headers,body:JSON.stringify({model:model}),credentials:'same-origin'})
     .then(function(r){
-        if(r.ok){
+        return r.json().then(function(d){ return {response:r, data:d}; });
+    }).then(function(result){
+        if(result.response.ok && result.data.ok){
             if(myStatus) myStatus.innerHTML='<span class="flex items-center gap-1 text-xs font-medium badge-active"><span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse inline-block"></span>Active</span>';
             updateHero(model, provider);
-            WaspToast.show('Active: '+model,'success');
+            document.querySelectorAll('[id^="default-btn-"]').forEach(function(b){
+                b.className='btn btn-xs btn-ghost opacity-25 hover:opacity-100';
+                b.title='Set as default';
+            });
+            var defaultButton=document.getElementById('default-btn-'+idx);
+            if(defaultButton){defaultButton.className='btn btn-xs btn-warning';defaultButton.title='Default model (persists on restart)';}
+            var heroName=document.getElementById('hero-model-name');
+            var badge=document.getElementById('hero-default-badge');
+            if(!badge && heroName){
+                badge=document.createElement('span');
+                badge.id='hero-default-badge';
+                badge.className='text-xs px-2 py-0.5 rounded-full font-mono';
+                badge.textContent='★ default';
+                heroName.parentNode.appendChild(badge);
+            }
+            WaspToast.show('Default: '+model,'success');
         } else {
             checkbox.checked=false;
             if(myStatus) myStatus.innerHTML='<span class="text-xs text-base-content/25">Idle</span>';
-            WaspToast.show('Error switching model','error');
+            WaspToast.show(result.data.message || result.data.error || 'Could not save default model','error');
         }
     }).catch(function(){
         checkbox.checked=false;
