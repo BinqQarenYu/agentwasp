@@ -505,6 +505,14 @@ class AutonomousGoalGeneratorJob:
                 )
                 for row in result2.fetchall():
                     state["goal_failures"].append({"action": row[0], "count": row[1]})
+
+                # System 4 Causal World Model anomalies
+                try:
+                    from ..world.strategic_engine import StrategicCampaignEngine
+                    strat_eng = StrategicCampaignEngine()
+                    state["causal_anomalies"] = await strat_eng.detect_causal_anomalies(session)
+                except Exception:
+                    state["causal_anomalies"] = []
         except Exception:
             pass
 
@@ -552,8 +560,10 @@ class AutonomousGoalGeneratorJob:
         mem_ok = sys.get("memory_percent", 0) < MEMORY_ALERT_THRESHOLD
         no_errors = len(errors) == 0
         not_too_inactive = inactive_h < 12
+        anomalies = world_state.get("causal_anomalies", [])
+        no_anomalies = len(anomalies) == 0
 
-        if disk_ok and mem_ok and no_errors and not_too_inactive:
+        if disk_ok and mem_ok and no_errors and not_too_inactive and no_anomalies:
             # Nothing obviously wrong — skip LLM call to save tokens
             return None
 
@@ -580,13 +590,15 @@ class AutonomousGoalGeneratorJob:
         except Exception:
             pass
 
+        anomalies_str = '; '.join(f"{a['entity']} ({a['trend']}, {a.get('change_pct', 0)}%)" for a in anomalies[:3]) if anomalies else 'none'
         world_summary = f"""Current system state:
 - Disk: {sys.get('disk_percent', '?')}% used ({sys.get('disk_free_gb', '?')}GB free)
 - RAM: {sys.get('memory_percent', '?')}% used
 - CPU: {sys.get('cpu_percent', '?')}%
 - User inactive: {inactive_h}h
 - Active tasks: {len(tasks)} ({', '.join(t['name'] for t in tasks[:3]) or 'none'})
-- Recent errors (2h): {len(errors)} ({'; '.join(e['action'] for e in errors[:3]) or 'none'}){dream_hint}"""
+- Recent errors (2h): {len(errors)} ({'; '.join(e['action'] for e in errors[:3]) or 'none'})
+- Causal World Model anomalies: {anomalies_str}{dream_hint}"""
 
         prompt = f"""{world_summary}
 

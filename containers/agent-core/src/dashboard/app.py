@@ -130,6 +130,7 @@ def create_app(
     from .routes.traces import router as traces_router
     from .routes.mesh import router as mesh_router
     from .routes.resources import router as resources_router
+    from .routes.blackboard import router as blackboard_router
 
     app.include_router(auth_router)
     app.include_router(overview_router)
@@ -163,6 +164,7 @@ def create_app(
     app.include_router(traces_router, prefix="/traces")
     app.include_router(mesh_router, prefix="/mesh")
     app.include_router(resources_router, prefix="/resources")
+    app.include_router(blackboard_router, prefix="/blackboard")
     from .routes.workspaces import router as workspaces_router
     app.include_router(workspaces_router, prefix="/workspaces")
     
