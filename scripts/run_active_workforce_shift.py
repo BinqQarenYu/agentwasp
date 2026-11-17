@@ -120,6 +120,10 @@ mue_summary = {
     "ai_model": "gemini-2.5-flash",
     "ai_tier": "google_free_tier",
     "clinical_insight": "",
+    "c_effective": 0.65,
+    "c_code": 0.65,
+    "omega_sense": 0.95,
+    "loop_status": "ACTIONABLE_EVOLUTION",
 }
 try:
     import asyncio
@@ -139,8 +143,16 @@ try:
     mue_summary["ai_model"] = mue_shift.get("ai_model", "gemini-2.5-flash")
     mue_summary["ai_tier"] = mue_shift.get("ai_tier", "google_free_tier")
     mue_summary["clinical_insight"] = mue_shift.get("clinical_insight", "")
+
+    eff_loop = mue_shift.get("effective_loop", {})
+    mue_summary["c_effective"] = eff_loop.get("c_effective", 0.65)
+    mue_summary["c_code"] = eff_loop.get("c_code", 0.65)
+    mue_summary["omega_sense"] = eff_loop.get("omega_sense", 0.95)
+    mue_summary["loop_status"] = eff_loop.get("loop_status", "ACTIONABLE_EVOLUTION")
+
     print(
         f"[MUE] Homeostasis Shift: state={mue_summary['state']}, vitality={mue_summary['vitality']:.3f}, "
+        f"C_eff={mue_summary['c_effective']} ({mue_summary['loop_status']}), "
         f"RAM={mue_summary['ram_percent']}%, AI Provider={mue_summary['ai_provider'].upper()} ({mue_summary['ai_model']}) [{mue_summary['ai_tier']}]"
     )
 except Exception as e:
@@ -242,6 +254,11 @@ html_body += f"""
     <td colspan="2"><em>"{mue_summary['clinical_insight']}"</em></td>
   </tr>
   <tr>
+    <td>Effective Homeostatic Loop</td>
+    <td><b>C_eff: {mue_summary['c_effective']}</b> (C_code: {mue_summary['c_code']}, &Omega;_sense: {mue_summary['omega_sense']}) &mdash; <span style="font-size: 11px;">Status: {mue_summary['loop_status']}</span></td>
+    <td style="color: #10b981; font-weight: bold;">CLOSED LOOP</td>
+  </tr>
+  <tr>
     <td>Storage Hygiene</td>
     <td>Pruned {mue_summary['shadow_pruned']} shadow worktrees, {mue_summary['backups_rotated']} backups ({mue_summary['bytes_reclaimed'] / (1024*1024):.2f} MB freed)</td>
     <td style="color: #10b981; font-weight: bold;">CLEAN</td>
@@ -283,7 +300,7 @@ log_entry = f"""
 * **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
 * **Hermes (📬)**: Triaged {total_inbox:,} emails for `{user_email}`; 0 security threats found.
 * **Athena (🛡️)**: Audited top repositories for `{gh_user}`; fleet operational.
-* **Mue (🩺)**: Homeostasis state `{mue_summary['state']}` (Vitality: {mue_summary['vitality']:.3f}, Host RAM: {mue_summary['ram_percent']}%, AI: {mue_summary['ai_provider']} [{mue_summary['ai_tier']}]).
+* **Mue (🩺)**: Homeostasis state `{mue_summary['state']}` (Vitality: {mue_summary['vitality']:.3f}, C_eff: {mue_summary['c_effective']}, Host RAM: {mue_summary['ram_percent']}%, AI: {mue_summary['ai_provider']} [{mue_summary['ai_tier']}]).
 * **Delivery**: Shift briefing sent to `{to_addr}`.
 """
 

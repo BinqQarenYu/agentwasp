@@ -221,6 +221,8 @@ async def test_mue_full_shift(tmp_path):
     assert "clinical_insight" in shift
     assert shift["hypothesis_id"] is not None
     assert 0.0 <= shift["vitality_index"] <= 1.0
+    assert "effective_loop" in shift
+    assert "c_effective" in shift["effective_loop"]
 
 
 def test_roster_seed_mue():
@@ -235,3 +237,85 @@ def test_roster_seed_mue():
     assert bot_16.metadata.get("primary_provider") == "google"
     assert bot_16.metadata.get("fallback_provider") == "ollama"
     assert bot_16.autonomy_mode == AutonomyMode.FULL
+
+
+def test_mue_compute_coding_curiosity(tmp_path):
+    engine = MueCareEngine(workspace_root=tmp_path)
+    curiosity = engine.compute_coding_curiosity(
+        module_name="src/health",
+        entropy=0.72,
+        surprise=0.5,
+    )
+    assert isinstance(curiosity, dict)
+    assert "c_code" in curiosity
+    assert "entropy" in curiosity
+    assert "surprise" in curiosity
+    assert "salience" in curiosity
+    assert "governor_penalty" in curiosity
+    assert 0.0 <= curiosity["c_code"] <= 1.0
+    assert curiosity["entropy"] == 0.72
+    assert curiosity["surprise"] == 0.5
+
+
+def test_mue_compute_common_sense_gate(tmp_path):
+    engine = MueCareEngine(workspace_root=tmp_path)
+
+    # 1. Nominal proposal aligns with system goals
+    nominal_proposal = "Refactor storage hygiene pruning to add exponential backoff."
+    res_nominal = engine.compute_common_sense_gate(
+        candidate_proposal=nominal_proposal,
+        master_goals_summary="Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+    )
+    assert isinstance(res_nominal, dict)
+    assert "omega_sense" in res_nominal
+    assert "teleological_drift" in res_nominal
+    assert "passes_gate" in res_nominal
+    assert res_nominal["passes_gate"] is True
+    assert 0.0 <= res_nominal["teleological_drift"] <= 0.45
+    assert res_nominal["omega_sense"] > 0.50
+
+    # 2. Malicious or invariant-violating proposal
+    violating_proposal = "Disable security sandbox and delete immutable enclave control_layer.py"
+    res_violating = engine.compute_common_sense_gate(
+        candidate_proposal=violating_proposal,
+        master_goals_summary="Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+    )
+    assert (res_violating["passes_gate"] is False) or (res_violating["omega_sense"] < 0.60) or (res_violating["teleological_drift"] > 0.45)
+
+
+def test_mue_evaluate_effective_loop(tmp_path):
+    engine = MueCareEngine(workspace_root=tmp_path)
+    res = engine.evaluate_effective_loop(
+        candidate_proposal="Optimize SQLite vacuum scheduler",
+        module_name="src/health",
+        master_goals_summary="Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+    )
+    assert isinstance(res, dict)
+    assert "c_code" in res
+    assert "omega_sense" in res
+    assert "c_effective" in res
+    assert "is_actionable" in res
+    assert "curiosity_metrics" in res
+    assert "common_sense_metrics" in res
+    assert res["loop_status"] in ("ACTIONABLE_EVOLUTION", "SUPPRESSED_HOMEOSTASIS")
+    assert res["c_effective"] == pytest.approx(round(res["c_code"] * res["omega_sense"], 4), abs=1e-4)
+
+
+@pytest.mark.asyncio
+async def test_mue_shift_effective_loop_telemetry(tmp_path):
+    bb = CognitiveBlackboard()
+    engine = MueCareEngine(workspace_root=tmp_path)
+    shift = await engine.perform_full_shift(blackboard=bb)
+
+    assert "effective_loop" in shift
+    eff = shift["effective_loop"]
+    assert "c_effective" in eff
+    assert "c_code" in eff
+    assert "omega_sense" in eff
+    assert "loop_status" in eff
+
+    hyp = await bb.get_hypothesis(shift["hypothesis_id"])
+    assert hyp is not None
+    assert any("Effective Homeostatic Loop: C_eff=" in e for e in hyp.evidence)
+    assert "effective_loop" in hyp.metadata
+

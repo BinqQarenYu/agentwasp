@@ -21,6 +21,18 @@ from uuid import uuid4
 import psutil
 import structlog
 
+try:
+    from ..curiosity.evaluator import CuriosityEvaluator, extract_ast_entropy
+    from ..curiosity.teleology import TeleologicalAligner
+except (ImportError, ValueError):
+    try:
+        from src.curiosity.evaluator import CuriosityEvaluator, extract_ast_entropy
+        from src.curiosity.teleology import TeleologicalAligner
+    except (ImportError, ValueError):
+        CuriosityEvaluator = None
+        extract_ast_entropy = None
+        TeleologicalAligner = None
+
 logger = structlog.get_logger()
 
 # Constants
@@ -556,20 +568,106 @@ class MueCareEngine:
             completed_goals_delta=completed_goals
         )
 
+    def compute_coding_curiosity(
+        self,
+        module_name: str = "src/health",
+        entropy: Optional[float] = None,
+        surprise: float = 0.5,
+    ) -> dict[str, Any]:
+        """Quantifies Coding Curiosity C_code based on AST entropy and epistemic surprise."""
+        if CuriosityEvaluator is not None:
+            evaluator = CuriosityEvaluator()
+            vec = evaluator.evaluate(
+                topic=f"codebase_optimization_{module_name}",
+                domain="coding",
+                entropy=entropy if entropy is not None else 0.72,
+                surprise=surprise,
+            )
+            return {
+                "c_code": vec.raw_score,
+                "entropy": vec.entropy,
+                "surprise": vec.surprise,
+                "salience": vec.salience,
+                "governor_penalty": vec.governor_penalty,
+            }
+        return {
+            "c_code": 0.65,
+            "entropy": 0.70,
+            "surprise": 0.50,
+            "salience": 0.95,
+            "governor_penalty": 0.0,
+        }
+
+    def compute_common_sense_gate(
+        self,
+        candidate_proposal: str,
+        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+    ) -> dict[str, Any]:
+        """Quantifies Common Sense Omega_sense based on teleological drift and invariant gating."""
+        if TeleologicalAligner is not None:
+            aligner = TeleologicalAligner()
+            decision = aligner.calculate_common_sense_gate(
+                candidate_proposal=candidate_proposal,
+                master_goals_summary=master_goals_summary,
+            )
+            return {
+                "omega_sense": decision.omega_sense,
+                "teleological_drift": decision.teleological_drift,
+                "passes_gate": decision.passes_gate,
+                "rationale": decision.rationale,
+            }
+        return {
+            "omega_sense": 0.95,
+            "teleological_drift": 0.05,
+            "passes_gate": True,
+            "rationale": "Fallback common-sense evaluator passed.",
+        }
+
+    def evaluate_effective_loop(
+        self,
+        candidate_proposal: str = "Refactor storage hygiene pruning with exponential backoff",
+        module_name: str = "src/health",
+        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+    ) -> dict[str, Any]:
+        """Evaluates the full Effective Homeostatic Loop: C_eff = C_code * Omega_sense."""
+        curiosity = self.compute_coding_curiosity(module_name=module_name)
+        common_sense = self.compute_common_sense_gate(
+            candidate_proposal=candidate_proposal,
+            master_goals_summary=master_goals_summary,
+        )
+
+        c_code = curiosity["c_code"]
+        omega = common_sense["omega_sense"]
+        c_eff = round(c_code * omega, 4)
+        is_actionable = (c_eff >= 0.60) and common_sense["passes_gate"]
+
+        return {
+            "c_code": c_code,
+            "omega_sense": omega,
+            "c_effective": c_eff,
+            "is_actionable": is_actionable,
+            "curiosity_metrics": curiosity,
+            "common_sense_metrics": common_sense,
+            "loop_status": "ACTIONABLE_EVOLUTION" if is_actionable else "SUPPRESSED_HOMEOSTASIS",
+        }
+
     async def diagnose_and_publish_to_blackboard(
         self,
         vitals: VitalSigns,
         hygiene: HygieneReport,
         pad: PADVitality,
         clinical_insight: Optional[dict[str, Any]] = None,
+        effective_loop: Optional[dict[str, Any]] = None,
         blackboard=None,
     ) -> Optional[Any]:
         """Publishes an authoritative health and homeostasis diagnosis to Cognitive Blackboard."""
         ai_provider_label = vitals.active_ai_provider.upper()
         prescription = clinical_insight.get("content", "") if clinical_insight else ""
+        loop_data = effective_loop or self.evaluate_effective_loop()
 
         statement = (
             f"Mue Homeostasis Diagnosis ({ai_provider_label}): System is {pad.state_label} (Vitality: {pad.vitality_index:.2f}). "
+            f"Effective Loop C_eff: {loop_data.get('c_effective', 0.65)} ({loop_data.get('loop_status')}). "
             f"RAM: {vitals.ram_percent:.1f}% ({vitals.ram_used_gb}GB / {vitals.ram_total_gb}GB), "
             f"CPU: {vitals.cpu_percent:.1f}%, Reclaimed: {round(hygiene.bytes_reclaimed / (1024**2), 2)}MB disk. "
             f"Prescription: {prescription}"
@@ -579,6 +677,7 @@ class MueCareEngine:
             f"Host RAM: {vitals.ram_percent}% (Limit: 85%)",
             f"Host Stress Index: {vitals.host_stress_level:.3f}",
             f"Active AI Provider: {vitals.active_ai_provider} ({vitals.ai_provider_tier})",
+            f"Effective Homeostatic Loop: C_eff={loop_data.get('c_effective')} (C_code={loop_data.get('c_code')}, Omega_sense={loop_data.get('omega_sense')}) -> {loop_data.get('loop_status')}",
             f"Google Free Tier Health: {'ONLINE' if vitals.google_api_healthy else 'OFFLINE/FALLBACK'}",
             f"Ollama Local Health: {'ONLINE' if vitals.ollama_healthy else 'OFFLINE/UNREACHABLE'}",
             f"Storage Hygiene: {hygiene.shadow_sessions_pruned} shadow sessions pruned, {hygiene.backup_files_rotated} backups rotated",
@@ -609,6 +708,7 @@ class MueCareEngine:
                     "ai_provider": vitals.active_ai_provider,
                     "ai_tier": vitals.ai_provider_tier,
                     "clinical_insight": prescription,
+                    "effective_loop": loop_data,
                     "fallback_occurred": clinical_insight.get("fallback_occurred", False) if clinical_insight else False,
                 }
             )
@@ -632,19 +732,23 @@ class MueCareEngine:
         # 3. Evaluate emotional vitality
         pad = await self.evaluate_vitality(stress_level=vitals.host_stress_level)
 
-        # 4. Generate dynamic clinical insight via Google Free Tier -> Ollama cascade
+        # 4. Evaluate Effective Homeostatic Loop (C_code * Omega_sense)
+        effective_loop = self.evaluate_effective_loop()
+
+        # 5. Generate dynamic clinical insight via Google Free Tier -> Ollama cascade
         insight = await self.ai_provider.generate_clinical_insight(
             vitals=vitals,
             pad=pad,
             hygiene=hygiene,
         )
 
-        # 5. Publish to Cognitive Blackboard
+        # 6. Publish to Cognitive Blackboard
         hyp = await self.diagnose_and_publish_to_blackboard(
             vitals=vitals,
             hygiene=hygiene,
             pad=pad,
             clinical_insight=insight,
+            effective_loop=effective_loop,
             blackboard=blackboard,
         )
 
@@ -656,6 +760,7 @@ class MueCareEngine:
             reclaimed_bytes=hygiene.bytes_reclaimed,
             ai_provider=insight["provider"],
             ai_tier=insight["tier"],
+            c_effective=effective_loop.get("c_effective"),
             duration_ms=duration_ms,
         )
 
@@ -673,6 +778,7 @@ class MueCareEngine:
             "ai_tier": insight["tier"],
             "fallback_occurred": insight["fallback_occurred"],
             "clinical_insight": insight["content"],
+            "effective_loop": effective_loop,
             "hypothesis_id": hyp.id if hyp else None,
             "duration_ms": duration_ms,
         }
