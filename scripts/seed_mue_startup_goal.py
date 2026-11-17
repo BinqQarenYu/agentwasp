@@ -35,17 +35,17 @@ async def seed_startup_goal():
     engine = MueCareEngine(workspace_root=ROOT_DIR)
     shift_res = await engine.perform_full_shift()
     print(f"[MUE] Initial Shift: {shift_res.get('state')} (Vitality: {shift_res.get('vitality_index')})")
-    print(f"[MUE] Host RAM: {shift_res.get('vitals', {}).get('ram_percent')}% | Reclaimed: {shift_res.get('hygiene', {}).get('bytes_reclaimed')} bytes")
+    print(f"[MUE] Host RAM: {shift_res.get('vitals', {}).get('ram_percent')}% | Reclaimed: {shift_res.get('hygiene', {}).get('bytes_reclaimed')} bytes | AI: {shift_res.get('ai_provider')} ({shift_res.get('ai_tier')})")
 
     # 2. Build Goal Task DAG
     graph = TaskGraph()
     t1 = TaskNode(
         id="task-mue-vitals",
-        description="Continuously sample host psutil vitals (RAM < 17.4GB, CPU, Ollama health)",
+        description="Continuously sample host psutil vitals (RAM < 17.4GB, CPU, dynamic Google/Ollama health)",
         skill_name="vital_signs_collector",
         status=TaskStatus.DONE,
         risk_level=RiskLevel.LOW,
-        output_summary=f"RAM: {shift_res.get('vitals', {}).get('ram_percent')}%, CPU: {shift_res.get('vitals', {}).get('cpu_percent')}%, Host Stress: {shift_res.get('vitals', {}).get('host_stress_level')}",
+        output_summary=f"RAM: {shift_res.get('vitals', {}).get('ram_percent')}%, CPU: {shift_res.get('vitals', {}).get('cpu_percent')}%, AI: {shift_res.get('ai_provider')} ({shift_res.get('ai_tier')})",
     )
     t2 = TaskNode(
         id="task-mue-hygiene",

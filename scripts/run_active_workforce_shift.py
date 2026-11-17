@@ -116,6 +116,10 @@ mue_summary = {
     "backups_rotated": 0,
     "bytes_reclaimed": 0,
     "hypothesis_id": None,
+    "ai_provider": "google",
+    "ai_model": "gemini-2.5-flash",
+    "ai_tier": "google_free_tier",
+    "clinical_insight": "",
 }
 try:
     import asyncio
@@ -131,9 +135,13 @@ try:
     mue_summary["backups_rotated"] = mue_shift.get("hygiene", {}).get("backup_files_rotated", 0)
     mue_summary["bytes_reclaimed"] = mue_shift.get("hygiene", {}).get("bytes_reclaimed", 0)
     mue_summary["hypothesis_id"] = mue_shift.get("hypothesis_id")
+    mue_summary["ai_provider"] = mue_shift.get("ai_provider", "google")
+    mue_summary["ai_model"] = mue_shift.get("ai_model", "gemini-2.5-flash")
+    mue_summary["ai_tier"] = mue_shift.get("ai_tier", "google_free_tier")
+    mue_summary["clinical_insight"] = mue_shift.get("clinical_insight", "")
     print(
         f"[MUE] Homeostasis Shift: state={mue_summary['state']}, vitality={mue_summary['vitality']:.3f}, "
-        f"RAM={mue_summary['ram_percent']}%, Reclaimed={mue_summary['bytes_reclaimed']} bytes"
+        f"RAM={mue_summary['ram_percent']}%, AI Provider={mue_summary['ai_provider'].upper()} ({mue_summary['ai_model']}) [{mue_summary['ai_tier']}]"
     )
 except Exception as e:
     print(f"[MUE] Self-Care Shift Error: {e}")
@@ -225,6 +233,15 @@ html_body += f"""
     <td style="color: #10b981; font-weight: bold;">{'OPTIMAL' if mue_summary['ram_percent'] < 85 else 'HIGH'}</td>
   </tr>
   <tr>
+    <td>Dynamic AI Provider</td>
+    <td><b>{mue_summary['ai_provider'].upper()}</b> ({mue_summary['ai_model']}) &mdash; <span style="font-size: 11px; color: #64748b;">Tier: {mue_summary['ai_tier']}</span></td>
+    <td style="color: #10b981; font-weight: bold;">ACTIVE</td>
+  </tr>
+  <tr>
+    <td>Clinical Prescription</td>
+    <td colspan="2"><em>"{mue_summary['clinical_insight']}"</em></td>
+  </tr>
+  <tr>
     <td>Storage Hygiene</td>
     <td>Pruned {mue_summary['shadow_pruned']} shadow worktrees, {mue_summary['backups_rotated']} backups ({mue_summary['bytes_reclaimed'] / (1024*1024):.2f} MB freed)</td>
     <td style="color: #10b981; font-weight: bold;">CLEAN</td>
@@ -266,7 +283,7 @@ log_entry = f"""
 * **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
 * **Hermes (📬)**: Triaged {total_inbox:,} emails for `{user_email}`; 0 security threats found.
 * **Athena (🛡️)**: Audited top repositories for `{gh_user}`; fleet operational.
-* **Mue (🩺)**: Homeostasis state `{mue_summary['state']}` (Vitality: {mue_summary['vitality']:.3f}, Host RAM: {mue_summary['ram_percent']}%, Reclaimed: {mue_summary['bytes_reclaimed'] / (1024*1024):.2f} MB).
+* **Mue (🩺)**: Homeostasis state `{mue_summary['state']}` (Vitality: {mue_summary['vitality']:.3f}, Host RAM: {mue_summary['ram_percent']}%, AI: {mue_summary['ai_provider']} [{mue_summary['ai_tier']}]).
 * **Delivery**: Shift briefing sent to `{to_addr}`.
 """
 

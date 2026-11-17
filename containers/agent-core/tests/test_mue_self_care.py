@@ -5,6 +5,7 @@ import time
 import sqlite3
 import pytest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from src.health.mue_care_engine import (
     VitalSigns,
@@ -13,6 +14,7 @@ from src.health.mue_care_engine import (
     StorageHygieneManager,
     PADVitality,
     PADEmergentVitality,
+    MueDynamicAIProvider,
     MueCareEngine,
 )
 from src.agent_manager.blackboard import CognitiveBlackboard
@@ -31,10 +33,15 @@ async def test_vital_signs_collector():
     assert 0.0 <= vitals.disk_percent <= 100.0
     assert 0.0 <= vitals.host_stress_level <= 1.0
     assert isinstance(vitals.ollama_healthy, bool)
+    assert isinstance(vitals.google_api_healthy, bool)
+    assert vitals.active_ai_provider in ("google", "ollama", "deterministic")
+    assert vitals.ai_provider_tier in ("google_free_tier", "ollama_local", "deterministic_fallback")
 
     v_dict = vitals.to_dict()
     assert "ram_percent" in v_dict
     assert "host_stress_level" in v_dict
+    assert "active_ai_provider" in v_dict
+    assert "ai_provider_tier" in v_dict
 
 
 @pytest.mark.asyncio
@@ -62,7 +69,6 @@ async def test_storage_hygiene_manager(tmp_path):
     for i in range(55):
         bak = backups_dir / f"backup_{i:03d}.bak"
         bak.write_bytes(b"x" * 10)
-        # Stagger timestamps
         mtime = time.time() - (60 - i) * 60
         os.utime(str(bak), (mtime, mtime))
 
@@ -124,6 +130,53 @@ def test_pad_emergent_vitality():
 
 
 @pytest.mark.asyncio
+async def test_mue_dynamic_ai_provider_resolution():
+    # 1. When Google API is healthy, Google Free Tier is selected as primary
+    provider = MueDynamicAIProvider(google_api_key="valid-dummy-key")
+    with patch.object(provider, "check_google_free_tier", new_callable=AsyncMock) as mock_google:
+        mock_google.return_value = (True, "healthy_free_tier")
+        p_name, model, tier = await provider.resolve_active_provider()
+        assert p_name == "google"
+        assert "gemini" in model
+        assert tier == "google_free_tier"
+
+    # 2. When Google API is rate-limited / offline, cascades down to Ollama
+    with patch.object(provider, "check_google_free_tier", new_callable=AsyncMock) as mock_google:
+        with patch.object(provider, "check_ollama", new_callable=AsyncMock) as mock_ollama:
+            mock_google.return_value = (False, "rate_limit_429")
+            mock_ollama.return_value = (True, "healthy_local")
+            p_name, model, tier = await provider.resolve_active_provider()
+            assert p_name == "ollama"
+            assert "llama" in model
+            assert tier == "ollama_local"
+
+    # 3. When both are offline, falls back gracefully to deterministic rule engine
+    with patch.object(provider, "check_google_free_tier", new_callable=AsyncMock) as mock_google:
+        with patch.object(provider, "check_ollama", new_callable=AsyncMock) as mock_ollama:
+            mock_google.return_value = (False, "invalid_api_key")
+            mock_ollama.return_value = (False, "connection_error")
+            p_name, model, tier = await provider.resolve_active_provider()
+            assert p_name == "deterministic"
+            assert tier == "deterministic_fallback"
+
+
+@pytest.mark.asyncio
+async def test_mue_dynamic_clinical_insight_generation():
+    provider = MueDynamicAIProvider()
+    vitals = VitalSigns(ram_percent=60.0, cpu_percent=25.0, host_stress_level=0.3)
+    pad = PADVitality(state_label="THRIVING", vitality_index=0.85)
+
+    # Test deterministic fallback execution
+    with patch.object(provider, "resolve_active_provider", new_callable=AsyncMock) as mock_resolve:
+        mock_resolve.return_value = ("deterministic", "homeostasis_rule_engine", "deterministic_fallback")
+        insight = await provider.generate_clinical_insight(vitals=vitals, pad=pad)
+        assert insight["provider"] == "deterministic"
+        assert insight["tier"] == "deterministic_fallback"
+        assert len(insight["content"]) > 10
+        assert "Optimal" in insight["content"] or "nominal" in insight["content"]
+
+
+@pytest.mark.asyncio
 async def test_mue_blackboard_diagnosis(tmp_path):
     bb = CognitiveBlackboard()
     engine = MueCareEngine(workspace_root=tmp_path)
@@ -142,9 +195,10 @@ async def test_mue_blackboard_diagnosis(tmp_path):
     assert hyp.author_bot == "bot-16"
     assert hyp.topic == "system_homeostasis"
     assert any("Host RAM" in e for e in hyp.evidence)
-    assert any("PAD Emotional State" in e for e in hyp.evidence)
+    assert any("Active AI Provider" in e for e in hyp.evidence)
     assert "doctor" in hyp.metadata
     assert hyp.metadata["doctor"] == "Mue (Bot 16)"
+    assert "ai_provider" in hyp.metadata
 
 
 @pytest.mark.asyncio
@@ -161,6 +215,10 @@ async def test_mue_full_shift(tmp_path):
     assert "pad" in shift
     assert "vitality_index" in shift
     assert "state" in shift
+    assert "ai_provider" in shift
+    assert "ai_model" in shift
+    assert "ai_tier" in shift
+    assert "clinical_insight" in shift
     assert shift["hypothesis_id"] is not None
     assert 0.0 <= shift["vitality_index"] <= 1.0
 
@@ -170,6 +228,10 @@ def test_roster_seed_mue():
     bot_16 = next((b for b in workforce if b.id == "bot-16"), None)
     assert bot_16 is not None
     assert "Mue" in bot_16.name
+    assert bot_16.model_provider == "dynamic:google->ollama"
     assert bot_16.metadata.get("badge") == "🩺"
     assert bot_16.metadata.get("dept") == "System Homeostasis & Cognitive Health"
+    assert bot_16.metadata.get("ai_provider_strategy") == "dynamic"
+    assert bot_16.metadata.get("primary_provider") == "google"
+    assert bot_16.metadata.get("fallback_provider") == "ollama"
     assert bot_16.autonomy_mode == AutonomyMode.FULL

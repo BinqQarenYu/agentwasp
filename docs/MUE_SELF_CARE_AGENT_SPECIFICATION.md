@@ -56,7 +56,7 @@ We officially recommend and adopt **Option A**: Integrating MUE-X as **Bot 16 (`
 | **Department** | `System Homeostasis & Cognitive Health` |
 | **Visual Badge & Theme** | `🩺` | Color: Emerald Mint (`#10b981` / `#06b6d4`) |
 | **Autonomy Mode** | `AutonomyMode.FULL` (for telemetry & hygiene) / `AutonomyMode.SEMI` (for AST code repairs) |
-| **Model Provider** | Hybrid: Deterministic Python Core + Ollama (`llama3.2:latest`) / Gemini Flash fallback |
+| **Model Provider** | Dynamic AI Cascade: **Google API Free Tier** (`gemini-2.5-flash`, primary) $\to$ **Ollama Local Tier** (`llama3.2:latest`, lower fallback) $\to$ Deterministic Homeostasis Engine |
 | **Token Budget** | Strict ceiling: 2,000 tokens/shift (0 tokens for diagnostic routines) |
 | **Mesh Role** | `Self-Care & Vitality` |
 
@@ -134,6 +134,20 @@ $$\text{Vitality} = \frac{\text{Pleasure} \times 0.4 + (1.0 - \text{Arousal}) \t
   - **Statement:** *"Host memory healthy (41% utilized), 0 unhandled fatal crashes, 14 stale shadow sessions reclaimed (12.4 MB freed)."*
   - **Confidence:** $0.95$
   - **Evidence:** CPU load, RAM free GB, backup disk size, test suite passing rate (63/63).
+
+### Dynamic AI Provider Cascade: Google Free Tier $\to$ Ollama Local $\to$ Deterministic Safety Net
+To balance advanced cognitive reasoning with local hardware longevity and zero token waste:
+1. **Primary (Preferred Cloud Tier): Google API Free Tier**
+   - Models: `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`.
+   - Leverages Google AI Studio Free Tier via `GOOGLE_API_KEY` / `GEMINI_API_KEY`.
+   - Zero dollar cost with rapid inference; throttled to 12 RPM / 1400 RPD to guarantee zero 429 rate limit exceptions.
+2. **Lower Tier (Local Offline Fallback): Local Ollama Daemon**
+   - Models: `llama3.2:latest`, `llama3`, `gemma4:e4b` on `http://localhost:11434`.
+   - Activated automatically if Google API is rate-limited (HTTP 429), offline, missing an API key, or network disconnected.
+   - Preserves offline sovereignty with zero external dependencies.
+3. **Tertiary Safety Net: Deterministic Homeostasis Rule Synthesizer**
+   - If both external internet and local Ollama daemon are unreachable or cold, Mue synthesizes rule-grounded clinical assessments without crashing.
+4. **Seamless Auto-Promotion:** When Google Free Tier quota resets or connectivity recovers, Mue automatically promotes back to Google API free tier.
 
 ---
 

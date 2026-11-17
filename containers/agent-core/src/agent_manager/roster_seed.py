@@ -216,14 +216,26 @@ def get_seeded_workforce():
             id='bot-16',
             name='Mue (System Homeostasis & Self-Care)',
             description='System Homeostasis, Cognitive & Storage Hygiene, Vital Signs Monitoring, PAD Emotional Regulation, AST Self-Healing.',
-            model_provider='google',
+            model_provider='dynamic:google->ollama',
             model_name='gemini-2.5-flash',
             autonomy_mode=AutonomyMode.FULL,
             status=AgentStatus.RUNNING,
             allowed_capabilities=['safe', 'monitored', 'metrics', 'tools', 'shell'],
-            identity_prompt='You are Mue, Chief System Homeostasis & Autonomic Self-Care Physician. Ensure 24/7 host vitality, cognitive de-cluttering, and zero-downtime mesh preservation.',
-            intent=AgentIntent(description='Guard host memory (<17.4GB) and thermals, prune stale staging sessions, rotate backups, and maintain workforce vitality.'),
-            metadata={'badge': '🩺', 'dept': 'System Homeostasis & Cognitive Health', 'color': '#10b981', 'mesh_role': 'Self-Care & Vitality', 'bot_num': '16'}
+            identity_prompt='You are Mue, Chief System Homeostasis & Autonomic Self-Care Physician. Dynamically route across Google API Free Tier (preferred) and local Ollama (fallback) to ensure 24/7 host vitality, cognitive de-cluttering, and zero-downtime mesh preservation.',
+            intent=AgentIntent(description='Guard host memory (<17.4GB) and thermals, prune stale staging sessions, rotate backups, and dynamically select AI provider (Google Free Tier -> Ollama local).'),
+            metadata={
+                'badge': '🩺',
+                'dept': 'System Homeostasis & Cognitive Health',
+                'color': '#10b981',
+                'mesh_role': 'Self-Care & Vitality',
+                'bot_num': '16',
+                'ai_provider_strategy': 'dynamic',
+                'primary_provider': 'google',
+                'primary_tier': 'free_tier',
+                'primary_model': 'gemini-2.5-flash',
+                'fallback_provider': 'ollama',
+                'fallback_model': 'llama3.2:latest',
+            }
         )
     ]
     return agents

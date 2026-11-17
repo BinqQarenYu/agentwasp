@@ -168,24 +168,29 @@
     - Created `test_cognitive_blackboard.py`, `test_strategic_campaign_engine.py`, and `test_blackboard_routes.py` (9/9 passing).
     - **TOTAL VERIFIED TEST SUITE: 63 / 63 PASSING (4.17s)** across all 12 test suites.
   - **STATUS: COGNITIVE BLACKBOARD & CAUSAL STRATEGIC ENGINE 100% OPERATIONAL & VERIFIED.**
-* **Task 11: MUE-X System Homeostasis & Autonomic Self-Care Agent (Bot 16: Mue)**: **COMPLETED** (2026-11-17 05:10 UTC)
+* **Task 11: MUE-X System Homeostasis & Autonomic Self-Care Agent (Bot 16: Mue)**: **COMPLETED** (2026-11-17 05:10 UTC, Enhanced 07:30 UTC)
   - Core Self-Care Engine (`containers/agent-core/src/health/mue_care_engine.py`):
     - `VitalSignsCollector`: Non-blocking asynchronous sampling of host physical RAM (<17.4 GB), CPU, and Ollama service health in background thread pool. Computes `host_stress_level` ([0.0, 1.0]).
     - `StorageHygieneManager`: Autonomous pruning of stale shadow staging sessions (`data/shadow_staging/stage_*` > 2h), rotation of staging backups (`data/staging_backups/*.bak` capped at 500 MB & 50 files), and automated SQLite memory database vacuuming.
     - `PADEmergentVitality`: Evaluates Pleasure-Arousal-Dominance emotional equilibrium and MUE-X Drive 3 stagnation pressure. Maps system vitality into cognitive states (`THRIVING`, `NOMINAL`, `STRAINED`, `EXHAUSTED`, `STAGNANT`).
-    - `MueCareEngine`: Orchestrator combining vitals, hygiene, and PAD vitality, continuously formulating and publishing authoritative diagnostic hypotheses to the Cognitive Blackboard (`/blackboard`).
+    - `MueDynamicAIProvider`: Dynamic AI provider routing cascade:
+      - **Primary**: Google API Free Tier (`gemini-2.5-flash`, zero token cost, guarded to 12 RPM / 1400 RPD).
+      - **Lower / Fallback**: Local Ollama Daemon (`llama3.2:latest`, offline sovereign execution).
+      - **Tertiary Safety Net**: Deterministic Rule Synthesizer (100% zero-crash guarantee).
+      - Automatic seamless promotion back to Google Free Tier upon recovery.
+    - `MueCareEngine`: Orchestrator combining vitals, hygiene, PAD vitality, and dynamic AI provider reasoning, continuously formulating and publishing authoritative diagnostic hypotheses to the Cognitive Blackboard (`/blackboard`).
   - Active Workforce Shift Integration (`scripts/run_active_workforce_shift.py`):
     - Added Section 4 (Mue Self-Care Shift) alongside Prometheus 🔥, Hermes 📬, and Athena 🛡️.
-    - Embedded dynamic Homeostasis telemetry card into hourly email briefing dispatched to `benjohncarino@gmail.com`.
+    - Embedded dynamic Homeostasis telemetry card & active AI provider tier into hourly email briefing dispatched to `benjohncarino@gmail.com`.
   - Startup Goal & Roster Seeding:
-    - Seeded Bot 16 into `DEFAULT_ROSTER` in `roster_seed.py` with `AutonomyMode.FULL` and badge 🩺.
+    - Seeded Bot 16 into `DEFAULT_ROSTER` in `roster_seed.py` with `AutonomyMode.FULL`, `model_provider='dynamic:google->ollama'`, and badge 🩺.
     - Created active startup goal `goal-mue-homeostasis-startup` via `scripts/seed_mue_startup_goal.py` (DAG tasks: `task-mue-vitals`, `task-mue-hygiene`, `task-mue-pad`, `task-mue-blackboard`).
   - Unit Tests & Regression Verification (`containers/agent-core/tests/test_mue_self_care.py`):
-    - 6/6 passing Mue unit tests.
-    - **TOTAL VERIFIED TEST SUITE: 37 / 37 PASSING (8.86s)** across all core ATSE, Blackboard, Consensus, Staging, and Self-Care test suites with zero regressions.
+    - 8/8 passing Mue unit tests (including dynamic AI provider resolution, Google free tier preference, Ollama fallback, and clinical insight synthesis).
+    - **TOTAL VERIFIED TEST SUITE: 39 / 39 PASSING (19.37s)** across all core ATSE, Blackboard, Consensus, Staging, and Self-Care test suites with zero regressions.
   - Live Verification:
-    - Executed live workforce shift with Mue: cognitive state `THRIVING`, vitality `0.778`, host RAM `56.3%`, hypothesis `hyp_c798f85b` published to Cognitive Blackboard, shift briefing delivered to `benjohncarino@gmail.com`.
-  - **STATUS: BOT 16 (MUE) FULLY INTEGRATED, ACTIVE 24/7 IN WORKFORCE MESH, AND DOCUMENTED.**
+    - Executed live workforce shift with Mue: cognitive state `THRIVING`, vitality `0.777`, host RAM `57.0%`, dynamic provider cascade active, hypothesis `hyp_a7cd41a4` published to Cognitive Blackboard, shift briefing delivered to `benjohncarino@gmail.com`.
+  - **STATUS: BOT 16 (MUE) FULLY INTEGRATED WITH DYNAMIC AI PROVIDER CASCADE, ACTIVE 24/7 IN WORKFORCE MESH, AND DOCUMENTED.**
 
 ### Shift Execution Log — 2026-11-11 11:35 UTC
 * **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
@@ -565,4 +570,25 @@
 * **Hermes (📬)**: Triaged 6,253 emails for `benjohncarino@gmail.com`; 0 security threats found.
 * **Athena (🛡️)**: Audited top repositories for `BinqQarenYu`; fleet operational.
 * **Mue (🩺)**: Homeostasis state `THRIVING` (Vitality: 0.778, Host RAM: 56.3%, Reclaimed: 0.00 MB).
+* **Delivery**: Shift briefing sent to `benjohncarino@gmail.com`.
+
+### Shift Execution Log — 2026-11-17 06:08 UTC
+* **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
+* **Hermes (📬)**: Triaged 6,256 emails for `benjohncarino@gmail.com`; 0 security threats found.
+* **Athena (🛡️)**: Audited top repositories for `BinqQarenYu`; fleet operational.
+* **Mue (🩺)**: Homeostasis state `THRIVING` (Vitality: 0.778, Host RAM: 56.5%, Reclaimed: 0.00 MB).
+* **Delivery**: Shift briefing sent to `benjohncarino@gmail.com`.
+
+### Shift Execution Log — 2026-11-17 07:09 UTC
+* **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
+* **Hermes (📬)**: Triaged 6,257 emails for `benjohncarino@gmail.com`; 0 security threats found.
+* **Athena (🛡️)**: Audited top repositories for `BinqQarenYu`; fleet operational.
+* **Mue (🩺)**: Homeostasis state `THRIVING` (Vitality: 0.778, Host RAM: 56.5%, Reclaimed: 0.00 MB).
+* **Delivery**: Shift briefing sent to `benjohncarino@gmail.com`.
+
+### Shift Execution Log — 2026-11-17 07:28 UTC
+* **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
+* **Hermes (📬)**: Triaged 6,260 emails for `benjohncarino@gmail.com`; 0 security threats found.
+* **Athena (🛡️)**: Audited top repositories for `BinqQarenYu`; fleet operational.
+* **Mue (🩺)**: Homeostasis state `THRIVING` (Vitality: 0.777, Host RAM: 57.0%, AI: deterministic [deterministic_fallback]).
 * **Delivery**: Shift briefing sent to `benjohncarino@gmail.com`.

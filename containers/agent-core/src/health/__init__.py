@@ -2,6 +2,7 @@
 
 from .mue_care_engine import (
     MueCareEngine,
+    MueDynamicAIProvider,
     VitalSigns,
     VitalSignsCollector,
     HygieneReport,
@@ -12,6 +13,7 @@ from .mue_care_engine import (
 
 __all__ = [
     "MueCareEngine",
+    "MueDynamicAIProvider",
     "VitalSigns",
     "VitalSignsCollector",
     "HygieneReport",
