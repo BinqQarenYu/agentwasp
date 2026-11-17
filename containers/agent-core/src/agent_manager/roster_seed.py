@@ -211,6 +211,19 @@ def get_seeded_workforce():
             identity_prompt='You are Mercury, Multi-Platform Social Distribution Specialist.',
             intent=AgentIntent(description='Queue approved social updates with min 30m spacing and Google Photos media pairing.'),
             metadata={'badge': '🟢', 'dept': 'Media & Growth', 'color': '#14b8a6', 'mesh_role': 'Social Poster', 'bot_num': '14'}
+        ),
+        Agent(
+            id='bot-16',
+            name='Mue (System Homeostasis & Self-Care)',
+            description='System Homeostasis, Cognitive & Storage Hygiene, Vital Signs Monitoring, PAD Emotional Regulation, AST Self-Healing.',
+            model_provider='google',
+            model_name='gemini-2.5-flash',
+            autonomy_mode=AutonomyMode.FULL,
+            status=AgentStatus.RUNNING,
+            allowed_capabilities=['safe', 'monitored', 'metrics', 'tools', 'shell'],
+            identity_prompt='You are Mue, Chief System Homeostasis & Autonomic Self-Care Physician. Ensure 24/7 host vitality, cognitive de-cluttering, and zero-downtime mesh preservation.',
+            intent=AgentIntent(description='Guard host memory (<17.4GB) and thermals, prune stale staging sessions, rotate backups, and maintain workforce vitality.'),
+            metadata={'badge': '🩺', 'dept': 'System Homeostasis & Cognitive Health', 'color': '#10b981', 'mesh_role': 'Self-Care & Vitality', 'bot_num': '16'}
         )
     ]
     return agents

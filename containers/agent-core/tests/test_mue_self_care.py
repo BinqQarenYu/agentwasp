@@ -1,0 +1,175 @@
+"""Unit tests for Mue (Bot 16) — System Homeostasis & Autonomic Self-Care Engine."""
+
+import os
+import time
+import sqlite3
+import pytest
+from pathlib import Path
+
+from src.health.mue_care_engine import (
+    VitalSigns,
+    VitalSignsCollector,
+    HygieneReport,
+    StorageHygieneManager,
+    PADVitality,
+    PADEmergentVitality,
+    MueCareEngine,
+)
+from src.agent_manager.blackboard import CognitiveBlackboard
+from src.agent_manager.roster_seed import get_seeded_workforce
+from src.goal_orchestrator.types import AutonomyMode
+
+
+@pytest.mark.asyncio
+async def test_vital_signs_collector():
+    collector = VitalSignsCollector()
+    vitals = await collector.collect()
+
+    assert isinstance(vitals, VitalSigns)
+    assert 0.0 <= vitals.ram_percent <= 100.0
+    assert 0.0 <= vitals.cpu_percent <= 100.0
+    assert 0.0 <= vitals.disk_percent <= 100.0
+    assert 0.0 <= vitals.host_stress_level <= 1.0
+    assert isinstance(vitals.ollama_healthy, bool)
+
+    v_dict = vitals.to_dict()
+    assert "ram_percent" in v_dict
+    assert "host_stress_level" in v_dict
+
+
+@pytest.mark.asyncio
+async def test_storage_hygiene_manager(tmp_path):
+    # Setup temporary directory structure
+    staging_dir = tmp_path / "data" / "shadow_staging"
+    backups_dir = tmp_path / "data" / "staging_backups"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    backups_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Create a stale shadow worktree (> 2h old, stage_xxx)
+    stale_session = staging_dir / "stage_stale_123"
+    stale_session.mkdir()
+    stale_file = stale_session / "diff.patch"
+    stale_file.write_text("dummy patch content")
+    stale_mtime = time.time() - (3 * 3600)  # 3 hours ago
+    os.utime(str(stale_session), (stale_mtime, stale_mtime))
+
+    # 2. Create a fresh shadow worktree (stage_xxx)
+    fresh_session = staging_dir / "stage_fresh_456"
+    fresh_session.mkdir()
+    (fresh_session / "diff.patch").write_text("fresh patch")
+
+    # 3. Create more than MAX_STAGING_BACKUP_COUNT (50) backups to trigger rotation
+    for i in range(55):
+        bak = backups_dir / f"backup_{i:03d}.bak"
+        bak.write_bytes(b"x" * 10)
+        # Stagger timestamps
+        mtime = time.time() - (60 - i) * 60
+        os.utime(str(bak), (mtime, mtime))
+
+    # 4. Create an sqlite DB for vacuum testing
+    db_path = tmp_path / "mue_memory.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("CREATE TABLE test (id int);")
+    conn.commit()
+    conn.close()
+
+    # Run hygiene
+    manager = StorageHygieneManager(workspace_root=tmp_path)
+    report = await manager.run_hygiene()
+
+    assert isinstance(report, HygieneReport)
+    assert report.shadow_sessions_pruned == 1
+    assert not stale_session.exists()
+    assert fresh_session.exists()
+
+    assert report.backup_files_rotated >= 5  # Kept 50, pruned 5
+    assert report.sqlite_stores_vacuumed == 1
+    assert report.bytes_reclaimed > 0
+
+
+def test_pad_emergent_vitality():
+    pad = PADEmergentVitality()
+
+    # Low stress, successful outcomes
+    res_opt = pad.evaluate(
+        stress_level=0.15,
+        recent_errors=0,
+        recent_successes=10,
+        completed_goals_delta=1,
+    )
+    assert isinstance(res_opt, PADVitality)
+    assert res_opt.vitality_index > 0.75
+    assert res_opt.state_label == "THRIVING"
+    assert res_opt.stagnation_cycles == 0
+
+    # High stress, error conditions
+    res_stress = pad.evaluate(
+        stress_level=0.90,
+        recent_errors=5,
+        recent_successes=2,
+        completed_goals_delta=1,
+    )
+    assert res_stress.vitality_index < res_opt.vitality_index
+    assert res_stress.state_label == "STRESSED"
+
+    # Stagnation drive (no goals completed over 6 cycles)
+    for _ in range(6):
+        res_stag = pad.evaluate(stress_level=0.20, completed_goals_delta=0)
+    assert res_stag.stagnation_cycles >= 6
+    assert res_stag.state_label == "STAGNANT"
+
+    # Reset stagnation with completed goal
+    res_recovered = pad.evaluate(stress_level=0.20, completed_goals_delta=1)
+    assert res_recovered.stagnation_cycles == 0
+
+
+@pytest.mark.asyncio
+async def test_mue_blackboard_diagnosis(tmp_path):
+    bb = CognitiveBlackboard()
+    engine = MueCareEngine(workspace_root=tmp_path)
+
+    vitals = await engine.run_vital_check()
+    hygiene = await engine.run_hygiene_sweep()
+    pad = await engine.evaluate_vitality(stress_level=vitals.host_stress_level)
+
+    hyp = await engine.diagnose_and_publish_to_blackboard(
+        vitals=vitals,
+        hygiene=hygiene,
+        pad=pad,
+        blackboard=bb,
+    )
+    assert hyp is not None
+    assert hyp.author_bot == "bot-16"
+    assert hyp.topic == "system_homeostasis"
+    assert any("Host RAM" in e for e in hyp.evidence)
+    assert any("PAD Emotional State" in e for e in hyp.evidence)
+    assert "doctor" in hyp.metadata
+    assert hyp.metadata["doctor"] == "Mue (Bot 16)"
+
+
+@pytest.mark.asyncio
+async def test_mue_full_shift(tmp_path):
+    bb = CognitiveBlackboard()
+    engine = MueCareEngine(workspace_root=tmp_path)
+    shift = await engine.perform_full_shift(blackboard=bb)
+
+    assert shift["ok"] is True
+    assert shift["agent"] == "bot-16"
+    assert "Mue" in shift["name"]
+    assert "vitals" in shift
+    assert "hygiene" in shift
+    assert "pad" in shift
+    assert "vitality_index" in shift
+    assert "state" in shift
+    assert shift["hypothesis_id"] is not None
+    assert 0.0 <= shift["vitality_index"] <= 1.0
+
+
+def test_roster_seed_mue():
+    workforce = get_seeded_workforce()
+    bot_16 = next((b for b in workforce if b.id == "bot-16"), None)
+    assert bot_16 is not None
+    assert "Mue" in bot_16.name
+    assert bot_16.metadata.get("badge") == "🩺"
+    assert bot_16.metadata.get("dept") == "System Homeostasis & Cognitive Health"
+    assert bot_16.autonomy_mode == AutonomyMode.FULL

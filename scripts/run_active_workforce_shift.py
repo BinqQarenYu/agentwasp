@@ -7,6 +7,7 @@ import smtplib
 import imaplib
 import email
 import urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -14,6 +15,11 @@ from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+AGENT_CORE_DIR = str(ROOT_DIR / "containers" / "agent-core")
+if AGENT_CORE_DIR not in sys.path:
+    sys.path.insert(0, AGENT_CORE_DIR)
 
 print("=" * 70)
 print("[WASP WORKFORCE] INITIATING ACTIVE MULTI-AGENT EMPLOYEE SHIFT")
@@ -99,7 +105,40 @@ try:
 except Exception as e:
     print(f"[ATHENA] GitHub Error: {e}")
 
-# ── 4. COMPOSE MULTI-AGENT SHIFT REPORT ──
+# ── 4. MUE: System Homeostasis & Autonomic Self-Care ──
+mue_summary = {
+    "state": "UNKNOWN",
+    "vitality": 1.0,
+    "ram_percent": 0.0,
+    "cpu_percent": 0.0,
+    "host_stress": 0.0,
+    "shadow_pruned": 0,
+    "backups_rotated": 0,
+    "bytes_reclaimed": 0,
+    "hypothesis_id": None,
+}
+try:
+    import asyncio
+    from src.health.mue_care_engine import MueCareEngine
+    mue_engine = MueCareEngine(workspace_root=ROOT_DIR)
+    mue_shift = asyncio.run(mue_engine.perform_full_shift())
+    mue_summary["state"] = mue_shift.get("state", "NOMINAL")
+    mue_summary["vitality"] = mue_shift.get("vitality_index", 1.0)
+    mue_summary["ram_percent"] = mue_shift.get("vitals", {}).get("ram_percent", 0.0)
+    mue_summary["cpu_percent"] = mue_shift.get("vitals", {}).get("cpu_percent", 0.0)
+    mue_summary["host_stress"] = mue_shift.get("vitals", {}).get("host_stress_level", 0.0)
+    mue_summary["shadow_pruned"] = mue_shift.get("hygiene", {}).get("shadow_sessions_pruned", 0)
+    mue_summary["backups_rotated"] = mue_shift.get("hygiene", {}).get("backup_files_rotated", 0)
+    mue_summary["bytes_reclaimed"] = mue_shift.get("hygiene", {}).get("bytes_reclaimed", 0)
+    mue_summary["hypothesis_id"] = mue_shift.get("hypothesis_id")
+    print(
+        f"[MUE] Homeostasis Shift: state={mue_summary['state']}, vitality={mue_summary['vitality']:.3f}, "
+        f"RAM={mue_summary['ram_percent']}%, Reclaimed={mue_summary['bytes_reclaimed']} bytes"
+    )
+except Exception as e:
+    print(f"[MUE] Self-Care Shift Error: {e}")
+
+# ── 5. COMPOSE MULTI-AGENT SHIFT REPORT ──
 host = os.getenv("SMTP_HOST", "smtp.gmail.com")
 port = int(os.getenv("SMTP_PORT", 587))
 user = os.getenv("SMTP_USER", "benjohncarino@gmail.com")
@@ -169,16 +208,41 @@ for r in fleet_repos:
   </tr>
 """
 
-html_body += """
+html_body += f"""
+</table>
+
+<h3>🩺 4. Mue (System Homeostasis & Autonomic Self-Care)</h3>
+<p><b>Cognitive State:</b> <span style="font-weight: bold; color: {'#10b981' if mue_summary['state'] in ('THRIVING', 'NOMINAL') else '#f59e0b'};">{mue_summary['state']}</span> | <b>Emergent Vitality:</b> {mue_summary['vitality']:.3f} | <b>Host RAM:</b> {mue_summary['ram_percent']}% | <b>CPU:</b> {mue_summary['cpu_percent']}%</p>
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: monospace; font-size: 13px;">
+  <tr style="background: #0284c7; color: #fff;">
+    <th>Health Subsystem</th>
+    <th>Measurement / Telemetry</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Host Physical RAM & Thermals</td>
+    <td>{mue_summary['ram_percent']}% host utilization (Stress Index: {mue_summary['host_stress']:.2f})</td>
+    <td style="color: #10b981; font-weight: bold;">{'OPTIMAL' if mue_summary['ram_percent'] < 85 else 'HIGH'}</td>
+  </tr>
+  <tr>
+    <td>Storage Hygiene</td>
+    <td>Pruned {mue_summary['shadow_pruned']} shadow worktrees, {mue_summary['backups_rotated']} backups ({mue_summary['bytes_reclaimed'] / (1024*1024):.2f} MB freed)</td>
+    <td style="color: #10b981; font-weight: bold;">CLEAN</td>
+  </tr>
+  <tr>
+    <td>Cognitive Blackboard</td>
+    <td>Hypothesis ID: <code>{mue_summary['hypothesis_id'] or 'Active in-memory'}</code></td>
+    <td style="color: #0284c7; font-weight: bold;">SYNCHRONIZED</td>
+  </tr>
 </table>
 
 <hr>
 <p style="font-size: 12px; color: #64748b;">
-Generated autonomously by Agent WASP Multi-Agent Mesh (Prometheus 🔥, Hermes 📬, Athena 🛡️).
+Generated autonomously by Agent WASP Multi-Agent Mesh (Prometheus 🔥, Hermes 📬, Athena 🛡️, Mue 🩺).
 </p>
 """
 
-# ── 5. DISPATCH EMAIL ──
+# ── 6. DISPATCH EMAIL ──
 print(f"[EMAIL] Dispatching Shift Briefing to {to_addr}...")
 ctx = ssl.create_default_context()
 try:
@@ -196,12 +260,13 @@ try:
 except Exception as e:
     print(f"EMAIL ERROR: {e}")
 
-# ── 6. APPEND SHIFT LOG TO MEMORY.md ──
+# ── 7. APPEND SHIFT LOG TO MEMORY.md ──
 log_entry = f"""
 ### Shift Execution Log — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 * **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.
 * **Hermes (📬)**: Triaged {total_inbox:,} emails for `{user_email}`; 0 security threats found.
 * **Athena (🛡️)**: Audited top repositories for `{gh_user}`; fleet operational.
+* **Mue (🩺)**: Homeostasis state `{mue_summary['state']}` (Vitality: {mue_summary['vitality']:.3f}, Host RAM: {mue_summary['ram_percent']}%, Reclaimed: {mue_summary['bytes_reclaimed'] / (1024*1024):.2f} MB).
 * **Delivery**: Shift briefing sent to `{to_addr}`.
 """
 

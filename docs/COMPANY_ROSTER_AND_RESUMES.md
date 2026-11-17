@@ -25,7 +25,7 @@ The Agent WASP workforce operates as a coordinated 16-entity autonomous organiza
  [ROOT INFRA & TRUTH]    [DEV & CODE FLEET]      [FINANCE & OPS]          [GROWTH & CLIENTS]
   🔥 Prometheus (Root)    🛡️ Athena (Bot 15)      Ledger (Bot 04)          Hermes (Bot 01)
   🔬 Dr. Albert (Bot 09)  Sherlock (Bot 05)       Midas (Bot 12)           Clara (Bot 02)
-                                                  Odyssey (Bot 07)         Calliope (Bot 03)
+  🩺 Mue (Bot 16)                                 Odyssey (Bot 07)         Calliope (Bot 03)
                                                                            Argus (Bot 06)
                                                                            Echo (Bot 08)
                                                                            Apollo (Bot 10)
@@ -68,6 +68,17 @@ The Agent WASP workforce operates as a coordinated 16-entity autonomous organiza
   - Deconstructs promotional marketing claims, verifies statistical significance ($p < 0.01$), and unmasks p-hacking.
   - Commands a 5-tier laboratory: deep headless scraper, OmniParser chart forensic deconstruction, and SciPy stats engine.
   - Translates complex scientific literature into concise, actionable briefs delivered to the operator's email.
+
+### 🩺 Mue — Chief System Homeostasis & Autonomic Self-Care Physician
+- **Employee ID:** `bot-16` (Internal: `bot-16-mue`)
+- **Department:** System Homeostasis & Cognitive Health
+- **Specialty:** Host Vital Signs, Cognitive Hygiene, Storage De-cluttering, PAD Emotional Regulation, AST Self-Healing.
+- **Resume & Background:**
+  - Adapted from the pioneering MUE-X biological agent architecture, serving as the 24/7 guardian of system longevity.
+  - Continuously monitors Windows host memory pressure (< 17.4 GB) and throttles heavy workloads during CPU spikes or thermal stress.
+  - Enforces cognitive and disk hygiene: automatically purges stale shadow staging directories, rotates staging backups (capped at 500 MB), and vacuums SQLite lattices.
+  - Analyzes recurring runtime errors to synthesize targeted AST resilience wrappers (`_safe_divide`, `_retry_on_failure`) vetted by Triad Consensus.
+  - Employs the Pleasure-Arousal-Dominance (PAD) framework to track workforce fatigue and publish health diagnoses to the Cognitive Blackboard.
 
 ---
 
