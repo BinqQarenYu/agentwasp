@@ -77,13 +77,22 @@ class ShadowStagingManager:
                 if (p / ".git").exists() or (p / "MEMORY.md").exists() or (p / "run_dashboard_native.py").exists():
                     found = p
                     break
-            self.workspace_root = found or curr.parents[4]
+            fallback_idx = min(2, len(curr.parents) - 1)
+            self.workspace_root = found or curr.parents[fallback_idx]
         self.staging_root = staging_root or (self.workspace_root / "data" / "shadow_staging")
         self.backup_root = backup_root or (self.workspace_root / "data" / "staging_backups")
 
-        # Ensure root directories exist
-        self.staging_root.mkdir(parents=True, exist_ok=True)
-        self.backup_root.mkdir(parents=True, exist_ok=True)
+        # Ensure root directories exist (fall back to writable /data or temp dir inside read-only containers)
+        try:
+            self.staging_root.mkdir(parents=True, exist_ok=True)
+            self.backup_root.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            import tempfile
+            writable_base = Path("/data") if Path("/data").exists() and os.access("/data", os.W_OK) else Path(tempfile.gettempdir()) / "wasp_staging"
+            self.staging_root = writable_base / "shadow_staging"
+            self.backup_root = writable_base / "staging_backups"
+            self.staging_root.mkdir(parents=True, exist_ok=True)
+            self.backup_root.mkdir(parents=True, exist_ok=True)
 
     def create_staging_session(
         self,

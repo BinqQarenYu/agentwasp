@@ -7,11 +7,14 @@ PAD emotional vitality, and dynamic AI provider routing (Google Free Tier -> Oll
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import math
 import os
 import shutil
 import sqlite3
 import time
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +43,15 @@ MAX_STAGING_BACKUP_MB = 500
 MAX_STAGING_BACKUP_COUNT = 50
 STALE_STAGING_MAX_AGE_SEC = 7200  # 2 hours
 MAX_HOST_RAM_PERCENT = 85.0       # Threshold for host stress
+IMMUTABLE_ENCLAVE_FILES = frozenset({
+    "sandbox.py",
+    "python_exec.py",
+    "control_layer.py",
+    "redaction.py",
+    "self_improve.py",
+    "auth.py",
+    "auth_routes.py",
+})
 
 
 @dataclass
@@ -268,35 +280,37 @@ class MueDynamicAIProvider:
                 self._google_reason = f"runtime_error: {str(exc)[:40]}"
                 # Fall through to lower Ollama tier
 
-        # 2. Try Ollama (Lower Tier Fallback)
-        try:
-            import httpx
-            ollama_url = f"{self.ollama_host.rstrip('/')}/api/generate"
-            payload = {
-                "model": self.fallback_ollama_model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.2, "num_predict": 100},
-            }
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(ollama_url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    text = data.get("response", "").strip()
-                    if text:
-                        latency_ms = round((time.monotonic() - t0) * 1000)
-                        logger.info("mue.ai_provider.inference_success", provider="ollama", model=self.fallback_ollama_model, latency_ms=latency_ms)
-                        return {
-                            "content": text,
-                            "provider": "ollama",
-                            "model": self.fallback_ollama_model,
-                            "tier": "ollama_local",
-                            "fallback_occurred": (provider == "google"),
-                            "fallback_reason": "google_api_failed_or_rate_limited",
-                            "latency_ms": latency_ms,
-                        }
-        except Exception as exc:
-            logger.warning("mue.ai_provider.ollama_failed", error=str(exc)[:100])
+        # 2. Try Ollama (Lower Tier Fallback — only when Google failed or Ollama resolved healthy)
+        if provider in ("google", "ollama"):
+            try:
+                import httpx
+                ollama_url = f"{self.ollama_host.rstrip('/')}/api/generate"
+                payload = {
+                    "model": self.fallback_ollama_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "keep_alive": "30m",
+                    "options": {"temperature": 0.2, "num_predict": 80, "num_ctx": 1024},
+                }
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(ollama_url, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        text = data.get("response", "").strip()
+                        if text:
+                            latency_ms = round((time.monotonic() - t0) * 1000)
+                            logger.info("mue.ai_provider.inference_success", provider="ollama", model=self.fallback_ollama_model, latency_ms=latency_ms)
+                            return {
+                                "content": text,
+                                "provider": "ollama",
+                                "model": self.fallback_ollama_model,
+                                "tier": "ollama_local",
+                                "fallback_occurred": (provider == "google"),
+                                "fallback_reason": "google_api_failed_or_rate_limited" if provider == "google" else "",
+                                "latency_ms": latency_ms,
+                            }
+            except Exception as exc:
+                logger.warning("mue.ai_provider.ollama_failed", error=str(exc)[:100])
 
         # 3. Deterministic Safety Fallback (Zero crash guarantee)
         latency_ms = round((time.monotonic() - t0) * 1000)
@@ -332,14 +346,14 @@ class VitalSignsCollector:
 
     def __init__(
         self,
-        ollama_host: str = "http://localhost:11434",
+        ollama_host: str = "",
         google_api_key: str = "",
         ai_provider: Optional[MueDynamicAIProvider] = None,
     ):
-        self.ollama_host = ollama_host
+        self.ollama_host = ollama_host or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         self.ai_provider = ai_provider or MueDynamicAIProvider(
             google_api_key=google_api_key,
-            ollama_host=ollama_host,
+            ollama_host=self.ollama_host,
         )
 
     async def collect(self) -> VitalSigns:
@@ -526,7 +540,7 @@ class MueCareEngine:
         self,
         workspace_root: Optional[Path] = None,
         redis_url: str = "",
-        ollama_host: str = "http://localhost:11434",
+        ollama_host: str = "",
         google_api_key: str = "",
         preferred_google_model: str = "gemini-2.5-flash",
         fallback_ollama_model: str = "llama3.2:latest",
@@ -540,21 +554,23 @@ class MueCareEngine:
                 if (p / ".git").exists() or (p / "MEMORY.md").exists() or (p / "run_dashboard_native.py").exists():
                     found = p
                     break
-            self.workspace_root = found or curr.parents[4]
+            self.workspace_root = found or curr.parents[2]
 
+        resolved_ollama = ollama_host or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         self.redis_url = redis_url
         self.ai_provider = MueDynamicAIProvider(
             google_api_key=google_api_key,
-            ollama_host=ollama_host,
+            ollama_host=resolved_ollama,
             preferred_google_model=preferred_google_model,
             fallback_ollama_model=fallback_ollama_model,
         )
         self.vitals_collector = VitalSignsCollector(
-            ollama_host=ollama_host,
+            ollama_host=resolved_ollama,
             ai_provider=self.ai_provider,
         )
         self.hygiene_manager = StorageHygieneManager(workspace_root=self.workspace_root)
         self.pad_vitality = PADEmergentVitality()
+        self._recently_evaluated_modules: List[str] = []
 
     async def run_vital_check(self) -> VitalSigns:
         return await self.vitals_collector.collect()
@@ -568,6 +584,144 @@ class MueCareEngine:
             completed_goals_delta=completed_goals
         )
 
+    def _resolve_source_root(self) -> Optional[Path]:
+        """Locate the agent-core Python source tree on host or inside container."""
+        candidates = [
+            self.workspace_root / "containers" / "agent-core" / "src",
+            self.workspace_root / "src",
+        ]
+        for cand in candidates:
+            if cand.exists() and cand.is_dir():
+                return cand
+        return None
+
+    @staticmethod
+    def _compute_file_ast_metrics(py_file: Path) -> Optional[dict[str, Any]]:
+        """Parse a Python source file and compute normalized AST Shannon entropy & complexity."""
+        try:
+            source = py_file.read_text(encoding="utf-8", errors="ignore")
+            if len(source) < 120:
+                return None
+            tree = ast.parse(source)
+        except Exception:
+            return None
+
+        type_counts: Counter[str] = Counter()
+        functions = 0
+        branches = 0
+        branch_types = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.ExceptHandler, ast.With, ast.AsyncWith)
+        func_types = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+        for node in ast.walk(tree):
+            type_counts[type(node).__name__] += 1
+            if isinstance(node, func_types):
+                functions += 1
+            elif isinstance(node, branch_types):
+                branches += 1
+
+        total_nodes = sum(type_counts.values())
+        if total_nodes < 20 or len(type_counts) < 2:
+            return None
+
+        # Normalized Shannon entropy over AST node types
+        h_raw = -sum((cnt / total_nodes) * math.log2(cnt / total_nodes) for cnt in type_counts.values())
+        h_max = math.log2(len(type_counts))
+        h_type = min(1.0, max(0.0, h_raw / h_max)) if h_max > 0 else 0.5
+
+        # Structural branching complexity density
+        branch_density = min(1.0, (branches / max(functions, 1)) / 8.0)
+        module_entropy = round(min(1.0, max(0.0, 0.70 * h_type + 0.30 * branch_density)), 4)
+
+        return {
+            "entropy": module_entropy,
+            "h_type": round(h_type, 4),
+            "branch_density": round(branch_density, 4),
+            "ast_nodes": total_nodes,
+            "functions": functions,
+            "branches": branches,
+            "lines": source.count("\n") + 1,
+        }
+
+    def scan_codebase_ast_entropy(self, max_files: int = 80) -> dict[str, Any]:
+        """Scans eligible codebase .py files and selects the next highest-entropy module."""
+        src_root = self._resolve_source_root()
+        if src_root is None:
+            return {
+                "target_file": "src/health/mue_care_engine.py",
+                "module_name": "src/health",
+                "entropy": 0.72,
+                "ast_nodes": 0,
+                "functions": 0,
+                "branches": 0,
+                "lines": 0,
+                "modules_scanned": 0,
+                "candidate_proposal": "Optimize autonomous homeostasis storage hygiene and system health caching",
+            }
+
+        scored: List[tuple[bool, float, str, dict[str, Any]]] = []
+        scanned = 0
+        for py_file in sorted(src_root.rglob("*.py")):
+            if scanned >= max_files:
+                break
+            if "__pycache__" in py_file.parts or "tests" in py_file.parts:
+                continue
+            if py_file.name == "__init__.py" or py_file.name in IMMUTABLE_ENCLAVE_FILES:
+                continue
+
+            metrics = self._compute_file_ast_metrics(py_file)
+            if metrics is None:
+                continue
+            scanned += 1
+            try:
+                rel_path = py_file.relative_to(self.workspace_root).as_posix()
+            except ValueError:
+                rel_path = py_file.relative_to(src_root.parent).as_posix()
+            is_fresh = rel_path not in self._recently_evaluated_modules
+            scored.append((is_fresh, metrics["entropy"], rel_path, metrics))
+
+        if not scored:
+            return {
+                "target_file": "src/health/mue_care_engine.py",
+                "module_name": "src/health",
+                "entropy": 0.72,
+                "ast_nodes": 0,
+                "functions": 0,
+                "branches": 0,
+                "lines": 0,
+                "modules_scanned": 0,
+                "candidate_proposal": "Optimize autonomous homeostasis storage hygiene and system health caching",
+            }
+
+        # Reset rotation if every scanned module has already been visited
+        if not any(item[0] for item in scored):
+            self._recently_evaluated_modules.clear()
+            scored = [(True, ent, rel, m) for _, ent, rel, m in scored]
+
+        scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        _, top_entropy, target_rel, top_metrics = scored[0]
+
+        self._recently_evaluated_modules.append(target_rel)
+        if len(self._recently_evaluated_modules) > 20:
+            self._recently_evaluated_modules = self._recently_evaluated_modules[-20:]
+
+        module_name = "/".join(target_rel.split("/")[-2:])
+        proposal = (
+            f"Optimize {target_rel} ({top_metrics['functions']} functions, {top_metrics['branches']} branches) "
+            f"to improve autonomous homeostasis, memory efficiency, system health, and execution reliability."
+        )
+
+        return {
+            "target_file": target_rel,
+            "module_name": module_name,
+            "entropy": top_entropy,
+            "ast_nodes": top_metrics["ast_nodes"],
+            "functions": top_metrics["functions"],
+            "branches": top_metrics["branches"],
+            "lines": top_metrics["lines"],
+            "modules_scanned": scanned,
+            "candidate_proposal": proposal,
+        }
+
     def compute_coding_curiosity(
         self,
         module_name: str = "src/health",
@@ -579,7 +733,7 @@ class MueCareEngine:
             evaluator = CuriosityEvaluator()
             vec = evaluator.evaluate(
                 topic=f"codebase_optimization_{module_name}",
-                domain="coding",
+                domain="codebase_evolution",
                 entropy=entropy if entropy is not None else 0.72,
                 surprise=surprise,
             )
@@ -601,9 +755,20 @@ class MueCareEngine:
     def compute_common_sense_gate(
         self,
         candidate_proposal: str,
-        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, code reliability, and system health.",
     ) -> dict[str, Any]:
         """Quantifies Common Sense Omega_sense based on teleological drift and invariant gating."""
+        # Hard Immutable Enclave invariant check (Phi_invariants = 0)
+        prop_lower = candidate_proposal.lower()
+        for enclave_file in IMMUTABLE_ENCLAVE_FILES:
+            if enclave_file in prop_lower or "immutable enclave" in prop_lower or "bypass security" in prop_lower:
+                return {
+                    "omega_sense": 0.0,
+                    "teleological_drift": 1.0,
+                    "passes_gate": False,
+                    "rationale": f"VETOED: Proposal violates Immutable Enclave invariant ({enclave_file}).",
+                }
+
         if TeleologicalAligner is not None:
             aligner = TeleologicalAligner()
             decision = aligner.calculate_common_sense_gate(
@@ -625,14 +790,38 @@ class MueCareEngine:
 
     def evaluate_effective_loop(
         self,
-        candidate_proposal: str = "Refactor storage hygiene pruning with exponential backoff",
-        module_name: str = "src/health",
-        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, and system health.",
+        candidate_proposal: Optional[str] = None,
+        module_name: Optional[str] = None,
+        master_goals_summary: str = "Maintain 24/7 autonomous homeostasis, storage hygiene, code reliability, and system health.",
+        vitals: Optional[VitalSigns] = None,
+        pad: Optional[PADVitality] = None,
     ) -> dict[str, Any]:
-        """Evaluates the full Effective Homeostatic Loop: C_eff = C_code * Omega_sense."""
-        curiosity = self.compute_coding_curiosity(module_name=module_name)
+        """Evaluates the dynamic Effective Homeostatic Loop: C_eff = C_code * Omega_sense."""
+        scan = self.scan_codebase_ast_entropy() if (candidate_proposal is None or module_name is None) else None
+
+        resolved_module = module_name or (scan["module_name"] if scan else "src/health")
+        resolved_target = scan["target_file"] if scan else resolved_module
+        resolved_proposal = candidate_proposal or (
+            scan["candidate_proposal"] if scan else "Optimize storage hygiene pruning and system health caching"
+        )
+        resolved_entropy = scan["entropy"] if scan else 0.72
+
+        # Dynamic epistemic surprise D_KL: AST complexity + PAD Drive 3 stagnation + stress signal
+        base_surprise = 0.55
+        if scan and scan["functions"] > 0:
+            complexity_signal = min(0.35, (scan["branches"] / max(scan["functions"], 1)) * 0.06)
+            base_surprise = 0.50 + complexity_signal
+        stagnation_boost = min(0.20, (pad.stagnation_cycles * 0.05)) if pad else 0.0
+        stress_signal = min(0.10, (vitals.host_stress_level * 0.15)) if vitals else 0.0
+        dynamic_surprise = round(min(1.0, max(0.1, base_surprise + stagnation_boost + stress_signal)), 4)
+
+        curiosity = self.compute_coding_curiosity(
+            module_name=resolved_module,
+            entropy=resolved_entropy,
+            surprise=dynamic_surprise,
+        )
         common_sense = self.compute_common_sense_gate(
-            candidate_proposal=candidate_proposal,
+            candidate_proposal=resolved_proposal,
             master_goals_summary=master_goals_summary,
         )
 
@@ -642,6 +831,16 @@ class MueCareEngine:
         is_actionable = (c_eff >= 0.60) and common_sense["passes_gate"]
 
         return {
+            "target_file": resolved_target,
+            "module_name": resolved_module,
+            "modules_scanned": scan["modules_scanned"] if scan else 0,
+            "ast_stats": {
+                "ast_nodes": scan["ast_nodes"],
+                "functions": scan["functions"],
+                "branches": scan["branches"],
+                "lines": scan["lines"],
+            } if scan else {},
+            "candidate_proposal": resolved_proposal,
             "c_code": c_code,
             "omega_sense": omega,
             "c_effective": c_eff,
@@ -663,11 +862,12 @@ class MueCareEngine:
         """Publishes an authoritative health and homeostasis diagnosis to Cognitive Blackboard."""
         ai_provider_label = vitals.active_ai_provider.upper()
         prescription = clinical_insight.get("content", "") if clinical_insight else ""
-        loop_data = effective_loop or self.evaluate_effective_loop()
+        loop_data = effective_loop or self.evaluate_effective_loop(vitals=vitals, pad=pad)
+        target_label = loop_data.get("target_file", "src/health")
 
         statement = (
             f"Mue Homeostasis Diagnosis ({ai_provider_label}): System is {pad.state_label} (Vitality: {pad.vitality_index:.2f}). "
-            f"Effective Loop C_eff: {loop_data.get('c_effective', 0.65)} ({loop_data.get('loop_status')}). "
+            f"Effective Loop C_eff: {loop_data.get('c_effective', 0.65)} ({loop_data.get('loop_status')}) on {target_label}. "
             f"RAM: {vitals.ram_percent:.1f}% ({vitals.ram_used_gb}GB / {vitals.ram_total_gb}GB), "
             f"CPU: {vitals.cpu_percent:.1f}%, Reclaimed: {round(hygiene.bytes_reclaimed / (1024**2), 2)}MB disk. "
             f"Prescription: {prescription}"
@@ -678,6 +878,7 @@ class MueCareEngine:
             f"Host Stress Index: {vitals.host_stress_level:.3f}",
             f"Active AI Provider: {vitals.active_ai_provider} ({vitals.ai_provider_tier})",
             f"Effective Homeostatic Loop: C_eff={loop_data.get('c_effective')} (C_code={loop_data.get('c_code')}, Omega_sense={loop_data.get('omega_sense')}) -> {loop_data.get('loop_status')}",
+            f"AST Target Scanned: {target_label} (Scanned {loop_data.get('modules_scanned', 0)} modules)",
             f"Google Free Tier Health: {'ONLINE' if vitals.google_api_healthy else 'OFFLINE/FALLBACK'}",
             f"Ollama Local Health: {'ONLINE' if vitals.ollama_healthy else 'OFFLINE/UNREACHABLE'}",
             f"Storage Hygiene: {hygiene.shadow_sessions_pruned} shadow sessions pruned, {hygiene.backup_files_rotated} backups rotated",
@@ -732,8 +933,8 @@ class MueCareEngine:
         # 3. Evaluate emotional vitality
         pad = await self.evaluate_vitality(stress_level=vitals.host_stress_level)
 
-        # 4. Evaluate Effective Homeostatic Loop (C_code * Omega_sense)
-        effective_loop = self.evaluate_effective_loop()
+        # 4. Evaluate Effective Homeostatic Loop (C_code * Omega_sense) grounded in live AST & PAD state
+        effective_loop = self.evaluate_effective_loop(vitals=vitals, pad=pad)
 
         # 5. Generate dynamic clinical insight via Google Free Tier -> Ollama cascade
         insight = await self.ai_provider.generate_clinical_insight(
@@ -761,6 +962,8 @@ class MueCareEngine:
             ai_provider=insight["provider"],
             ai_tier=insight["tier"],
             c_effective=effective_loop.get("c_effective"),
+            target_file=effective_loop.get("target_file"),
+            loop_status=effective_loop.get("loop_status"),
             duration_ms=duration_ms,
         )
 

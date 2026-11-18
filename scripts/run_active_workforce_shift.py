@@ -124,6 +124,7 @@ mue_summary = {
     "c_code": 0.65,
     "omega_sense": 0.95,
     "loop_status": "ACTIONABLE_EVOLUTION",
+    "target_file": "src/health",
 }
 try:
     import asyncio
@@ -149,10 +150,11 @@ try:
     mue_summary["c_code"] = eff_loop.get("c_code", 0.65)
     mue_summary["omega_sense"] = eff_loop.get("omega_sense", 0.95)
     mue_summary["loop_status"] = eff_loop.get("loop_status", "ACTIONABLE_EVOLUTION")
+    mue_summary["target_file"] = eff_loop.get("target_file", "src/health")
 
     print(
         f"[MUE] Homeostasis Shift: state={mue_summary['state']}, vitality={mue_summary['vitality']:.3f}, "
-        f"C_eff={mue_summary['c_effective']} ({mue_summary['loop_status']}), "
+        f"C_eff={mue_summary['c_effective']} ({mue_summary['loop_status']} on {mue_summary['target_file']}), "
         f"RAM={mue_summary['ram_percent']}%, AI Provider={mue_summary['ai_provider'].upper()} ({mue_summary['ai_model']}) [{mue_summary['ai_tier']}]"
     )
 except Exception as e:

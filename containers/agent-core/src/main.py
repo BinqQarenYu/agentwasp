@@ -1174,18 +1174,36 @@ async def main():
         # Autonomous Teleological Self-Evolution (ATSE) — 24/7 background evolution
         if getattr(settings, "autonomic_evolution_enabled", True):
             try:
+                import os as _atse_os
                 from .scheduler.autonomic_evolution_job import AutonomicEvolutionJob
+                _src_writable = _atse_os.access("/app/src", _atse_os.W_OK)
                 scheduler.register(
                     "autonomic_evolution",
                     getattr(settings, "scheduler_autonomic_evolution_interval", 1800),
                     AutonomicEvolutionJob(
                         redis_url=settings.redis_url,
                         bus=bus,
+                        dry_run=not _src_writable,
                     ),
                 )
-                logger.info("agent_core.autonomic_evolution_job_registered")
+                logger.info("agent_core.autonomic_evolution_job_registered", dry_run=not _src_writable)
             except Exception as _atse_e:
                 logger.warning("agent_core.autonomic_evolution_register_failed", error=str(_atse_e))
+
+        # Bot 16: Mue (System Homeostasis, Quantified Curiosity & Common-Sense Effective Loop)
+        try:
+            from .scheduler.mue_homeostasis import MueHomeostasisJob
+            scheduler.register(
+                "mue_homeostasis",
+                getattr(settings, "scheduler_mue_homeostasis_interval", 1800),  # Every 30 minutes
+                MueHomeostasisJob(
+                    redis_url=settings.redis_url,
+                    bus=bus,
+                ),
+            )
+            logger.info("agent_core.mue_homeostasis_job_registered")
+        except Exception as _mue_e:
+            logger.warning("agent_core.mue_homeostasis_register_failed", error=str(_mue_e))
 
         await scheduler.start()
         logger.info("agent_core.scheduler_started")

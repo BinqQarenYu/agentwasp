@@ -197,6 +197,35 @@ class TestAutonomicEvolutionJob(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(summary.startswith("ATSE Cycle "))
         self.assertIn("atse_", summary)
 
+    async def test_atse_dynamic_target_rotation(self):
+        """Test ATSE rotates across different eligible modules instead of repeating one file."""
+        target_dir = self.workspace / "containers" / "agent-core" / "src" / "utils"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "mod_alpha.py").write_text(
+            'LABEL_A = "alpha_" + "service_" + "v1"\n'
+            'def get_alpha(x):\n'
+            '    if x:\n'
+            '        return LABEL_A\n'
+            '    return ""\n',
+            encoding="utf-8",
+        )
+        (target_dir / "mod_beta.py").write_text(
+            'LABEL_B = "beta_" + "worker_" + "v2"\n'
+            'def get_beta(y):\n'
+            '    if y:\n'
+            '        return LABEL_B\n'
+            '    return ""\n',
+            encoding="utf-8",
+        )
+
+        self.job.dry_run = True
+        r1 = await self.job.execute_cycle(candidate_proposal=None)
+        r2 = await self.job.execute_cycle(candidate_proposal=None)
+
+        self.assertEqual(r1["status"], "APPROVED_DRY_RUN")
+        self.assertEqual(r2["status"], "APPROVED_DRY_RUN")
+        self.assertNotEqual(r1["target_file"], r2["target_file"])
+
 
 if __name__ == "__main__":
     unittest.main()

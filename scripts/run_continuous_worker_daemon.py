@@ -34,13 +34,18 @@ SHIFT_INTERVAL_SECONDS = int(os.getenv("WASP_SHIFT_INTERVAL", 3600))     # 60 mi
 HEARTBEAT_INTERVAL_SECONDS = 60                                          # 1 minute
 
 
+_atse_job = None
+
+
 async def run_atse_cycle():
-    """Execute one Autonomous Teleological Self-Evolution cycle."""
+    """Execute one Autonomous Teleological Self-Evolution cycle with persistent target rotation."""
+    global _atse_job
     try:
         from src.scheduler.autonomic_evolution_job import AutonomicEvolutionJob
-        job = AutonomicEvolutionJob(workspace_root=ROOT_DIR, redis_client=fake_r, dry_run=True)
+        if _atse_job is None:
+            _atse_job = AutonomicEvolutionJob(workspace_root=ROOT_DIR, redis_client=fake_r, dry_run=True)
         logger.info("daemon.atse_cycle_starting", timestamp=datetime.now(timezone.utc).isoformat())
-        result = await job.execute_cycle()
+        result = await _atse_job.execute_cycle()
         logger.info("daemon.atse_cycle_completed", result=result)
         return result
     except Exception as exc:

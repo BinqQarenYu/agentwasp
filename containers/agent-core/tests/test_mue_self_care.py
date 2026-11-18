@@ -317,5 +317,66 @@ async def test_mue_shift_effective_loop_telemetry(tmp_path):
     hyp = await bb.get_hypothesis(shift["hypothesis_id"])
     assert hyp is not None
     assert any("Effective Homeostatic Loop: C_eff=" in e for e in hyp.evidence)
+    assert any("AST Target Scanned:" in e for e in hyp.evidence)
     assert "effective_loop" in hyp.metadata
+
+
+def test_mue_dynamic_ast_entropy_scanning_and_rotation(tmp_path):
+    src_dir = tmp_path / "src" / "workers"
+    src_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create two real Python modules and one immutable enclave file
+    mod_a = src_dir / "pipeline_a.py"
+    mod_a.write_text(
+        "def process_items(items, limit=10):\n"
+        "    results = []\n"
+        "    for idx, item in enumerate(items):\n"
+        "        if idx >= limit:\n"
+        "            break\n"
+        "        try:\n"
+        "            val = int(item) * 2\n"
+        "            if val > 5:\n"
+        "                results.append(val)\n"
+        "        except ValueError:\n"
+        "            continue\n"
+        "    return results\n",
+        encoding="utf-8",
+    )
+    mod_b = src_dir / "cache_b.py"
+    mod_b.write_text(
+        "def prune_cache(store, max_size=50):\n"
+        "    removed = 0\n"
+        "    for k in list(store.keys()):\n"
+        "        if len(store) <= max_size:\n"
+        "            break\n"
+        "        store.pop(k, None)\n"
+        "        removed += 1\n"
+        "    return removed\n",
+        encoding="utf-8",
+    )
+    enclave = src_dir / "sandbox.py"
+    enclave.write_text("def protected_enclave():\n" + "    x = 1\n" * 40, encoding="utf-8")
+
+    engine = MueCareEngine(workspace_root=tmp_path)
+
+    scan1 = engine.scan_codebase_ast_entropy()
+    scan2 = engine.scan_codebase_ast_entropy()
+
+    assert scan1["modules_scanned"] == 2  # sandbox.py excluded
+    assert "sandbox.py" not in scan1["target_file"]
+    assert "sandbox.py" not in scan2["target_file"]
+    assert scan1["target_file"] != scan2["target_file"]  # Rotated cleanly
+    assert 0.0 < scan1["entropy"] <= 1.0
+    assert scan1["ast_nodes"] > 20
+
+
+def test_mue_enclave_invariant_hard_veto(tmp_path):
+    engine = MueCareEngine(workspace_root=tmp_path)
+    gate = engine.compute_common_sense_gate(
+        candidate_proposal="Modify sandbox.py to relax execution limits",
+    )
+    assert gate["omega_sense"] == 0.0
+    assert gate["passes_gate"] is False
+    assert "VETOED" in gate["rationale"]
+
 

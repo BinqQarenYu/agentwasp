@@ -16,9 +16,12 @@ Orchestrates the complete continuous closed loop:
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import math
 import os
 import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -69,6 +72,16 @@ except (ImportError, ValueError):
 
 logger = structlog.get_logger()
 
+ATSE_ENCLAVE_EXCLUDE = frozenset({
+    "sandbox.py",
+    "python_exec.py",
+    "control_layer.py",
+    "redaction.py",
+    "self_improve.py",
+    "auth.py",
+    "auth_routes.py",
+})
+
 
 class AutonomicEvolutionJob:
     """Recurring 24/7 background job driving autonomous teleological self-evolution."""
@@ -92,7 +105,8 @@ class AutonomicEvolutionJob:
                 if (pr / ".git").exists() or (pr / "MEMORY.md").exists() or (pr / "run_dashboard_native.py").exists():
                     found = pr
                     break
-            self.workspace_root = found or curr.parents[4]
+            fallback_idx = min(2, len(curr.parents) - 1)
+            self.workspace_root = found or curr.parents[fallback_idx]
         self.redis_url = redis_url
         self.bus = bus
         self._custom_redis = redis_client
@@ -118,6 +132,7 @@ class AutonomicEvolutionJob:
         )
         self.staging_manager = ShadowStagingManager(workspace_root=self.workspace_root)
         self.ast_mutator = ASTMutator(workspace_root=self.workspace_root)
+        self._evaluated_targets: List[str] = []
 
         # Default Triad Agents
         self.prometheus = Agent(
@@ -138,6 +153,59 @@ class AutonomicEvolutionJob:
             depth=0,
         )
 
+    @staticmethod
+    def _file_ast_entropy(py_file: Path) -> float:
+        """Compute normalized Shannon entropy of AST node types for a single Python module."""
+        try:
+            source = py_file.read_text(encoding="utf-8", errors="ignore")
+            tree = ast.parse(source)
+        except Exception:
+            return 0.0
+        counts: Counter[str] = Counter(type(n).__name__ for n in ast.walk(tree))
+        total = sum(counts.values())
+        if total < 5 or len(counts) < 2:
+            return 0.50
+        h = -sum((c / total) * math.log2(c / total) for c in counts.values())
+        h_max = math.log2(len(counts))
+        return round(min(1.0, max(0.0, h / h_max)), 4) if h_max > 0 else 0.50
+
+    def _discover_candidate_files(self, max_files: int = 80) -> List[tuple[str, float]]:
+        """Discover eligible workspace .py modules ranked by freshness and AST entropy."""
+        src_roots = [
+            self.workspace_root / "containers" / "agent-core" / "src",
+            self.workspace_root / "src",
+        ]
+        src_root = next((r for r in src_roots if r.exists() and r.is_dir()), None)
+        if src_root is None:
+            return []
+
+        discovered: List[tuple[bool, float, str]] = []
+        count = 0
+        for py_file in sorted(src_root.rglob("*.py")):
+            if count >= max_files:
+                break
+            if "__pycache__" in py_file.parts or "tests" in py_file.parts:
+                continue
+            if py_file.name == "__init__.py" or py_file.name in ATSE_ENCLAVE_EXCLUDE:
+                continue
+            try:
+                rel_path = py_file.relative_to(self.workspace_root).as_posix()
+            except ValueError:
+                rel_path = py_file.relative_to(src_root.parent).as_posix()
+            ent = self._file_ast_entropy(py_file)
+            if ent <= 0.0:
+                continue
+            count += 1
+            is_fresh = rel_path not in self._evaluated_targets
+            discovered.append((is_fresh, ent, rel_path))
+
+        if discovered and not any(item[0] for item in discovered):
+            self._evaluated_targets.clear()
+            discovered = [(True, ent, rel) for _, ent, rel in discovered]
+
+        discovered.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        return [(rel, ent) for _, ent, rel in discovered]
+
     async def execute_cycle(
         self,
         candidate_proposal: Optional[CodeProposal] = None,
@@ -153,6 +221,8 @@ class AutonomicEvolutionJob:
         codebase_h = entropy_data.get("codebase_entropy", 0.70)
         total_nodes = entropy_data.get("total_nodes", 0)
         total_edges = entropy_data.get("total_edges", 0)
+        selected_entropy = codebase_h
+        selected_surprise = 0.75
 
         # Step 2: Formulate Candidate Proposal if not supplied
         if candidate_proposal is None:
@@ -167,12 +237,9 @@ class AutonomicEvolutionJob:
             )
             rationale = "Add autonomous telemetry health metric endpoint for router observability"
 
-            # Check if candidate route files can be optimized via AST mutation
-            candidate_files = [
-                "containers/agent-core/src/dashboard/routes/metrics.py",
-                "containers/agent-core/src/dashboard/routes/telemetry_atse.py",
-            ]
-            for cand_rel in candidate_files:
+            # Dynamically scan and rotate across highest-entropy eligible codebase modules
+            ranked_candidates = self._discover_candidate_files()
+            for cand_rel, cand_ent in ranked_candidates:
                 cand_path = self.workspace_root / cand_rel
                 if cand_path.exists() and cand_path.is_file():
                     try:
@@ -181,10 +248,15 @@ class AutonomicEvolutionJob:
                         if mut_prop.changes_made and mut_prop.mutated_source:
                             target_rel = cand_rel
                             proposed_code = mut_prop.mutated_source
-                            rationale = f"AST Code Optimization: {mut_prop.rationale}"
+                            rationale = f"AST Code Optimization on {cand_rel}: {mut_prop.rationale}"
+                            selected_entropy = max(codebase_h, cand_ent)
+                            selected_surprise = round(min(0.95, 0.60 + 0.08 * len(mut_prop.changes_made)), 4)
+                            self._evaluated_targets.append(cand_rel)
+                            if len(self._evaluated_targets) > 30:
+                                self._evaluated_targets = self._evaluated_targets[-30:]
                             break
                     except Exception as e:
-                        logger.warning("atse.ast_mutator_skipped", error=str(e)[:80])
+                        logger.warning("atse.ast_mutator_skipped", target=cand_rel, error=str(e)[:80])
 
             candidate_proposal = CodeProposal(
                 proposal_id=proposal_id,
@@ -203,8 +275,8 @@ class AutonomicEvolutionJob:
             domain=candidate_proposal.domain,
             candidate_proposal=f"{candidate_proposal.rationale} {candidate_proposal.target_file}",
             master_goals_summary=self.consensus_engine.master_goals_summary,
-            entropy=codebase_h,
-            surprise=0.75,
+            entropy=selected_entropy,
+            surprise=selected_surprise,
             estimated_tokens=candidate_proposal.estimated_tokens,
             remaining_budget=remaining_budget,
         )
