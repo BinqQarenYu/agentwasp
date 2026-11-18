@@ -77,6 +77,7 @@ def _registry(request: Request):
     return getattr(request.app.state, "integration_registry", None)
 
 
+@router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
 async def integrations_page(request: Request):
     reg = _registry(request)

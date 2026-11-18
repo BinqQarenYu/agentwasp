@@ -871,6 +871,7 @@ def apply_final_response_policy(
     user_lang: str = "en",
     chat_id: str = "",
     recent_action_resolver=None,
+    allow_markdown: bool = False,
 ) -> tuple[str, dict]:
     """Apply the full final-response policy in order. Returns (text, trace).
 
@@ -921,8 +922,11 @@ def apply_final_response_policy(
     )
     trace["factual_grounding"] = factual
 
-    text, mdtrace = sanitize_markdown(text)
-    trace["markdown_sanitization"] = mdtrace
+    if not allow_markdown:
+        text, mdtrace = sanitize_markdown(text)
+        trace["markdown_sanitization"] = mdtrace
+    else:
+        trace["markdown_sanitization"] = {"applied": False, "allowed": True}
 
     # Translate hardcoded English skill phrases (e.g. "No active reminders.")
     # before token-level lang consistency runs. Exact-match only.

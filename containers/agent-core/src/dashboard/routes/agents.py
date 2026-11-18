@@ -78,6 +78,9 @@ def _fmt_agent(agent) -> dict:
         "description": getattr(agent, "description", ""),
         "model_provider": getattr(agent, "model_provider", ""),
         "model_name": getattr(agent, "model_name", ""),
+        "harness": getattr(agent, "harness", ""),
+        "harness_session_id": getattr(agent, "harness_session_id", ""),
+        "reasoning_effort": getattr(agent, "reasoning_effort", ""),
         "identity_prompt": getattr(agent, "identity_prompt", ""),
         "autonomy_mode": autonomy_val,
         "allowed_capabilities": getattr(agent, "allowed_capabilities", []) or [],
@@ -209,6 +212,8 @@ async def agent_create(request: Request):
             autonomy_mode=body.get("autonomy_mode", "full"),
             allowed_capabilities=capabilities_raw,
             memory_namespace=body.get("memory_namespace", ""),
+            harness=body.get("harness", ""),
+            reasoning_effort=body.get("reasoning_effort", ""),
         )
 
         # Auto-start initial goal from identity_prompt so agent begins immediately

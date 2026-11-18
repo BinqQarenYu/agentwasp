@@ -73,6 +73,16 @@ def create_app(
     app.state.goal_orchestrator = goal_orchestrator
     app.state.integration_registry = integration_registry
     app.state.agent_orchestrator = agent_orchestrator
+    from ..harnesses import HarnessRunner, ScreenClient
+    from ..policy.approvals import ApprovalManager
+    app.state.harness_runner = HarnessRunner(
+        api_base_url=f"http://127.0.0.1:{settings.dashboard_port}",
+    )
+    app.state.approval_manager = ApprovalManager(
+        rules_path=app.state.harness_runner.data_dir / "approval_rules.json",
+        broadcast=app.state.harness_runner.broadcast,
+    )
+    app.state.screen_client = ScreenClient()
     app.state.templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
     # Auth middleware
@@ -179,6 +189,10 @@ def create_app(
     # Agent state badge (htmx fragment endpoint)
     from .routes.state import router as state_router
     app.include_router(state_router, prefix="/state")
+
+    # External CLI harnesses + waspctl teammate control plane
+    from .routes.harnesses import router as harnesses_router
+    app.include_router(harnesses_router, prefix="/harnesses")
 
     return app
 

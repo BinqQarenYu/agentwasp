@@ -281,16 +281,34 @@ class ModelManager:
             # Build list of models to try for this provider
             models_to_try = []
             if provider_name == self.active_provider:
-                models_to_try.append(original_model)
+                if original_model:
+                    models_to_try.append(original_model)
                 for m in available:
                     if m != original_model:
                         models_to_try.append(m)
             else:
                 if available:
                     models_to_try.extend(available)
-                else:
+                elif original_model:
                     models_to_try.append(original_model)
 
+            # Avoid OOM crashes on local Ollama fallback by skipping oversized/gemma4 models
+            if provider_name == "ollama":
+                from .router import is_model_fit_for_host_pc
+                safe_ollama = [
+                    m for m in models_to_try
+                    if not m.lower().startswith("gemma4") and is_model_fit_for_host_pc(m)[0]
+                ]
+                # Prefer lightweight llama3.2 / qwen2.5-coder first
+                safe_ollama.sort(
+                    key=lambda m: (
+                        0 if m.startswith("llama3.2") else (1 if "coder" in m else (2 if "mini" in m else 3))
+                    )
+                )
+                if safe_ollama:
+                    models_to_try = safe_ollama
+
+            provider_quota_dead = False
             for current_model in models_to_try:
                 request.model = current_model
                 model_failed = False
@@ -303,12 +321,14 @@ class ModelManager:
                         request.messages = original_messages
 
                     try:
-                        # Free-tier Quota & RPM throttling guard (Gemini, Grok, OpenAI)
-                        try:
-                            from .quota_guard import quota_guard
-                            await quota_guard.acquire_slot(provider_name)
-                        except Exception as _q_err:
-                            logger.warning("model_manager.quota_guard_warning", error=str(_q_err))
+                        # Free-tier Quota & RPM throttling guard
+                        # Note: GoogleProvider manages per-account & per-model-tier pooling directly.
+                        if provider_name != "google":
+                            try:
+                                from .quota_guard import quota_guard
+                                await quota_guard.acquire_slot(provider_name)
+                            except Exception as _q_err:
+                                logger.warning("model_manager.quota_guard_warning", error=str(_q_err))
 
                         response = await provider.generate(request)
                         # Non-blocking economics tracking
@@ -349,14 +369,27 @@ class ModelManager:
                             )
                             continue
                         else:
+                            err_str = str(e)
                             logger.error(
                                 "model_manager.model_failed",
                                 provider=provider_name,
                                 model=current_model,
-                                error=str(e),
+                                error=err_str,
                             )
                             model_failed = True
+                            # Fast-skip provider on account-level 429/401/403 quota/billing failures
+                            # (Google already handles multi-account failover inside GoogleProvider)
+                            low_err = err_str.lower()
+                            if provider_name != "google" and any(
+                                sig in low_err
+                                for sig in ("429", "too many requests", "insufficient_quota", "401 unauthorized", "403 forbidden")
+                            ):
+                                provider_quota_dead = True
                             break  # Move to next model
+
+                if provider_quota_dead:
+                    logger.warning("model_manager.provider_fast_skipped", provider=provider_name)
+                    break
 
                 if model_failed:
                     continue
@@ -635,10 +668,15 @@ class ModelManager:
             self.fallback_order.append("anthropic")
             logger.info("model_manager.provider_registered", provider="anthropic")
 
-        if settings.google_api_key:
-            self.providers["google"] = GoogleProvider(api_key=settings.google_api_key)
+        google_accounts = settings.get_google_accounts()
+        if google_accounts:
+            self.providers["google"] = GoogleProvider(accounts=google_accounts)
             self.fallback_order.append("google")
-            logger.info("model_manager.provider_registered", provider="google")
+            logger.info(
+                "model_manager.provider_registered",
+                provider="google",
+                accounts=[lbl for lbl, _ in google_accounts],
+            )
 
         if settings.mistral_api_key:
             self.providers["mistral"] = OpenAICompatibleProvider(
@@ -708,6 +746,28 @@ class ModelManager:
             )
             self.fallback_order.append("lmstudio")
             logger.info("model_manager.provider_registered", provider="lmstudio")
+
+        # Honor explicit DEFAULT_PROVIDER from .env (e.g. DEFAULT_PROVIDER=google)
+        import os as _os
+        preferred = (_os.environ.get("DEFAULT_PROVIDER", "") or "").strip().lower()
+        if preferred and preferred in self.providers:
+            if preferred in self.fallback_order:
+                self.fallback_order.remove(preferred)
+            self.fallback_order.insert(0, preferred)
+            self.active_provider = preferred
+            pref_models = self.providers[preferred].available_models()
+            if pref_models:
+                self.active_model = pref_models[0]
+            # Keep local Ollama as last-resort fallback rather than ahead of healthy cloud providers
+            if preferred != "ollama" and "ollama" in self.fallback_order:
+                self.fallback_order.remove("ollama")
+                self.fallback_order.append("ollama")
+            logger.info(
+                "model_manager.default_provider_prioritized",
+                provider=preferred,
+                model=self.active_model,
+                fallback_order=self.fallback_order,
+            )
 
     async def switch_provider(self, provider_name: str) -> bool:
         """Switch the active provider."""

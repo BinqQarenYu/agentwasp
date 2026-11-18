@@ -93,6 +93,8 @@ class AgentOrchestrator:
         allowed_capabilities: list[str] | None = None,
         memory_namespace: str = "",
         metadata: dict | None = None,
+        harness: str = "",
+        reasoning_effort: str = "",
     ) -> Agent:
         """Create a new agent and persist it."""
         from ..goal_orchestrator.types import AutonomyMode
@@ -106,6 +108,8 @@ class AgentOrchestrator:
             allowed_capabilities=allowed_capabilities or [],
             memory_namespace=memory_namespace,
             metadata=metadata or {},
+            harness=(harness or "").strip().lower(),
+            reasoning_effort=(reasoning_effort or "").strip().lower(),
         )
         r = aioredis.from_url(self.redis_url, decode_responses=True)
         try:

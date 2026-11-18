@@ -12085,7 +12085,7 @@ class EventHandler:
             except Exception as _hl_err_db:
                 logger.debug("honesty_layer.skip_db", error=str(_hl_err_db)[:120])
 
-            # Single final-response policy entry point (same as Telegram path).
+            # Single final-response policy entry point (dashboard allows rich markdown).
             response_text, _guard_trace_db = _apply_final_response_policy(
                 response_text,
                 user_text=text,
@@ -12093,6 +12093,7 @@ class EventHandler:
                 user_lang="en",
                 chat_id=chat_id,
                 recent_action_resolver=_get_recent_explicit_action,
+                allow_markdown=True,
             )
             try:
                 _dtrace_db = locals().get("_decision_trace_db")

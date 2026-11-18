@@ -123,6 +123,18 @@ async def providers_health(request: Request, force: bool = False):
     return JSONResponse({"ok": True, "providers": info})
 
 
+@router.get("/api/google-quota")
+async def google_quota_status(request: Request):
+    """Return live per-account & per-model-tier Google Free Tier quota telemetry."""
+    from ...models.quota_guard import quota_guard
+
+    model_manager = getattr(request.app.state, "model_manager", None)
+    google_prov = model_manager.providers.get("google") if model_manager else None
+    if google_prov and hasattr(google_prov, "pool_status"):
+        return JSONResponse({"ok": True, **google_prov.pool_status()})
+    return JSONResponse({"ok": True, **quota_guard.get_google_pool_status()})
+
+
 async def _get_redis(request: Request):
     import redis.asyncio as aioredis
     if not hasattr(request.app.state, "_redis") or request.app.state._redis is None:

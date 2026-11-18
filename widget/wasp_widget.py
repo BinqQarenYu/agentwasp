@@ -35,6 +35,12 @@ ICON_PATH = os.path.join(WASP_DIR, "icon.png")
 
 class WaspWidget:
     def __init__(self):
+        # Enforce host process priority BelowNormal so the desktop never stutters
+        try:
+            psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+        except Exception:
+            pass
+
         self.root = tk.Tk()
         self.root.title("Agent WASP Controller")
         
@@ -43,10 +49,10 @@ class WaspWidget:
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.94)
         
-        # Geometry: 330x140 Bottom Right
+        # Geometry: 350x140 Bottom Right
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        self.root.geometry(f"330x140+{screen_width - 350}+{screen_height - 200}")
+        self.root.geometry(f"350x140+{screen_width - 370}+{screen_height - 200}")
         
         # Dragging
         self.root.bind("<Button-1>", self.start_move)
@@ -129,32 +135,43 @@ class WaspWidget:
         self.btn_dash = tk.Button(
             self.btn_frame, text="Cockpit", bg="#1f1f28", fg="#ffffff",
             font=("Segoe UI", 8, "bold"), command=self.open_dashboard,
-            relief=tk.FLAT, bd=0, padx=8, pady=3,
+            relief=tk.FLAT, bd=0, padx=6, pady=3,
             activebackground="#f5c542", activeforeground="#111111"
         )
-        self.btn_dash.pack(side=tk.LEFT, padx=(0, 4))
+        self.btn_dash.pack(side=tk.LEFT, padx=(0, 3))
         self.btn_dash.bind("<Enter>", lambda e: self.btn_dash.config(bg="#f5c542", fg="#111111"))
         self.btn_dash.bind("<Leave>", lambda e: self.btn_dash.config(bg="#1f1f28", fg="#ffffff"))
         
-        # 2. Gentle Start Stack
+        # 2. Standalone Start Stack
         self.btn_start = tk.Button(
             self.btn_frame, text="Start", bg="#1f1f28", fg="#ffffff",
             font=("Segoe UI", 8, "bold"), command=self.start_stack,
-            relief=tk.FLAT, bd=0, padx=8, pady=3,
+            relief=tk.FLAT, bd=0, padx=6, pady=3,
             activebackground="#f5c542", activeforeground="#111111"
         )
-        self.btn_start.pack(side=tk.LEFT, padx=4)
+        self.btn_start.pack(side=tk.LEFT, padx=3)
         self.btn_start.bind("<Enter>", lambda e: self.btn_start.config(bg="#f5c542", fg="#111111"))
         self.btn_start.bind("<Leave>", lambda e: self.btn_start.config(bg="#1f1f28", fg="#ffffff"))
 
-        # 3. Stop Stack
+        # 3. Standalone Fast Restart
+        self.btn_restart = tk.Button(
+            self.btn_frame, text="Restart", bg="#1f1f28", fg="#ffffff",
+            font=("Segoe UI", 8, "bold"), command=self.restart_stack,
+            relief=tk.FLAT, bd=0, padx=6, pady=3,
+            activebackground="#f5c542", activeforeground="#111111"
+        )
+        self.btn_restart.pack(side=tk.LEFT, padx=3)
+        self.btn_restart.bind("<Enter>", lambda e: self.btn_restart.config(bg="#f5c542", fg="#111111"))
+        self.btn_restart.bind("<Leave>", lambda e: self.btn_restart.config(bg="#1f1f28", fg="#ffffff"))
+
+        # 4. Stop Stack
         self.btn_stop = tk.Button(
             self.btn_frame, text="Stop", bg="#1f1f28", fg="#ffffff",
             font=("Segoe UI", 8, "bold"), command=self.stop_stack,
-            relief=tk.FLAT, bd=0, padx=8, pady=3,
+            relief=tk.FLAT, bd=0, padx=6, pady=3,
             activebackground="#ff5555", activeforeground="#111111"
         )
-        self.btn_stop.pack(side=tk.LEFT, padx=4)
+        self.btn_stop.pack(side=tk.LEFT, padx=3)
         self.btn_stop.bind("<Enter>", lambda e: self.btn_stop.config(bg="#ff5555", fg="#111111"))
         self.btn_stop.bind("<Leave>", lambda e: self.btn_stop.config(bg="#1f1f28", fg="#ffffff"))
 
@@ -221,30 +238,37 @@ class WaspWidget:
             webbrowser.open(url)
 
     def start_stack(self):
-        """Launch the stack via the gentle launcher."""
+        """Launch the entire Agent WASP stack in fast standalone mode."""
         self.auto_heal = True
-        self.status_label.config(text="● Launching gently...", fg="#f5c542")
-        threading.Thread(target=self._run_gentle_up).start()
+        self.status_label.config(text="● Launching stack...", fg="#f5c542")
+        threading.Thread(target=self._run_standalone_up).start()
+
+    def restart_stack(self):
+        """Restart stack, workers, and UI in seconds."""
+        self.status_label.config(text="● Restarting stack...", fg="#f5c542")
+        threading.Thread(target=self._run_standalone_restart).start()
 
     def stop_stack(self):
-        """Gracefully stop containers."""
+        """Gracefully stop containers and continuous background daemon."""
         self.auto_heal = False
         self.status_label.config(text="● Stopping stack...", fg="#ff5555")
         threading.Thread(target=self._run_docker_down).start()
 
-    def _run_gentle_up(self):
+    def _run_standalone_up(self):
         try:
-            # Check RAM first
-            if psutil.virtual_memory().percent >= 85.0:
-                self.root.after(0, lambda: self.status_label.config(text="● Paused (RAM >85%)", fg="#ffaa00"))
+            # Host RAM safeguard threshold
+            if psutil.virtual_memory().percent >= 88.0:
+                self.root.after(0, lambda: self.status_label.config(text="● Paused (RAM >88%)", fg="#ffaa00"))
                 self.is_recovering = False
                 return
 
-            gentle_bat = os.path.join(PROJECT_ROOT, "start_gentle.bat")
-            if os.path.exists(gentle_bat):
-                subprocess.run(["cmd", "/c", gentle_bat], cwd=PROJECT_ROOT, check=True, capture_output=True)
+            launcher = os.path.join(PROJECT_ROOT, "start_standalone.bat")
+            if not os.path.exists(launcher):
+                launcher = os.path.join(PROJECT_ROOT, "start_gentle.bat")
+            if os.path.exists(launcher):
+                subprocess.run(["cmd", "/c", launcher], cwd=PROJECT_ROOT, check=True, capture_output=True)
             else:
-                subprocess.run(["docker", "compose", "up", "-d"], cwd=PROJECT_ROOT, check=True, capture_output=True)
+                subprocess.run(["docker", "compose", "up", "-d", "agent-redis", "agent-postgres", "agent-core", "agent-broker"], cwd=PROJECT_ROOT, check=True, capture_output=True)
         except Exception as e:
             docker_info = subprocess.run(["docker", "info"], capture_output=True)
             if docker_info.returncode != 0:
@@ -253,9 +277,24 @@ class WaspWidget:
                 self.root.after(0, lambda: self.status_label.config(text="● Launch Error", fg="#ff0000"))
             self.is_recovering = False
 
+    def _run_standalone_restart(self):
+        try:
+            restart_bat = os.path.join(PROJECT_ROOT, "restart_standalone.bat")
+            if os.path.exists(restart_bat):
+                subprocess.run(["cmd", "/c", restart_bat], cwd=PROJECT_ROOT, check=True, capture_output=True)
+            else:
+                subprocess.run(["docker", "compose", "restart", "agent-core"], cwd=PROJECT_ROOT, check=True, capture_output=True)
+            self.root.after(0, lambda: self.status_label.config(text="● Restarted", fg="#00ff00"))
+        except Exception:
+            self.root.after(0, lambda: self.status_label.config(text="● Restart Error", fg="#ff0000"))
+
     def _run_docker_down(self):
         try:
-            subprocess.run(["docker", "compose", "down"], cwd=PROJECT_ROOT, check=True, capture_output=True)
+            stop_bat = os.path.join(PROJECT_ROOT, "stop_standalone.bat")
+            if os.path.exists(stop_bat):
+                subprocess.run(["cmd", "/c", stop_bat], cwd=PROJECT_ROOT, check=True, capture_output=True)
+            else:
+                subprocess.run(["docker", "compose", "stop"], cwd=PROJECT_ROOT, check=True, capture_output=True)
             self.root.after(0, lambda: self.status_label.config(text="● Offline (Paused)", fg="#ff5555"))
         except Exception:
             self.root.after(0, lambda: self.status_label.config(text="● Stop Error", fg="#ff0000"))
@@ -310,6 +349,7 @@ if __name__ == "__main__":
     _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         _lock_socket.bind(("127.0.0.1", 14349))
+        _lock_socket.listen(1)
     except socket.error:
         sys.exit(0)
         

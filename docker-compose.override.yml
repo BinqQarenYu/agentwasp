@@ -51,3 +51,13 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
+
+  agent-screens:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'        # Hard cap for up to MAX_SCREENS=2 virtual displays
+          memory: 2048M      # 2 GB max RAM limit (protects host PC from Chrome spikes)
+        reservations:
+          cpus: '0.25'
+          memory: 256M

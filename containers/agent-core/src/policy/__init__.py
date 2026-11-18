@@ -54,6 +54,21 @@ from .action_announcer import (
     render_actions_block,
     strip_unverified_claims,
 )
+from .approvals import (
+    ActionOrigin,
+    ApprovalCard,
+    ApprovalDecision,
+    ApprovalManager,
+    ApprovalRule,
+    CardStatus,
+    RiskCategory,
+    ReviewResult,
+    RuleKind,
+    RuleScope,
+    classify_risk,
+    evaluate_action,
+    rule_matches_action,
+)
 
 __all__ = [
     "INTENT_GATE_PATTERNS",
@@ -83,4 +98,17 @@ __all__ = [
     "collect_actions",
     "render_actions_block",
     "strip_unverified_claims",
+    "ActionOrigin",
+    "ApprovalCard",
+    "ApprovalDecision",
+    "ApprovalManager",
+    "ApprovalRule",
+    "CardStatus",
+    "RiskCategory",
+    "ReviewResult",
+    "RuleKind",
+    "RuleScope",
+    "classify_risk",
+    "evaluate_action",
+    "rule_matches_action",
 ]

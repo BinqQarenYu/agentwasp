@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     google_api_key: str = ""
+    google_api_key_likha: str = ""
+    google_api_key_benjohn: str = ""
+    google_api_keys: str = ""    # Optional CSV: "label:key,label2:key2" or "key1,key2"
     xai_api_key: str = ""
     xai_base_url: str = "https://api.x.ai/v1"
     # Phase 3 — Additional AI providers (all OpenAI-compatible)
@@ -92,6 +95,34 @@ class Settings(BaseSettings):
         if v and len(v) < 16:
             raise ValueError("DASHBOARD_SECRET must be at least 16 characters")
         return v
+
+    def get_google_accounts(self) -> list[tuple[str, str]]:
+        """Collect all configured Google Gemini accounts `(label, api_key)` without duplicates."""
+        accounts: list[tuple[str, str]] = []
+        seen: set[str] = set()
+
+        def _add(label: str, key: str) -> None:
+            k = (key or "").strip()
+            if k and k not in seen:
+                accounts.append((label.strip().lower(), k))
+                seen.add(k)
+
+        _add("likha", self.google_api_key_likha)
+        _add("benjohn", self.google_api_key_benjohn)
+
+        if self.google_api_keys:
+            for idx, entry in enumerate(self.google_api_keys.split(","), start=1):
+                item = entry.strip()
+                if not item:
+                    continue
+                if ":" in item:
+                    lbl, key = item.split(":", 1)
+                    _add(lbl or f"acct_{idx}", key)
+                else:
+                    _add(f"acct_{idx}", item)
+
+        _add("default", self.google_api_key)
+        return accounts
 
     # Goal Engine
     goal_engine_enabled: bool = True

@@ -55,14 +55,17 @@ async def mesh_cockpit_view(request: Request):
 
 @router.get("/api/state")
 async def mesh_state(request: Request):
-    """Real-time mesh state reflecting actual backend integrations, memory, and scheduler tasks."""
+    """Real-time mesh state unified with agent_orchestrator, harnesses, approvals, and screens."""
     memory = getattr(request.app.state, "memory", None)
-    scheduler = getattr(request.app.state, "scheduler", None)
     intg_reg = getattr(request.app.state, "integration_registry", None)
-    
+    ao = getattr(request.app.state, "agent_orchestrator", None)
+    harness_runner = getattr(request.app.state, "harness_runner", None)
+    approval_mgr = getattr(request.app.state, "approval_manager", None)
+    screen_client = getattr(request.app.state, "screen_client", None)
+
     # 1. Total memories & learned rules
     mem_stats = memory.get_stats() if memory and hasattr(memory, "get_stats") else {"total": 120}
-    
+
     # 2. Live connected services
     connected = []
     if intg_reg and hasattr(intg_reg, "list_integrations"):
@@ -81,18 +84,71 @@ async def mesh_state(request: Request):
         pass
     codebase_h = ast_data.get("codebase_entropy", 0.8451)
 
-    # 4. Units & verification metrics
+    # 4. Unified Bot Roster: merge live agent_orchestrator bots + harness activity
+    #    (falls back cleanly to default BOT_PERSONAS if orchestrator is not seeded yet)
+    unified_bots: list[dict] = []
+    if ao is not None and hasattr(ao, "list_agents"):
+        try:
+            palette = ["#10b981", "#ec4899", "#a855f7", "#3b82f6", "#f59e0b", "#f43f5e", "#14b8a6", "#6366f1"]
+            live_agents = await ao.list_agents()
+            for idx, agent in enumerate(live_agents):
+                status_val = agent.status.value if hasattr(agent.status, "value") else str(agent.status)
+                working = bool(harness_runner and harness_runner.is_running(agent.id))
+                unified_bots.append({
+                    "id": agent.id,
+                    "name": agent.name,
+                    "category": (getattr(agent, "metadata", None) or {}).get("role", "workforce"),
+                    "color": palette[idx % len(palette)],
+                    "icon": "🤖",
+                    "status": "active" if (working or status_val == "running") else status_val,
+                    "harness": getattr(agent, "harness", ""),
+                    "working": working,
+                })
+        except Exception as exc:
+            logger.debug("mesh.live_agents_fallback", error=str(exc)[:80])
+
+    if not unified_bots:
+        unified_bots = [
+            {
+                **b,
+                "harness": "",
+                "working": bool(harness_runner and harness_runner.is_running(b["id"])),
+            }
+            for b in BOT_PERSONAS
+        ]
+
+    # 5. Live governance, harness, handoff, and isolated screen telemetry
+    active_rules_count = len(approval_mgr.list_rules()) if approval_mgr else 3
+    pending_approvals = approval_mgr.list_cards(pending_only=True) if approval_mgr else []
+    pending_handoffs = harness_runner.list_handoffs(pending_only=True) if harness_runner else []
+    active_harness_runs = harness_runner.active_runs() if harness_runner else []
+
+    screens_health = {"available": False, "active_screens": 0}
+    if screen_client is not None:
+        try:
+            screens_health = await screen_client.health()
+        except Exception:
+            pass
+
     return JSONResponse({
         "ok": True,
-        "bots_online": len(BOT_PERSONAS),
+        "bots_online": len(unified_bots),
+        "roster_source": "agent_orchestrator" if (ao is not None and unified_bots and unified_bots[0].get("icon") == "🤖") else "default_personas",
         "total_units": 412,
         "verified_units": 409,
         "rejected_units": 3,
-        "active_rules": 3,
+        "active_rules": active_rules_count,
+        "pending_approvals_count": len(pending_approvals),
+        "pending_handoffs_count": len(pending_handoffs),
+        "active_harness_runs": len(active_harness_runs),
+        "screens": {
+            "available": bool(screens_health.get("available", False)),
+            "active_screens": int(screens_health.get("active_screens", 0)),
+        },
         "connected_services": connected,
         "memory_total": mem_stats.get("total", 120),
         "last_sync": datetime.now(timezone.utc).isoformat(),
-        "bots": BOT_PERSONAS,
+        "bots": unified_bots,
         "atse": {
             "enabled": True,
             "codebase_entropy": codebase_h,

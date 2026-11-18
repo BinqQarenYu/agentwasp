@@ -1,5 +1,6 @@
 """Dashboard authentication: Redis sessions + Argon2 password hashing."""
 
+import os
 import secrets
 
 import redis.asyncio as aioredis
@@ -63,11 +64,11 @@ async def destroy_session(request: Request):
         await r.delete(f"{SESSION_PREFIX}{token}")
 
 
-async def generate_csrf_token(request: Request) -> str:
+async def generate_csrf_token(request: Request, session_override: str | None = None) -> str:
     """Generate a single-use CSRF token tied to the session."""
     token = secrets.token_urlsafe(32)
     r = await _get_redis(request)
-    session_id = request.cookies.get("session", "anon")
+    session_id = session_override or request.cookies.get("session", "anon")
     await r.setex(f"{CSRF_PREFIX}{token}", 3600, session_id)
     return token
 
@@ -129,6 +130,48 @@ async def admin_exists() -> bool:
         return result.scalar_one() > 0
 
 
+def _is_loopback_request(request: Request) -> bool:
+    """Only allow env auto-login when accessed over localhost/loopback."""
+    host = (request.headers.get("host") or "").split(":")[0].strip().lower()
+    if host not in ("127.0.0.1", "localhost", "::1", "[::1]"):
+        return False
+    # Never auto-login behind a reverse proxy forwarding external clients
+    if request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip"):
+        return False
+    return True
+
+
+async def try_env_auto_login(request: Request) -> tuple[str, str] | None:
+    """If DASHBOARD_AUTO_LOGIN=true on localhost, verify .env creds and mint a real session.
+
+    Returns `(user_id, session_token)` on success, or `None` if disabled / ineligible / invalid.
+    """
+    if os.environ.get("DASHBOARD_AUTO_LOGIN", "").strip().lower() not in ("1", "true", "yes"):
+        return None
+    if not _is_loopback_request(request):
+        return None
+
+    username = os.environ.get("DASHBOARD_USER", "").strip()
+    password = os.environ.get("DASHBOARD_PASSWORD", "")
+    if not username or not password:
+        return None
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(AdminUser).where(AdminUser.username == username)
+            )
+            user = result.scalar_one_or_none()
+        if not user or not verify_password(password, user.password_hash):
+            return None
+        token = await create_session(request, user.id)
+        logger.info("dashboard.env_auto_login", username=username)
+        return user.id, token
+    except Exception:
+        logger.debug("dashboard.env_auto_login_skipped")
+        return None
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     # /chat/media/ serves screenshots — public so <img> tags always load regardless of session state
     # NOTE: trailing slash is intentional — prevents /chat/media-sign from matching via startswith()
@@ -139,11 +182,28 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(p) for p in self.UNPROTECTED):
             return await call_next(request)
 
+        # Scoped per-run bearer token authentication for internal `waspctl` CLI calls.
+        if path.startswith("/harnesses/botctl/"):
+            auth_header = request.headers.get("Authorization", "")
+            runner = getattr(request.app.state, "harness_runner", None)
+            if auth_header.startswith("Bearer ") and runner is not None:
+                bot_id = runner.verify_token(auth_header[7:].strip())
+                if bot_id:
+                    request.state.user_id = f"bot:{bot_id}"
+                    return await call_next(request)
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"ok": False, "error": "Invalid or expired botctl token"}, status_code=401)
+
+        new_session_token: str | None = None
         user_id = await get_session_user(request)
         if not user_id:
-            if not await admin_exists():
-                return RedirectResponse("/register", status_code=303)
-            return RedirectResponse("/login", status_code=303)
+            auto = await try_env_auto_login(request)
+            if auto:
+                user_id, new_session_token = auto
+            else:
+                if not await admin_exists():
+                    return RedirectResponse("/register", status_code=303)
+                return RedirectResponse("/login", status_code=303)
 
         request.state.user_id = user_id
 
@@ -156,7 +216,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 from fastapi.responses import JSONResponse
                 return JSONResponse({"error": "CSRF validation failed"}, status_code=403)
 
-        # Generate CSRF token for templates
-        request.state.csrf_token = await generate_csrf_token(request)
+        # Generate CSRF token for templates (bound to new_session_token when auto-logged in)
+        request.state.csrf_token = await generate_csrf_token(request, session_override=new_session_token)
 
-        return await call_next(request)
+        response = await call_next(request)
+        if new_session_token:
+            response.set_cookie(
+                "session",
+                new_session_token,
+                httponly=True,
+                samesite="lax",
+                max_age=SESSION_TTL,
+            )
+        return response

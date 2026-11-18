@@ -1,4 +1,12 @@
-"""Browser skill — Selenium-based headless Chromium for web interaction."""
+"""Browser skill — Selenium-based headless Chromium for web interaction.
+
+NOTE (Phase 3 Architecture Migration):
+  Prefer the isolated `agent-screens` container (`docker compose --profile screens up -d`)
+  + `waspctl screen` / `waspctl handoff` for authenticated SaaS sessions, persistent
+  per-bot Chrome profiles, and human takeover on login/2FA/CAPTCHAs. Keep this legacy
+  headless Selenium skill for simple read-only/unauthenticated scraping only; avoid
+  adding new interactive login/CAPTCHA workarounds here.
+"""
 
 import asyncio
 import os

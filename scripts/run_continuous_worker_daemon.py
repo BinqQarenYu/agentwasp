@@ -9,15 +9,44 @@ Runs continuously in the background on the Windows host:
 import os
 import sys
 import time
+import socket
 import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
+
+# 1. Enforce Single Instance Socket Lock on Host Port 14348
+_daemon_lock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    _daemon_lock.bind(("127.0.0.1", 14348))
+    _daemon_lock.listen(1)
+except socket.error:
+    print("[Agent WASP] Continuous worker daemon is already running (port 14348 locked). Exiting duplicate.")
+    sys.exit(0)
+
+# 2. Enforce Host CPU Safety: Set Process Priority to BelowNormal
+try:
+    import psutil
+    psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+except Exception:
+    pass
 
 # Add agent-core to path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 AGENT_CORE_DIR = str(ROOT_DIR / "containers" / "agent-core")
 sys.path.insert(0, AGENT_CORE_DIR)
-sys.stdout.reconfigure(encoding="utf-8")
+
+# Handle pythonw execution (where sys.stdout and sys.stderr are None)
+if sys.stdout is None:
+    log_dir = ROOT_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    _log_f = open(log_dir / "worker_daemon.log", "a", encoding="utf-8", buffering=1)
+    sys.stdout = _log_f
+    sys.stderr = _log_f
+else:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 import structlog
 import fakeredis.aioredis

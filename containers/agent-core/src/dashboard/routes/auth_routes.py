@@ -8,8 +8,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from ..auth import (
-    admin_exists, create_session, destroy_session, hash_password, verify_password,
-    generate_csrf_token, validate_csrf_token,
+    SESSION_TTL, admin_exists, create_session, destroy_session, hash_password, verify_password,
+    generate_csrf_token, validate_csrf_token, try_env_auto_login,
     check_rate_limit, record_failed_login, clear_rate_limit,
 )
 from ...db.models import AdminUser, AuditLog
@@ -40,6 +40,12 @@ async def _audit(event_type: str, action: str, username: str = "", error: str = 
 async def login_page(request: Request):
     if not await admin_exists():
         return RedirectResponse("/register", status_code=303)
+    auto = await try_env_auto_login(request)
+    if auto:
+        _, token = auto
+        response = RedirectResponse("/overview", status_code=303)
+        response.set_cookie("session", token, httponly=True, samesite="lax", max_age=SESSION_TTL)
+        return response
     csrf = await generate_csrf_token(request)
     return request.app.state.templates.TemplateResponse(
         request, "login.html", {"error": "", "csrf_token": csrf}

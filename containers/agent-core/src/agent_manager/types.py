@@ -89,6 +89,12 @@ class Agent(BaseModel):
     model_provider: str = ""     # e.g., "anthropic", "openai", "ollama"
     model_name: str = ""         # e.g., "claude-opus-4-6", "gpt-4o"
 
+    # External CLI harness delegation (empty = native WASP loop)
+    # Supported values: "", "claude", "codex", "pi", "gemini"
+    harness: str = ""
+    harness_session_id: str = ""
+    reasoning_effort: str = ""   # e.g., "low", "medium", "high", "xhigh", "max"
+
     # Custom system prompt for this agent (empty = use global system prompt)
     identity_prompt: str = ""
 

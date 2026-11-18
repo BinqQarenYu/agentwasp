@@ -66,6 +66,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_API_KEY_LIKHA: ${GOOGLE_API_KEY_LIKHA:-}
+      GOOGLE_API_KEY_BENJOHN: ${GOOGLE_API_KEY_BENJOHN:-}
+      GOOGLE_API_KEYS: ${GOOGLE_API_KEYS:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
       DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-anthropic}
       TIMEZONE: ${TIMEZONE:-UTC}
@@ -73,6 +76,7 @@ services:
       DASHBOARD_SECRET: ${DASHBOARD_SECRET:-}
       DASHBOARD_USER: ${DASHBOARD_USER:-}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      DASHBOARD_AUTO_LOGIN: ${DASHBOARD_AUTO_LOGIN:-false}
       DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-}
       MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -86,6 +90,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      AGENT_SCREENS_URL: ${AGENT_SCREENS_URL:-http://agent-screens:6900}
+      SCREENS_INTERNAL_TOKEN: ${SCREENS_INTERNAL_TOKEN:-}
     volumes:
       - core-memory:/data/memory
       - core-logs:/data/logs
@@ -164,6 +170,29 @@ services:
     networks:
       - wasp-net
 
+  # Optional isolated Linux virtual screen worker (Phase 3):
+  # Start with: docker compose --profile screens up -d agent-screens
+  # Strictly isolated: zero access to .env, Redis, Postgres, or SecretVault.
+  agent-screens:
+    profiles: ["screens"]
+    build:
+      context: ./containers/agent-screens
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    shm_size: '1gb'
+    ports:
+      - "127.0.0.1:6900:6900"
+      - "127.0.0.1:6901-6902:6901-6902"
+    environment:
+      MAX_SCREENS: ${MAX_SCREENS:-2}
+      SCREEN_SIZE: ${SCREEN_SIZE:-1280x800}
+      SCREEN_IDLE_MINUTES: ${SCREEN_IDLE_MINUTES:-15}
+      SCREENS_INTERNAL_TOKEN: ${SCREENS_INTERNAL_TOKEN:-}
+    volumes:
+      - screen-profiles:/data/profiles
+    networks:
+      - wasp-net
+
 volumes:
   redis-data:
   postgres-data:
@@ -177,6 +206,7 @@ volumes:
   core-browser-sessions:
   core-skills:
   ollama-models:
+  screen-profiles:
 
 networks:
   wasp-net:
