@@ -171,9 +171,18 @@ Custom skills run in-process and inherit the agent's permissions. Review careful
 
 ## Bundled prompt skills
 
-WASP also bundles prompt-only guidance using the OpenClaw `SKILL.md` format. The engineering TDD skill is included with the application and injected into the agent context alongside user-installed prompt skills. It guides requested code changes through a focused failing-test/implementation loop; it is not an executable tool. A user-installed skill with the same slug overrides the bundled copy, and a `.disabled` marker for that slug suppresses it.
+WASP also bundles prompt-only engineering guidance using the OpenClaw `SKILL.md` format. Bundled skills are injected into the agent context alongside user-installed prompt skills (with user-installed skills prioritized first, and bundled engineering skills gated to technical turns in lightweight/local-model mode to preserve context window). They are workflow disciplines rather than executable tools. A user-installed skill with the same slug overrides the bundled copy, and a `.disabled` marker for that slug suppresses it.
 
-TDD was selected from the reviewed engineering workflows because it complements WASP's existing coding and test tools without assuming a project-specific glossary/ADR process or parallel review agents. The guidance is adapted from [Matt Pocock's TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd) under the MIT license; the bundled skill directory contains its license notice.
+Currently bundled prompt skills:
+
+| Slug | Origin & License | Purpose |
+|------|------------------|---------|
+| `engineering-tdd` | Adapted from [Matt Pocock's TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd) (MIT) | Behavior-first Red-Green test & implementation loop |
+| `superpowers-debugging` | Adapted from [`obra/superpowers`](https://github.com/obra/superpowers/tree/main/skills/systematic-debugging) (MIT) | 4-phase root-cause-first debugging with 3-fix architectural stop rule |
+| `superpowers-verification` | Adapted from [`obra/superpowers`](https://github.com/obra/superpowers/tree/main/skills/verification-before-completion) (MIT) | Fresh-evidence gate before any completion/passing/fixed claims |
+| `superpowers-planning` | Adapted from [`obra/superpowers`](https://github.com/obra/superpowers/tree/main/skills/writing-plans) (MIT) | Unambiguous file boundaries, task signatures, and verification steps |
+
+Each bundled skill directory contains its full upstream MIT `LICENSE` notice. Other `obra/superpowers` skills (`test-driven-development`, `subagent-driven-development`, `using-git-worktrees`, plugin meta-skills) were intentionally omitted to avoid overlapping WASP's existing `engineering-tdd`, `SubagentGenesis`, `TriadConsensusEngine`, and `ShadowStagingManager` subsystems.
 
 ## Adding a new built-in skill
 

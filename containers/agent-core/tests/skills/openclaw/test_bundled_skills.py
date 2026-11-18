@@ -25,12 +25,31 @@ def test_loads_bundled_prompt_skills_alongside_user_skills(tmp_path, monkeypatch
     monkeypatch.setattr(loader, "SKILLS_DIR", user_dir)
 
     skills = loader.load_installed_skills()
+    by_slug = {skill.slug: skill for skill in skills}
 
     assert [(skill.slug, skill.source) for skill in skills] == [
         ("engineering-tdd", "builtin"),
+        ("superpowers-debugging", "builtin"),
+        ("superpowers-planning", "builtin"),
+        ("superpowers-verification", "builtin"),
         ("custom-workflow", "local"),
     ]
-    assert "confirm it fails for the expected reason" in skills[0].instructions
+    assert "confirm it fails for the expected reason" in by_slug["engineering-tdd"].instructions
+    assert "NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST" in by_slug["superpowers-debugging"].instructions
+    assert "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE" in by_slug["superpowers-verification"].instructions
+    assert "Map File Boundaries" in by_slug["superpowers-planning"].instructions
+
+
+def test_bundled_skills_fit_within_prompt_injection_budget(tmp_path, monkeypatch):
+    """Ensure all bundled OpenClaw skills fit well below context.py's 5500-char cap."""
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    monkeypatch.setattr(loader, "SKILLS_DIR", user_dir)
+
+    skills = loader.load_installed_skills()
+    total_prompt_chars = sum(len(s.prompt_text) for s in skills)
+    assert len(skills) == 4
+    assert total_prompt_chars < 4200  # Leaves >1300 chars headroom for user-installed skills
 
 
 def test_user_skill_overrides_bundled_skill_with_same_slug(tmp_path, monkeypatch):

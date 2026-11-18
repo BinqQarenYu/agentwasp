@@ -202,6 +202,18 @@
     3. **Native In-Container Scheduler Registration (`mue_homeostasis.py`, `main.py`, `shadow_staging.py`)**: Created `MueHomeostasisJob` and registered both `mue_homeostasis` and `autonomic_evolution` natively inside `agentwasp-agent-core-1` (fixed read-only `/app/data` fallback and parent path depth). Live Mue diagnoses now persist directly into container Redis `blackboard:hypotheses` (`/blackboard`), `mue:last_shift`, and `goal-mue-homeostasis-startup`.
     4. **Dynamic ATSE Target Rotation (`autonomic_evolution_job.py`, `run_continuous_worker_daemon.py`)**: Upgraded ATSE to discover and rotate across highest-entropy eligible codebase modules (verified rotating onto `decision_layer.py`, `omega_sense=0.9082`) instead of repeating `telemetry_atse.py`, with persistent rotation state across daemon cycles.
   - Verified **33 / 33 passing unit tests** across `test_mue_self_care.py` (14), `test_autonomic_evolution_job.py` (7), `test_common_sense_gate.py` (4), `test_cognitive_blackboard.py` (3), and `test_triad_consensus.py` (5).
+* **Task 13: Selective `obra/superpowers` Integration & Prompt-Budget Reassessment**: **COMPLETED** (2026-11-18 05:32 UTC)
+  - Audited all 15 skills in `obra/superpowers` (MIT License, Copyright 2025 Jesse Vincent) against Agent WASP's existing stack (`engineering-tdd`, `SubagentGenesis`, `TriadConsensusEngine`, `ShadowStagingManager`, `spec-kit`).
+  - Cherry-picked and distilled the 3 highest-value non-overlapping workflows into native bundled OpenClaw skills (`containers/agent-core/src/skills/openclaw/bundled/`):
+    1. `superpowers-debugging` (1,014 chars): 4-phase root-cause-first debugging + 3-fix architectural stop rule.
+    2. `superpowers-verification` (818 chars): Fresh-evidence verification gate before any passing/fixed/done claims.
+    3. `superpowers-planning` (900 chars): Exact file boundaries, `Consumes`/`Produces` task signatures, and checkable verification steps.
+  - Intentionally omitted 12 overlapping or Claude-Code-plugin-specific skills (`test-driven-development`, `subagent-driven-development`, `using-git-worktrees`, `brainstorming`, meta-skills) to prevent prompt bloat and tool conflicts.
+  - Upgraded `containers/agent-core/src/agent/context.py` OpenClaw injection:
+    - Prioritizes user-installed skills ahead of bundled skills so bundled prompts never crowd out user ClawHub installs.
+    - Sized standard budget to `5,500` chars (all 4 bundled skills = `4,058` chars / ~1,014 tokens, leaving `1,442` chars headroom).
+    - Gated bundled engineering skills in `_lightweight` mode (small local Ollama models) to technical turns only — saving ~1,014 tokens on casual local chats.
+  - Verified **26 / 26 passing tests** (`test_bundled_skills.py` 5/5, `test_mue_self_care.py` 14/14, `test_autonomic_evolution_job.py` 7/7) and live container loading.
 
 ### Shift Execution Log — 2026-11-11 11:35 UTC
 * **Prometheus (🔥)**: 100% Zero-500 Verified across all routes. AST graph sync healthy.

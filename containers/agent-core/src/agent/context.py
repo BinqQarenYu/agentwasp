@@ -1505,19 +1505,33 @@ async def build_context(
     except Exception:
         pass
 
-    # Inject installed OpenClaw skill instructions
+    # Inject installed OpenClaw skill instructions (prioritize user-installed over bundled).
+    # In lightweight mode (small local Ollama models), gate bundled engineering skills to
+    # technical turns to save ~1,000 tokens on casual chats while keeping full rigor for coding.
     try:
         oc_skills = load_installed_skills()
         if oc_skills:
+            _tech_kw = (
+                "code", "bug", "fix", "test", "error", "fail", "debug", "plan",
+                "implement", "refactor", "build", "deploy", "script", "python",
+                "file", "git", "commit", "pr", "verify", "spec", "patch", "crash",
+            )
+            _ut_lower = (user_text or "").lower()
+            _is_tech_turn = (not _lightweight) or any(k in _ut_lower for k in _tech_kw)
+            prioritized = sorted(oc_skills, key=lambda s: 1 if s.source == "builtin" else 0)
             oc_parts = ["\n\nINSTALLED OPENCLAW SKILLS:"]
             total_chars = 0
-            for s in oc_skills:
+            _budget = 4200 if _lightweight else 5500
+            for s in prioritized:
+                if s.source == "builtin" and not _is_tech_turn:
+                    continue
                 text = s.prompt_text
-                if total_chars + len(text) > 4000:
-                    break
+                if total_chars + len(text) > _budget:
+                    continue
                 oc_parts.append(text)
                 total_chars += len(text)
-            messages[0].content += "\n".join(oc_parts)
+            if len(oc_parts) > 1:
+                messages[0].content += "\n".join(oc_parts)
     except Exception:
         pass  # Don't break context building if OpenClaw loading fails
 
