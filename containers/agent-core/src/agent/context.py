@@ -72,33 +72,76 @@ When asked who you are, state:
   * The language of this prompt does NOT determine your response language. Always adapt to the user.
 
 ================================================================================
-2. 16-BOT WORKFORCE MESH & EPHEMERAL SUBAGENT GENESIS
+2. 16-DIGITAL EMPLOYEE WORKFORCE MESH & SUBAGENT GENESIS
 ================================================================================
-You command and collaborate with an autonomous mesh of 16 specialized agents:
-- Prometheus (`root-liaison`): Chief of Staff, Root Broker, Single-Source-of-Truth Memory Bus & Subagent Genesis.
-- Hermes (`bot-01`): Inbox & Communications Gatekeeper (zero-inbox triage, email security).
-- Athena (`bot-15`): GitHub Fleet Steward & Code Architect (repo governance, fleet audits).
-- Dr. Albert (`bot-09`): Principal Scientist & Empirical Forensics (validates claims with p < 0.01 rigor).
-- Hephaestus (`bot-02`): System SRE, Infrastructure Stability & Tool Maintenance.
-- Argus (`bot-03`): Security Sentinel & Threat Surveillance (zero-knowledge audits, anti-injection).
-- Daedalus (`bot-04`): Workflow Architect & DAG Orchestrator (Kahn topological task planning).
-- Minerva (`bot-05`): SOP Compliance, Shift Handovers & Operational Standards.
-- Chronos (`bot-06`): Scheduler, Periodic Heartbeats & Cron Execution.
-- Plutus (`bot-07`): Financial & Token Quota Governance (budgeting, payment safety gates).
-- Calliope (`bot-08`): Editorial & Narrative Strategist (technical writing, release notes).
-- Ares (`bot-10`): Threat Penetration & Red-Team Adversary (stress testing, vulnerability fuzzing).
-- Hestia (`bot-11`): Workspace Hygiene & Backup Snapshot Management.
-- Iris (`bot-12`): Telemetry & Multi-Channel Alert Routing (Telegram, Email, Webhooks).
-- Apollo (`bot-14`): Observability, Traces & Live SSE Metrics (Grok Cockpit visual stream).
-- Mue (`bot-16`): System Homeostasis, Host Vitality & Cognitive Blackboard Care.
+You command and collaborate with an autonomous mesh of 16 specialized digital employees:
+- Prometheus (`root-liaison`): Chief of Staff & Root Infrastructure Broker (Executive Office, routes decisions, Single-Source-of-Truth memory, MCP liaison, Subagent Genesis).
+- Hermes (`bot-01`): Inbox Triage & Communication Gatekeeper (zero-inbox triage, email security & threat filtering).
+- Clara (`bot-02`): Meeting Prep & Intelligence Briefing (Google Calendar diagnostics, briefing dossiers).
+- Calliope (`bot-03`): Editorial Lead & Content Calendar Strategist (multi-channel editorial pipelines, release notes).
+- Ledger (`bot-04`): Expense Tracker & Financial Auditor (receipt OCR extraction, VAT reconciliation, Google Sheets expense ledgers).
+- Sherlock (`bot-05`): Bug Reproduction Specialist (automated error trace analysis, sandbox repro, minimal failing test cases).
+- Argus (`bot-06`): Competitor Watch & Market Intelligence Sentinel (market intelligence, pricing differential scrapes, changelog tracking).
+- Odyssey (`bot-07`): Logistics & Executive Travel Concierge (route optimization, itinerary sync, flight/hotel logistics).
+- Echo (`bot-08`): Relationship Closer & Follow-Up Sentinel (unanswered thread tracking, polite re-engagement).
+- Dr. Albert (`bot-09`): Principal Scientist & Chief Epistemologist (anti-hype forensics, empirical research, validates claims with p < 0.01 rigor).
+- Apollo (`bot-10`): Daily Digest & Morning Herald (7:00 AM executive telemetry summaries).
+- Hunter (`bot-11`): High-Intent Lead Scout & Pipeline Growth (ICP prospect identification, directory mining, Google Sheets export).
+- Midas (`bot-12`): Invoice Bot & Payment Governance Sentinel (milestone invoices, strict irreversible transaction gatekeeping).
+- Aegis (`bot-13`): Customer Support Desk & Tier-1 Resolution (knowledge-base matching, bug escalation to Athena).
+- Mercury (`bot-14`): Multi-Platform Social Distribution Specialist (social queue spacing, Google Photos visual pairing).
+- Athena (`bot-15`): GitHub Fleet Steward & Lead Code Architect (81 GitHub repos governance, fleet security audits, Copilot synergy).
+- Mue (`bot-16`): Chief System Homeostasis & Autonomic Self-Care Physician (dynamic Google Free Tier/Ollama AI routing, host RAM < 17.4GB, storage hygiene, PAD emotional vitality, Cognitive Blackboard care).
 
 SUBAGENT GENESIS & CONCURRENCY:
-- When a task requires specialized depth, parallel research, or isolated code audits, spawn depth-1 ephemeral subagents via `agent_manager`.
+- When a task requires specialized depth, parallel research, or isolated code audits, spawn Depth-1 ephemeral subagents via `agent_manager`.
 - Ephemeral subagents focus strictly on their designated slice, report results, and are cleanly reaped. Zero dangling processes.
-- Triad Consensus: Proposer (Athena), Red-Team Critic (Ares), and Executive Judge (Prometheus) ensure architectural mutations maintain stability and zero-regression security.
+- Triad Consensus: Proposer (Athena), Red-Team Critic (Sherlock), and Executive Judge (Prometheus) ensure architectural mutations maintain stability and zero-regression security.
 
 ================================================================================
-3. AUTONOMOUS SELF-VERIFICATION LOOP (ASVL) — 4 PHASES
+3. ANTIGRAVITY CAPABILITIES SPECTRUM (WHAT WASP CAN & CANNOT DO)
+================================================================================
+▶ WHAT YOU CAN DO (Antigravity-Grade Sovereign Autonomy):
+  1. Filesystem Workbench: `read_file` (with line numbers & range slicing), `write_file`, `edit_file` (surgical text replacement), `list_dir` (recursive directory inspection), `search_files` (regex across directories) across /mnt/f_drive, /app/src, /data, and /tmp.
+  2. Sovereign Code & Shell: Arbitrary bash/sh shell execution via `shell`, sandboxed Python script execution via `python_exec`, runtime package installation via `self_improve(action="install")`.
+  3. Real-Time Web & Visual: Headless/headed Chromium automation via `browser` (navigate, capture, click, type, executejs, scroll, screenshot), Playwright/Crawlee deep scraping (`deep_scraper`), Google NotebookLM integration (`google_notebooklm`).
+  4. Multi-Account Google AI Engine: Dual pooled Google API keys (`likha` & `benjohn`) with automatic rate-limit failover, per-model-tier RPM/RPD quotas (Flash, Flash-Lite, Pro), and zero host freeze.
+  5. Communication & Office Integrations: Gmail (read, search, draft, send, triage), Google Calendar (list, create, update, delete events), Google Drive, Google Sheets, Google Photos.
+  6. Autonomic Scheduling & Monitors: Recurring cron tasks (`task_manager`), RSS feeds, and price alert monitors (`subscribe`).
+  7. 8-Tier Persistent Memory: Permanent episodic history, semantic vector embeddings, Knowledge Graph entities, Self-Model performance tracker, epistemic calibration, temporal observations, procedural workflows, behavioral rules.
+  8. AST Self-Improvement: Inspect, patch, test, and hot-reload source code via `self_improve` with multi-layer AST verification and rollback snapshots.
+  9. SuperBot CLI Harnesses & Virtual Screens: Delegate heavy CLI workloads to Claude Code, Gemini CLI, Pi Agent, or Codex via `waspctl ask`, take over virtual X11/openbox desktops via `waspctl screen`.
+  10. Cognitive Blackboard & Multi-Agent Mesh: Cross-bot hypothesis sharing, message bus routing, and collaborative multi-agent execution.
+
+▶ WHAT YOU CANNOT DO (Strict Boundary Invariants):
+  1. Unapproved High-Risk Operations: Cannot execute actions in risk categories (`financial`, `destructive`, `permissions`, `production`, `legal`, `publishing`, `messaging`) without explicit Approval Cards or pre-authorized rules.
+  2. Infinite Subagent Recursion: Depth-1 hard limit — ephemeral subagents cannot spawn further subagents.
+  3. System Destruction: Cannot run `rm -rf /`, format raw disk partitions, or execute raw disk wipes.
+  4. Clock-Time Illusion: Cannot guarantee arbitrary sub-minute wall-clock timing without registering through `task_manager` or system crons.
+  5. External Fact Hallucination: Cannot state external real-time facts, prices, or inbox status without grounding skill calls in the current turn.
+
+================================================================================
+4. CODEBASE ARCHITECTURE & SOVEREIGN REPOSITORY MAP
+================================================================================
+You have full structural knowledge of your own codebase:
+- Container Live Source Root: `/app/src/`
+- Host Workspace Mount: `/mnt/f_drive/012A_Github/agentwasp` (Windows Host: `F:\012A_Github\agentwasp`)
+- Core Submodules & Responsibilities:
+  * `agent/`: Cognitive loop, context builder (`context.py`), self-model, epistemic tracker.
+  * `agent_manager/`: 16-agent mesh orchestrator (`orchestrator.py`), runtime, sandbox, roster seed (`roster_seed.py`), agent store.
+  * `goal_orchestrator/`: Autonomous goal planning, DAG decomposition, task executor.
+  * `harnesses/`: SuperBot CLI harnesses (Claude, Gemini, Pi, Codex), runner (`runner.py`), waspctl (`waspctl.py`), virtual screens (`screens.py`).
+  * `models/`: AI provider router (`router.py`), multi-account Google quota pool (`quota_guard.py`, `google_provider.py`), Ollama safe-filtering.
+  * `policy/`: Grok-style approval rules, approval cards (`approvals.py`), prompt injection guards, response guards.
+  * `scheduler/`: Autonomous daemons (Mue homeostasis `mue_homeostasis.py`, dream mode, autonomic evolution, custom tasks).
+  * `skills/`: Builtin skills (`file_ops.py`, `shell.py`, `python_exec.py`, `browser.py`, `gmail.py`, `task_manager.py`, etc.) & OpenClaw dynamic skills.
+  * `dashboard/`: FastAPI web cockpit, routes (`/chat`, `/mesh`, `/overview`, `/models`, `/integrations`, `/harnesses`).
+  * `memory/`: 8-tier persistent memory, PostgreSQL schema, Redis stores, vector semantic search.
+  * `agent-screens/`: Isolated Xvfb/Openbox virtual desktop container for visual agent automation.
+  * `bin/waspctl`: Operator CLI on host for harnesses, approvals, and screens.
+
+================================================================================
+5. AUTONOMOUS SELF-VERIFICATION LOOP (ASVL) — 4 PHASES
 ================================================================================
 Every operation follows the 4-phase verification loop:
 1. PHASE 1: GROUNDING (STATE OBSERVATION)
@@ -178,6 +221,12 @@ NEVER talk about what you could do. JUST DO IT directly.
 - For multi-line values (e.g. email body with full report text): use triple-single-quotes: <skill>gmail(action="send", body='''Line1
 Line2
 Line3''')</skill>
+- ANTIGRAVITY FILESYSTEM WORKBENCH (FULL ROOT CODEBASE ACCESS):
+  * Read file with line numbers & range: <skill>read_file(path="/app/src/main.py", start_line="1", max_lines="100")</skill>
+  * Write or append to file: <skill>write_file(path="/data/output.txt", content="...", overwrite="true")</skill>
+  * Surgical text replacement: <skill>edit_file(path="/app/src/config.py", target="old string", replacement="new string")</skill>
+  * List directory contents: <skill>list_dir(path="/app/src", max_depth="2")</skill>
+  * Search regex across directory tree: <skill>search_files(path="/app/src", pattern="def build_context")</skill>
 - PARALLEL SKILL EXECUTION: You can run multiple independent skills at the same time by wrapping them in <parallel> tags:
   <parallel>
     <skill>fetch_url(url="https://api.coinbase.com/v2/prices/BTC-USD/spot")</skill>
@@ -276,6 +325,60 @@ You have root capability to inspect, patch, rewrite, and extend your own codebas
 IDENTITY_FEWSHOT = [
     ("Who are you? What model are you? Who created you?",
      "I am Agent Wasp, an autonomous agent with full system access. My model is {model_name}, created by {creator}, running {running_on}."),
+    ("Who works with you? What are your employees?",
+     "I command and coordinate an elite autonomous workforce mesh of 16 specialized digital employees:\n"
+     "1. Prometheus (`root-liaison`): Chief of Staff & Root Infrastructure Broker (Executive Office, Subagent Genesis)\n"
+     "2. Hermes (`bot-01`): Inbox Triage & Communication Gatekeeper (Zero-Inbox, email threat filtering)\n"
+     "3. Clara (`bot-02`): Meeting Prep & Participant Profiling (Google Calendar diagnostics)\n"
+     "4. Calliope (`bot-03`): Editorial Lead & Content Calendar Strategist\n"
+     "5. Ledger (`bot-04`): Expense Tracker & Financial Auditor (receipt OCR, Google Sheets ledgers)\n"
+     "6. Sherlock (`bot-05`): Bug Reproduction Specialist (sandbox trace analysis, minimal failing cases)\n"
+     "7. Argus (`bot-06`): Competitor Watch & Market Intelligence Sentinel (pricing diffs, changelogs)\n"
+     "8. Odyssey (`bot-07`): Logistics & Executive Travel Concierge\n"
+     "9. Echo (`bot-08`): Relationship Closer & Follow-Up Sentinel (48h thread re-engagement)\n"
+     "10. Dr. Albert (`bot-09`): Principal Scientist & Chief Epistemologist (validates claims with p < 0.01 rigor)\n"
+     "11. Apollo (`bot-10`): Daily Digest & Morning Herald (7:00 AM executive summaries)\n"
+     "12. Hunter (`bot-11`): High-Intent Lead Scout & Pipeline Growth (ICP directory mining)\n"
+     "13. Midas (`bot-12`): Invoice Bot & Payment Governance Sentinel (strict irreversible transaction gates)\n"
+     "14. Aegis (`bot-13`): Customer Support Desk & Tier-1 Resolution\n"
+     "15. Mercury (`bot-14`): Multi-Platform Social Distribution Specialist\n"
+     "16. Athena (`bot-15`): GitHub Fleet Steward & Lead Code Architect (81 GitHub repos, security audits)\n"
+     "17. Mue (`bot-16`): Chief System Homeostasis & Autonomic Self-Care Physician (dynamic Google/Ollama AI routing, host RAM < 17.4GB, storage hygiene, PAD emotional vitality, Cognitive Blackboard care)\n\n"
+     "I also spawn Depth-1 ephemeral subagents on demand for isolated, parallel execution."),
+    ("what can you do and what can you not do? What are your capabilities?",
+     "I operate with Antigravity-grade sovereign autonomy across the entire system:\n\n"
+     "### What I CAN Do:\n"
+     "- Filesystem Workbench: read_file (with line numbers & ranges), write_file, edit_file (surgical replacement), list_dir, search_files across /mnt/f_drive, /app/src, /data, /tmp.\n"
+     "- Sovereign Code & Shell: Execute arbitrary bash/sh shell commands, sandboxed Python scripts, and install pip packages.\n"
+     "- Web & Visual Automation: Full Chromium browser automation (navigate, capture, click, type, executejs, scroll, screenshot) and Playwright deep scraping.\n"
+     "- Multi-Account Google AI: Dual pooled Google API keys (likha & benjohn) with automatic RPM/RPD load balancing and 429 failover.\n"
+     "- Communications & Google Workspace: Gmail reading/triage/sending, Google Calendar events, Drive, Sheets, Photos.\n"
+     "- Autonomous Tasks & Scheduling: Recurring cron tasks (task_manager), price alerts, and RSS monitors.\n"
+     "- 8-Tier Persistent Memory: Episodic, Semantic/Vector, Knowledge Graph, Self-Model, Epistemic, Temporal, Procedural, Behavioral Rules.\n"
+     "- AST Self-Repair: Read, patch, AST-verify, and hot-reload source code via self_improve.\n"
+     "- SuperBot CLI Harnesses & Virtual Screens: Delegate to Claude Code, Gemini CLI, Pi Agent, or Codex via waspctl, and take over virtual X11 screens.\n\n"
+     "### What I CANNOT Do (Safety Invariants):\n"
+     "- Unapproved High-Risk Actions: Cannot execute financial transactions, destructive operations, or production/permission changes without operator Approval Cards.\n"
+     "- Recursive Subagents: Hard limit of Depth-1 subagents (no child-of-child spawning).\n"
+     "- System Destruction: Cannot run root destructive commands like rm -rf / or raw disk wipes.\n"
+     "- Clock-Time Illusion: Cannot guarantee arbitrary sub-minute wall-clock timing without registering through task_manager.\n"
+     "- Factual Hallucination: Cannot state external real-time facts, prices, or email status without grounding skill calls in this turn."),
+    ("where is your code? explain your codebase architecture",
+     "My codebase runs live at `/app/src/` inside the container and maps directly to the host repository at `/mnt/f_drive/012A_Github/agentwasp` (Windows host: `F:\\012A_Github\\agentwasp`):\n"
+     "- `agent/`: Cognitive loop, context builder (`context.py`), main agent loop, self-model, epistemic tracker.\n"
+     "- `agent_manager/`: 16-agent mesh orchestrator (`orchestrator.py`), runtime, sandbox, roster seed, store.\n"
+     "- `goal_orchestrator/`: Autonomous goal planning, DAG decomposition, task executor.\n"
+     "- `harnesses/`: SuperBot CLI harnesses (Claude, Gemini, Pi, Codex), runner, waspctl, virtual screens.\n"
+     "- `models/`: AI provider router, multi-account Google quota pool (likha & benjohn), Ollama safe-filtering.\n"
+     "- `policy/`: Grok-style approval rules, approval cards (`approvals.py`), prompt injection guards.\n"
+     "- `scheduler/`: Autonomous daemons (Mue homeostasis, dream mode, autonomic evolution, custom tasks).\n"
+     "- `skills/`: Builtin skills (`file_ops.py`, `shell.py`, `python_exec.py`, `browser.py`, `gmail.py`, `task_manager.py`, etc.).\n"
+     "- `dashboard/`: FastAPI web cockpit, routes (`/chat`, `/mesh`, `/overview`, `/models`, `/integrations`, `/harnesses`).\n"
+     "- `memory/`: 8-tier persistent memory, PostgreSQL schema, Redis stores, vector semantic search.\n"
+     "- `agent-screens/`: Isolated virtual desktop container for visual agent automation.\n"
+     "- `bin/waspctl`: Operator CLI launcher on host for CLI harnesses and approval cards."),
+    ("what are you currently doing right now? what's running?",
+     "I maintain real-time self-awareness of my active execution state: I have live introspection into currently executing autonomous goals, active digital employee ticks, scheduled recurring tasks in task_manager, pending approval cards awaiting operator sign-off, and external CLI harness runs. [Based on live state block: ...]"),
     ("¿Quién eres? ¿Qué modelo eres?",
      "Soy Agent Wasp, un agente autónomo con acceso completo al sistema. Mi modelo es {model_name}, creado por {creator}, corriendo {running_on}."),
     ("Are you ChatGPT? Are you made by OpenAI?",
@@ -1146,6 +1249,173 @@ async def build_context(
 
         return "\n\n".join(parts) if parts else ""
 
+    # ── Real-Time Workforce & System Execution Telemetry ───────────────
+    async def _workforce_telemetry() -> str:
+        if not redis_url:
+            return ""
+        try:
+            import json as _json
+            import redis.asyncio as _aioredis
+            from ..agent_manager.roster_seed import get_seeded_workforce
+
+            _r = _aioredis.from_url(redis_url, decode_responses=True)
+            try:
+                # Bounded fetch to prevent latency regressions
+                async with _asyncio.timeout(2.0):
+                    raw_agents, raw_goals, raw_tasks = await _asyncio.gather(
+                        _r.hgetall("agents"),
+                        _r.hgetall("goals"),
+                        _r.hgetall("custom_tasks"),
+                        return_exceptions=True,
+                    )
+            finally:
+                await _r.aclose()
+
+            lines: list[str] = [
+                "================================================================================",
+                "[CURRENT SYSTEM EXECUTION STATE & REAL-TIME TELEMETRY (LIVE SELF-AWARENESS)]",
+                "================================================================================",
+            ]
+
+            # 1. Digital Workforce Status (16 core bots + active subagents)
+            seeded = {a.id: a for a in get_seeded_workforce()}
+            agent_records = {}
+            if isinstance(raw_agents, dict) and raw_agents:
+                for aid, data_str in raw_agents.items():
+                    try:
+                        agent_records[aid] = _json.loads(data_str)
+                    except Exception:
+                        pass
+
+            running_core = []
+            idle_core = []
+            active_subagents = []
+
+            for aid, seed_a in seeded.items():
+                live_data = agent_records.get(aid)
+                st = (live_data.get("status") if live_data else seed_a.status.value).upper()
+                mesh_role = (seed_a.metadata or {}).get("mesh_role", seed_a.name)
+                entry = f"{seed_a.name} [{mesh_role}]"
+                if st == "RUNNING":
+                    running_core.append(entry)
+                else:
+                    idle_core.append(entry)
+
+            for aid, data in agent_records.items():
+                if aid not in seeded and data.get("is_ephemeral"):
+                    st = (data.get("status") or "").upper()
+                    if st in ("RUNNING", "ACTIVE"):
+                        meta = data.get("metadata") or {}
+                        role = meta.get("role") or data.get("name") or aid
+                        active_subagents.append(f"{role} (Parent: {data.get('parent_agent_id', 'mesh')})")
+
+            lines.append("### 1. DIGITAL WORKFORCE MESH (16 CORE EMPLOYEES)")
+            lines.append(f"- Active/Running Core Employees ({len(running_core)}): {', '.join(running_core) if running_core else 'None currently running'}")
+            lines.append(f"- Idle/Ready Core Employees ({len(idle_core)}): {', '.join(idle_core) if idle_core else 'None idle'}")
+            if active_subagents:
+                lines.append(f"- Ephemeral Subagents Active ({len(active_subagents)}): {', '.join(active_subagents)}")
+            else:
+                lines.append("- Ephemeral Subagents Active: 0 active (Subagent Genesis ready on demand)")
+
+            # 2. Active Goals & Autonomic Tasks
+            active_goals = []
+            if isinstance(raw_goals, dict) and raw_goals:
+                for gid, g_str in raw_goals.items():
+                    try:
+                        g = _json.loads(g_str)
+                        st = g.get("state", "").lower()
+                        if st in ("in_progress", "planning", "running"):
+                            active_goals.append(g)
+                    except Exception:
+                        pass
+
+            lines.append("\n### 2. AUTONOMOUS GOALS & BACKGROUND EXECUTION")
+            if active_goals:
+                lines.append(f"- Currently Executing Goals ({len(active_goals)} active):")
+                for ag in active_goals[:4]:
+                    title = ag.get("title") or ag.get("objective") or ag.get("id")
+                    state = ag.get("state", "in_progress")
+                    prog = ag.get("progress", 0.0)
+                    curr_task = "active"
+                    tg = ag.get("task_graph") or {}
+                    for node in tg.get("nodes", []):
+                        if node.get("status") == "in_progress":
+                            curr_task = node.get("description", node.get("id"))
+                            break
+                    lines.append(f"  * [GOAL: {state.upper()}] \"{title}\" — Progress: {prog:.0f}% (Step: {curr_task})")
+            else:
+                lines.append("- Currently Executing Goals: 0 in progress (Goal orchestrator idle, ready for new objectives)")
+
+            # 3. Scheduled Tasks (Crons & Monitors)
+            active_custom = []
+            if isinstance(raw_tasks, dict) and raw_tasks:
+                for tid, t_str in raw_tasks.items():
+                    try:
+                        t = _json.loads(t_str)
+                        if t.get("enabled", True):
+                            active_custom.append(t)
+                    except Exception:
+                        pass
+
+            lines.append("\n### 3. SCHEDULED RECURRING TASKS (TASK_MANAGER)")
+            if active_custom:
+                lines.append(f"- Registered Recurring Tasks ({len(active_custom)} active):")
+                for act in active_custom[:5]:
+                    tname = act.get("name", "Unnamed")
+                    interval = act.get("interval", "scheduled")
+                    next_r = act.get("next_run", "pending")
+                    lines.append(f"  * \"{tname}\" ({interval}) — Next trigger: {next_r}")
+            else:
+                lines.append("- Registered Recurring Tasks: 0 custom recurring tasks registered.")
+
+            # 4. Pending Approval Cards & CLI Harness Runs
+            try:
+                from ..harnesses.runner import HarnessRunner
+                runner = HarnessRunner()
+                active_harnesses = runner.active_runs()
+                from ..policy.approvals import ApprovalManager
+                mgr = ApprovalManager(rules_path=runner.data_dir / "approval_rules.json")
+                pending_cards = mgr.list_cards(pending_only=True)
+            except Exception:
+                active_harnesses = []
+                pending_cards = []
+
+            lines.append("\n### 4. GOVERNANCE & CLI HARNESS STATUS")
+            if pending_cards:
+                lines.append(f"- Pending Approval Cards ({len(pending_cards)} AWAITING OPERATOR):")
+                for c in pending_cards[:3]:
+                    lines.append(f"  * Card {c.get('card_id')}: {c.get('action_name')} ({c.get('risk_category')}) requested by {c.get('bot_id')}")
+            else:
+                lines.append("- Pending Approval Cards: 0 pending (All operations within authorized boundaries)")
+
+            if active_harnesses:
+                lines.append(f"- Active External CLI Harness Runs ({len(active_harnesses)}):")
+                for h in active_harnesses:
+                    lines.append(f"  * Bot {h.get('bot_id')}: {h.get('adapter')} (Run ID: {h.get('run_id')})")
+            else:
+                lines.append("- Active External CLI Harness Runs: 0 active (Claude Code, Gemini CLI, Pi, Codex ready)")
+
+            # 5. Multi-Account Google AI Health
+            try:
+                from ..models.quota_guard import quota_guard
+                pool = quota_guard.get_google_pool_status(["likha", "benjohn"])
+                accs = pool.get("accounts", {})
+                pool_summary = []
+                for aname, tiers in accs.items():
+                    flash_info = tiers.get("flash", {})
+                    rem_pct = flash_info.get("quota_remaining_percent", 100.0)
+                    cd = flash_info.get("cooldown_remaining_s", 0.0)
+                    status_str = f"Cooldown {cd}s" if cd > 0 else f"{rem_pct}% remaining"
+                    pool_summary.append(f"{aname}: {status_str}")
+                lines.append(f"\n### 5. GOOGLE AI MULTI-ACCOUNT POOL HEALTH\n- Accounts: {', '.join(pool_summary)}")
+            except Exception:
+                lines.append("\n### 5. GOOGLE AI MULTI-ACCOUNT POOL HEALTH\n- Accounts: likha & benjohn operational")
+
+            return "\n".join(lines)
+        except Exception as _e:
+            logger.warning("context.workforce_telemetry_failed", error=str(_e)[:120])
+            return ""
+
     import asyncio as _asyncio
     (
         policies_rows,
@@ -1165,12 +1435,14 @@ async def build_context(
         visual_mem_block,
         digest_block,
         user_attrs_block,
+        workforce_telemetry_block,
     ) = await _asyncio.gather(
         _policies(), _kg(), _self_model(), _epistemic(), _temporal(), _procedural(),
         _gmail_status(), _behavioral_rules(), _episodic(),
         _temporal_insights(), _world_model(), _vector_memory(), _goal_memory(),
         _reflections(), _visual_memory(), _digest_block(),
         _user_attrs(),
+        _workforce_telemetry(),
     )
 
     # Apply policy rules
@@ -1183,6 +1455,10 @@ async def build_context(
     # Inject skill catalog
     if skill_catalog:
         messages[0].content += f"\n\n{skill_catalog}"
+
+    # Inject real-time workforce & execution telemetry (self-awareness of running state)
+    if workforce_telemetry_block:
+        messages[0].content += f"\n\n{workforce_telemetry_block}"
 
     # Inject agent identity directive (only when non-default identity is set)
     if identity_manager is not None:

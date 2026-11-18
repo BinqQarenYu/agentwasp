@@ -5,7 +5,13 @@ from ..registry import SkillRegistry
 from .calculate import CalculateSkill
 from .datetime_skill import GetDatetimeSkill
 from .fetch_url import FetchUrlSkill
-from .file_ops import ReadFileSkill, WriteFileSkill
+from .file_ops import (
+    EditFileSkill,
+    ListDirSkill,
+    ReadFileSkill,
+    SearchFilesSkill,
+    WriteFileSkill,
+)
 from .gmail import GmailSkill
 from .browser import BrowserSkill
 from .browser_screenshot_full_page import BrowserScreenshotFullPageSkill
@@ -72,6 +78,9 @@ _CAPABILITY_MAP: dict[str, CapabilityLevel] = {
     "http_request":     CapabilityLevel.RESTRICTED,
     "read_file":        CapabilityLevel.RESTRICTED,
     "write_file":       CapabilityLevel.RESTRICTED,
+    "edit_file":        CapabilityLevel.RESTRICTED,
+    "list_dir":         CapabilityLevel.MONITORED,
+    "search_files":     CapabilityLevel.MONITORED,
     "self_improve":     CapabilityLevel.PRIVILEGED,
     "subscribe":        CapabilityLevel.CONTROLLED,
     "agent_manager":    CapabilityLevel.CONTROLLED,
@@ -112,6 +121,9 @@ def register_builtin_skills(registry: SkillRegistry, memory: MemoryManager, sett
     # Filesystem skills
     registry.register(ReadFileSkill())
     registry.register(WriteFileSkill())
+    registry.register(EditFileSkill())
+    registry.register(ListDirSkill())
+    registry.register(SearchFilesSkill())
 
     # Power skills
     registry.register(ShellSkill())
