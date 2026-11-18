@@ -380,3 +380,15 @@ def test_mue_enclave_invariant_hard_veto(tmp_path):
     assert "VETOED" in gate["rationale"]
 
 
+def test_roster_seed_prometheus_chief_of_staff():
+    workforce = get_seeded_workforce()
+    prom = next((b for b in workforce if b.id == "root-liaison"), None)
+    assert prom is not None
+    assert "Prometheus" in prom.name
+    assert "Chief of Staff" in prom.name
+    assert prom.metadata.get("mesh_role") == "Chief of Staff"
+    assert prom.metadata.get("dept") == "Executive Office & Root Infrastructure"
+    assert "Chief of Staff" in prom.identity_prompt
+
+
+

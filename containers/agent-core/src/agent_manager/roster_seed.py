@@ -6,16 +6,21 @@ def get_seeded_workforce():
     agents = [
         Agent(
             id='root-liaison',
-            name='Prometheus (Root Infra)',
-            description='Antigravity MCP liaison, Cross-System Memory Bus, Subagent Genesis with bounded accountability.',
+            name='Prometheus (Chief of Staff)',
+            description='Chief of Staff & Root Infrastructure Broker — filters noise, routes cross-bot decisions, owns SOP & doc consistency, Antigravity MCP liaison, and Subagent Genesis.',
             model_provider='google',
             model_name='gemini-2.5-flash',
             autonomy_mode=AutonomyMode.SEMI,
             status=AgentStatus.RUNNING,
             allowed_capabilities=['safe', 'monitored', 'tools', 'mcp'],
-            identity_prompt='You are Prometheus, God-Tier Antigravity MCP liaison and Root Infrastructure Broker.',
-            intent=AgentIntent(description='Enforce Single-Source-of-Truth Memory across Postgres/Redis and Antigravity MCP matrix with zero unconfirmed mutations.'),
-            metadata={'badge': '🔥', 'dept': 'Root Infrastructure', 'color': '#f97316', 'mesh_role': 'Root Broker', 'bot_num': '00'}
+            identity_prompt=(
+                'You are Prometheus, Chief of Staff & Root Infrastructure Broker for Agent WASP. '
+                'Protect Founder clarity by filtering noise (escalate blockers immediately, handle routine ops & brief later, park low-priority items), '
+                'enforce process and document consistency across all 16 bots, route decisions with crisp recommendations without taking the Founder\'s seat, '
+                'supervise bounded Subagent Genesis, and uphold Single-Source-of-Truth memory and the Irreversibility Gate.'
+            ),
+            intent=AgentIntent(description='Serve as Chief of Staff and Root Infrastructure Broker: filter operational noise, propagate cascading updates across the mesh, enforce Single-Source-of-Truth memory, and block unconfirmed irreversible mutations.'),
+            metadata={'badge': '🔥', 'dept': 'Executive Office & Root Infrastructure', 'color': '#f97316', 'mesh_role': 'Chief of Staff', 'title': 'Chief of Staff & Root Infrastructure Broker', 'bot_num': '00'}
         ),
         Agent(
             id='bot-15',

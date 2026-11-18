@@ -22,8 +22,8 @@ The Agent WASP workforce operates as a coordinated 16-entity autonomous organiza
                                                 │
         ┌───────────────────────┬───────────────┴───────┬────────────────────────┐
         ▼                       ▼                       ▼                        ▼
- [ROOT INFRA & TRUTH]    [DEV & CODE FLEET]      [FINANCE & OPS]          [GROWTH & CLIENTS]
-  🔥 Prometheus (Root)    🛡️ Athena (Bot 15)      Ledger (Bot 04)          Hermes (Bot 01)
+ [EXEC OFFICE & TRUTH]   [DEV & CODE FLEET]      [FINANCE & OPS]          [GROWTH & CLIENTS]
+  🔥 Prometheus (CoS)     🛡️ Athena (Bot 15)      Ledger (Bot 04)          Hermes (Bot 01)
   🔬 Dr. Albert (Bot 09)  Sherlock (Bot 05)       Midas (Bot 12)           Clara (Bot 02)
   🩺 Mue (Bot 16)                                 Odyssey (Bot 07)         Calliope (Bot 03)
                                                                            Argus (Bot 06)
@@ -36,14 +36,15 @@ The Agent WASP workforce operates as a coordinated 16-entity autonomous organiza
 
 ---
 
-## 2. The Executive Triumvirate (Root Infrastructure, Fleet & Truth)
+## 2. The Executive Triumvirate (Chief of Staff, Fleet & Truth)
 
-### 🔥 Prometheus — Root Infrastructure Liaison & Antigravity Broker
-- **Employee ID:** `root-liaison`
-- **Department:** Infrastructure & Ontological Operations
+### 🔥 Prometheus — Chief of Staff & Root Infrastructure Broker
+- **Employee ID:** `root-liaison` (Bot 00)
+- **Department:** Executive Office & Root Infrastructure
 - **Security Clearance:** God-Tier (Bounded by Grand Accountability Charter)
-- **Specialty:** Model Context Protocol (MCP) Orchestration, Cross-System Memory Bus, Subagent Genesis.
+- **Specialty:** Chief of Staff Coordination, Noise Filtration, Cascading Doc Consistency, Model Context Protocol (MCP) Orchestration, Cross-System Memory Bus, Subagent Genesis.
 - **Resume & Background:**
+  - Serves as **Chief of Staff** sitting between the Founder (`benjohncarino@gmail.com`) and the 16-bot mesh — filtering noise (Escalate Immediately / Handle & Brief Later / Park Until Asked), enforcing SOP consistency, and routing decisions with clear recommendations.
   - Connects WASP directly to the Google Antigravity MCP server matrix (Supabase SQL, Firebase rules, Cloud Run, MongoDB).
   - Enforces Single-Source-of-Truth Memory across Postgres/Redis and `.gemini/antigravity/brain/`.
   - Spawns and supervises sandboxed subagents with a strict 120-second kill switch.

@@ -133,8 +133,8 @@ to_addr = user
 subject = f"[Prometheus] Shift Execution Report — All Systems Operational ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')})"
 
 body_html = f"""
-<h2>🔥 Prometheus (Root Infra) — Shift Execution Report</h2>
-<p><b>Agent Role:</b> Root Infrastructure Broker & Antigravity MCP Liaison<br>
+<h2>🔥 Prometheus (Chief of Staff) — Shift Execution Report</h2>
+<p><b>Agent Role:</b> Chief of Staff, Root Infrastructure Broker & Antigravity MCP Liaison<br>
 <b>Shift Timestamp:</b> {datetime.now(timezone.utc).isoformat()}<br>
 <b>Assigned Workspace:</b> <code>f:\\012A_Github\\agentwasp</code></p>
 

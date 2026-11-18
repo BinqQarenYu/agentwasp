@@ -145,7 +145,7 @@ async def atse_status(request: Request):
             },
             "subagent_genesis": {
                 "max_depth": 1,
-                "root_spawner": "Prometheus (root-liaison)",
+                "root_spawner": "Prometheus (Chief of Staff / root-liaison)",
                 "code_steward": "Athena (bot-15)",
                 "active_subagents": 0,
                 "max_subagents_per_parent": 3,
@@ -155,7 +155,7 @@ async def atse_status(request: Request):
             "triad_consensus": {
                 "proposer": "Athena (bot-15)",
                 "critic": "Ares (bot-10) [Red-Team]",
-                "judge": "Prometheus (root-liaison) [Executive & Enclave Sentinel]",
+                "judge": "Prometheus (Chief of Staff / root-liaison) [Executive & Enclave Sentinel]",
                 "majority_threshold": ">= 2/3 (66.7%)",
                 "security_veto": "Prometheus Unconditional Immutable Enclave VETO",
                 "last_verdict": "APPROVED",

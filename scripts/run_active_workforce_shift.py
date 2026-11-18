@@ -178,7 +178,7 @@ html_body = f"""
 
 <hr>
 
-<h3>🔥 1. Prometheus (Root Infrastructure & Broker)</h3>
+<h3>🔥 1. Prometheus (Chief of Staff & Root Infrastructure Broker)</h3>
 <ul>
   <li><b>AST Knowledge Graph:</b> 3,200 nodes | 5,961 edges indexed in <code>graph.json</code></li>
   <li><b>Memory Bus:</b> <code>MEMORY.md</code> grounded and active</li>
