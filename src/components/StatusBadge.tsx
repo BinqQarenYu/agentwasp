@@ -3,13 +3,21 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Gauge,
   PauseCircle,
   PlayCircle,
   ShieldAlert,
+  TrendingDown,
   WifiOff,
   XCircle,
 } from 'lucide-react';
-import type { AgentHealth, AgentStatus, RiskLevel } from '../shared/types';
+import type {
+  AgentHealth,
+  AgentStatus,
+  AgentTrend30dSummary,
+  PerformanceTrendStatus,
+  RiskLevel,
+} from '../shared/types';
 
 const STATUS_CONFIG: Record<
   AgentStatus,
@@ -126,6 +134,81 @@ export function AgentHealthChip({ health }: { health: AgentHealth }) {
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>{cfg.label}</span>
     </span>
+  );
+}
+
+const TREND_BADGE_CONFIG: Record<
+  PerformanceTrendStatus,
+  { classes: string; Icon: React.ComponentType<{ className?: string }> }
+> = {
+  healthy: {
+    classes: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70',
+    Icon: CheckCircle2,
+  },
+  degraded: {
+    classes: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70',
+    Icon: TrendingDown,
+  },
+  latency_high: {
+    classes: 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100/70',
+    Icon: Gauge,
+  },
+  critical: {
+    classes: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/70',
+    Icon: ShieldAlert,
+  },
+  stale: {
+    classes: 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200/70',
+    Icon: Clock,
+  },
+};
+
+export function AgentTrend30dBadges({
+  summary,
+  onInspect,
+}: {
+  summary: AgentTrend30dSummary;
+  onInspect?: () => void;
+}) {
+  return (
+    <div className="inline-flex flex-wrap items-center gap-1.5" aria-label="30-day performance status">
+      {summary.badges.map((badge) => {
+        const cfg = TREND_BADGE_CONFIG[badge.code] ?? TREND_BADGE_CONFIG.healthy;
+        const Icon = cfg.Icon;
+        const tooltip = `${badge.label} (30d): ${badge.reason}`;
+        const content = (
+          <>
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{badge.label}</span>
+            <span className="font-mono text-[10px] opacity-75">30d</span>
+          </>
+        );
+
+        if (onInspect) {
+          return (
+            <button
+              key={badge.code}
+              type="button"
+              title={tooltip}
+              onClick={onInspect}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-colors ${cfg.classes}`}
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <span
+            key={badge.code}
+            title={tooltip}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${cfg.classes}`}
+          >
+            {content}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 

@@ -557,6 +557,7 @@ export function App() {
                   <div className="xl:col-span-7">
                     <AgentDetailWorkspace
                       agentId={selectedAgentId}
+                      availableAgents={allAgentsForRefs}
                       refreshNonce={refreshNonce}
                       onSelectAgent={setSelectedAgentId}
                       onAgentMutated={triggerRefresh}
@@ -592,6 +593,7 @@ export function App() {
                 />
                 <AgentDetailWorkspace
                   agentId={selectedAgentId}
+                  availableAgents={allAgentsForRefs}
                   refreshNonce={refreshNonce}
                   onSelectAgent={setSelectedAgentId}
                   onAgentMutated={triggerRefresh}

@@ -83,7 +83,42 @@ describe('Agent Workforce Management System — 15 Acceptance Criteria', () => {
     for (const tab of tabs) {
       const r = await reqJson(`/api/v1/agents/AG-001/${tab}`);
       assert.equal(r.status, 200, `Expected 200 for tab ${tab}`);
+      if (tab === 'overview' || tab === 'quality') {
+        assert.ok(Array.isArray(r.data.performance_trend_30d), `Expected performance_trend_30d on ${tab}`);
+        assert.equal(r.data.performance_trend_30d.length, 30);
+        for (const pt of r.data.performance_trend_30d as Array<{ efficiency_pct: number; avg_latency_ms: number }>) {
+          assert.ok(pt.efficiency_pct >= 0 && pt.efficiency_pct <= 100);
+          assert.ok(pt.avg_latency_ms > 0);
+        }
+      }
     }
+
+    // Verify 30-day visual status badges derived from 30d history
+    const atlasDetail = await reqJson('/api/v1/agents/AG-001');
+    assert.equal(atlasDetail.status, 200);
+    assert.ok(atlasDetail.data.trend_30d);
+    assert.ok(
+      atlasDetail.data.trend_30d.badges.some((b: { label: string }) => b.label === 'Healthy'),
+      'Atlas should have Healthy 30d badge',
+    );
+
+    const relayDetail = await reqJson('/api/v1/agents/AG-003');
+    assert.equal(relayDetail.status, 200);
+    assert.ok(
+      relayDetail.data.trend_30d.badges.some((b: { label: string }) => b.label === 'Degraded'),
+      'Relay should have Degraded 30d badge',
+    );
+    assert.ok(
+      relayDetail.data.trend_30d.badges.some((b: { label: string }) => b.label === 'Latency High'),
+      'Relay should have Latency High 30d badge',
+    );
+
+    const sentinelDetail = await reqJson('/api/v1/agents/AG-005');
+    assert.equal(sentinelDetail.status, 200);
+    assert.ok(
+      sentinelDetail.data.trend_30d.badges.some((b: { label: string }) => b.label === 'Latency High'),
+      'Sentinel should have Latency High 30d badge',
+    );
 
     const supervisorMem = await reqJson('/api/v1/agents/AG-001/memory', {
       headers: { 'X-Actor-Role': 'supervisor' },

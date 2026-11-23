@@ -273,6 +273,34 @@ export interface QualityEvaluation {
   evaluated_at: string;
 }
 
+export interface AgentPerformancePoint {
+  date: string;
+  label: string;
+  efficiency_pct: number;
+  avg_latency_ms: number;
+  tasks_completed: number;
+  tasks_failed: number;
+}
+
+export type PerformanceTrendStatus = 'healthy' | 'degraded' | 'latency_high' | 'critical' | 'stale';
+
+export interface AgentTrend30dBadge {
+  code: PerformanceTrendStatus;
+  label: string;
+  reason: string;
+}
+
+export interface AgentTrend30dSummary {
+  status: PerformanceTrendStatus;
+  badges: AgentTrend30dBadge[];
+  avg_efficiency_pct: number;
+  avg_latency_ms: number;
+  p95_latency_ms: number;
+  efficiency_delta_7d: number;
+  latency_delta_7d_ms: number;
+  window_days: number;
+}
+
 export interface AuditEvent {
   audit_id: string;
   tenant_id: string;

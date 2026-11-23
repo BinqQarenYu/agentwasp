@@ -521,6 +521,7 @@ export function createApiRouter(store: WorkforceStore = workforceStore) {
       ...agent,
       health: store.computeEffectiveHealth(agent),
       cost_today_formatted: formatCentsUsd(agent.telemetry.cost_today_cents),
+      trend_30d: store.summarizePerformanceTrend30d(agent),
       data_as_of: new Date().toISOString(),
       correlation_id: ctx.correlation_id,
     });
@@ -572,6 +573,7 @@ export function createApiRouter(store: WorkforceStore = workforceStore) {
         permissions_summary: agent.permissions_summary,
       },
       recent_activity: recentActivity,
+      performance_trend_30d: store.getPerformanceHistory(agent, 30),
       data_as_of: new Date().toISOString(),
       correlation_id: ctx.correlation_id,
     });
@@ -671,6 +673,10 @@ export function createApiRouter(store: WorkforceStore = workforceStore) {
       tasks_completed: agent.telemetry.tasks_completed,
       tasks_failed: agent.telemetry.tasks_failed,
       sla_compliance_pct: agent.telemetry.sla_compliance_pct,
+      avg_latency_ms: agent.telemetry.avg_latency_ms,
+      telemetry_available: agent.telemetry.telemetry_available,
+      trend_30d: store.summarizePerformanceTrend30d(agent),
+      performance_trend_30d: store.getPerformanceHistory(agent, 30),
       evaluations,
       data_as_of: new Date().toISOString(),
       correlation_id: ctx.correlation_id,
