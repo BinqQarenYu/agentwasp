@@ -10,6 +10,64 @@ All notable changes to WASP are documented here. Versions follow a semantic vers
 
 ---
 
+## Unreleased
+
+### Fixed
+
+- **Docusaurus broken anchors.** Updated three stale cross-page links: temporal reasoning now targets the scheduler's current Cognitive systems section, and Skill Safety no longer uses obsolete `-v26` suffixes for the Cold-Start Hallucination Guard and Multi-URL Aggregator anchors.
+
+### Changed
+
+- **License: Business Source License 1.1 → Apache License 2.0.** WASP is now under standard permissive open-source terms. The previous BSL 1.1 + USD $1M annual revenue threshold + Change Date 2029-05-13 mechanism has been removed entirely. Apache 2.0 grants explicit patent rights from contributors, includes a patent retaliation clause, and reserves the "WASP" trademark to the project. Commercial use, redistribution, and modification are all permitted under standard Apache 2.0 terms. All prior contributions are relicensed under Apache 2.0; future contributions are accepted under the same terms.
+- **Operator-facing rename: Dream Mode → Background Consolidation.** Applied across README, docs-site, and dashboard labels. Internal scheduler module (`scheduler/dream.py`) and DB table (`dream_log`) are unchanged; the cycle behavior is identical (memory consolidation, KG enrichment, LLM reflection, failure pattern analysis, crypto prefetch every hour when idle >2h or 1–7 am).
+- **README and docs-site index rewritten** with explicit naming of architectural commitments: truth-binding response layer, plan critic, capability tiers per skill with anticipatory simulation, knowledge graph + temporal world model, 10+ persistent memory tiers. Dropped the "not a chatbot framework" framing (wrong opponent for the self-hosted-harness audience). Docs-site index title is now "Self-Hosted Autonomous Agent Runtime". Added link to the row-by-row comparison vs Hermes Agent and OpenClaw at agentwasp.com.
+- **GitHub repo metadata**: repo description rewritten to match the reliability-runtime framing (was "...rather than a simple chatbot"). GitHub Discussions enabled for community Q&A.
+
+### Notes
+
+No runtime behavior changes. License (Apache 2.0), documentation, and metadata only.
+
+---
+
+## v2.7.3 — August 4, 2026
+
+**Focus: Complete the macOS installer fix originally reported in [#1](https://github.com/agentwasp/agentwasp/issues/1).**
+
+### Fixed
+
+- **macOS installer aborted before OS detection** ([#1](https://github.com/agentwasp/agentwasp/issues/1), [PR #25](https://github.com/agentwasp/agentwasp/pull/25)). The earlier macOS compatibility fix guarded Linux-only memory, disk, port, and Docker-group checks, but `install.sh` still sourced `/etc/os-release` unconditionally before reaching the Darwin branch. On a clean Mac, the missing file returned a non-zero status and `set -Eeuo pipefail` terminated the installer. The pre-flight now starts with safe `OS_ID`/`OS_LIKE` defaults and sources `/etc/os-release` only when it is readable.
+
+### Release artifacts
+
+- Updated `install.sh` and its SHA-256 checksum.
+- Rebuilt `wasp-release.tar.gz` so the bundled installer matches the repository and hosted installer.
+- Validated macOS/Darwin without `/etc/os-release`, Debian, `ID_LIKE` fallback, Linux without `/etc/os-release`, Bash syntax, checksum parity, and release archive contents.
+
+---
+
+## v2.7.2 — May 20, 2026
+
+**Focus: Installer hotfix on top of v2.7.1. One-line fix for a regression introduced by PR #9.**
+
+### Fixed
+
+- **#11 / PR #12**: Fresh install aborts at step 9/10 with `Install failed at line 559`. The PR #9 UFW gating logic grepped for `DASHBOARD_BIND=` in `.env` without `|| true`; under `set -Eeuo pipefail` a missing match returned exit 1 and aborted the installer. The shipped `.env.example` did not include the key, so every new install hit the error. Fix wraps both grep call sites and adds `DASHBOARD_BIND=127.0.0.1` to `.env.example` with inline documentation.
+
+### Docs (follow-up — same v2.7.2 cycle, no new tag)
+
+- **Dashboard access not documented after the v2.7.1 binding change.** The v2.7.1 release moved the dashboard to `127.0.0.1:8080` by default, but the README still claimed `Default dashboard: http://<your-host>:8080` and the docs-site had only a single passing reference. A new operator following the README would conclude the dashboard was broken. Fixed:
+  - README updated to point at the new page.
+  - New page [Dashboard Access](/getting-started/dashboard-access) covering the three supported patterns: SSH tunnel, TLS reverse proxy (Caddy + nginx examples), and the `DASHBOARD_BIND=0.0.0.0` opt-in for short-lived LAN testing.
+  - [Environment Variables](/getting-started/environment-variables) now lists `DASHBOARD_BIND` (was missing despite shipping in `.env.example`).
+  - [First Launch](/getting-started/first-launch) and [Installation](/getting-started/installation) link to the new page.
+
+### Notes
+
+- Maintainer-self-reported. Bug shipped in the v2.7.1 tarball but is not exploitable; it only blocks the installer.
+- Existing v2.7 to v2.7.1 upgrades via `wasp update` were not affected — only fresh installs.
+
+---
+
 ## v2.7.1 — May 19, 2026
 
 **Focus: Security patch release. Four issues from an external 9-engine security audit ([@Lucky3mc](https://github.com/Lucky3mc) via Debuggix), plus the post-launch hardening commits that landed between the v2.7 tag and this release.**

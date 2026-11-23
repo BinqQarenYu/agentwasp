@@ -2,11 +2,11 @@
 
 <img src=".github/assets/logo.png" alt="WASP" width="420" />
 
-**A serious agent. Built to evolve.**
+**A serious runtime. Built to operate.**
 
-Self-hosted autonomous AI agent. Plans, executes, and improves itself running on infrastructure you own.
+Self-hosted autonomous agent runtime built around reliability. Truth-binding response layer, plan critic, capability tiers, knowledge graph and temporal world model, 10+ persistent memory tiers, 41 background jobs. Apache 2.0. Docker.
 
-[![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-F5C542?style=flat-square)](LICENSE.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-F5C542?style=flat-square)](LICENSE.md)
 [![Version](https://img.shields.io/badge/version-2.8.0-F5C542?style=flat-square)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-agentwasp.com-F5C542?style=flat-square)](https://docs.agentwasp.com)
 [![Install](https://img.shields.io/badge/install-1%20line-F5C542?style=flat-square)](#install)
@@ -19,9 +19,19 @@ Self-hosted autonomous AI agent. Plans, executes, and improves itself running on
 
 ---
 
-WASP is an **Autonomous Operational Workforce** — a unified digital staff designed to carry out the day-to-day work of real-world employees.
+WASP is an **Autonomous Operational Workforce & Runtime** built for operators who need digital employees they can actually trust to run unattended. Three architectural commitments make it different from other self-hosted agent harnesses: a deterministic truth-binding response layer that grounds every output against actions actually taken, layered persistent memory across 10+ named tiers (including a knowledge graph and temporal world model), and capability tiers per skill with anticipatory simulation before privileged operations.
 
 Rather than being a traditional code-generation assistant like Cursor or Claude Code, WASP **operates as a team of autonomous digital employees**. It doesn't write monolithic software from scratch; instead, **it gets real work done by wielding powerful modern tools** — orchestrating Antigravity MCP servers, Claude, Gemini, Google Workspace (Gmail, Drive, Sheets, Photos), browsers, shell environments, and schedulers to accomplish end-to-end deliverables autonomously.
+
+For a row-by-row comparison against **Hermes Agent** and **OpenClaw**, see the [comparison table at agentwasp.com](https://agentwasp.com/#comparison).
+
+<div align="center">
+
+https://github.com/user-attachments/assets/0a14bd31-871a-4747-a48e-5d35ed6f8619
+
+<sub><em>The runtime, all subsystems operating together.</em></sub>
+
+</div>
 
 ## Install
 
@@ -38,7 +48,7 @@ That single line:
 5. Walks you through onboarding (Telegram, provider keys, dashboard credentials)
 6. Builds the containers and starts the stack
 
-Default install path: `/opt/wasp`. Default dashboard: `http://<your-host>:8080`.
+Default install path: `/opt/wasp`. The dashboard binds to `127.0.0.1:8080` (loopback only) for safety — to reach it from another machine, use an SSH tunnel or put a TLS reverse proxy in front. See [Dashboard Access](https://docs.agentwasp.com/getting-started/dashboard-access) for the three supported options.
 
 ### Verify the installer (optional, recommended)
 
@@ -65,6 +75,16 @@ wasp health      # run health probes
 
 WASP transforms autonomous agents into an **operational enterprise staff**. It is built on the principle that the highest-leverage AI work is not syntax typing, but **tool orchestration, verification, common-sense teleology, and real-world execution**.
 
+- **Layered persistent memory** across 28 PostgreSQL tables and Redis: episodic, semantic, working, procedural, behavioral rules, knowledge graph, temporal world model, vector embeddings, goal-scoped, self-model, per-domain epistemic confidence. Persists across sessions, reboots, and model switches.
+- **37 built-in skills**: web search, browser automation (nodriver + Selenium), email (Gmail with allowlist), scraping, scheduling, file ops, Python execution (sandboxed), reminders, RSS subscriptions, monitoring, self-improvement, and more.
+- **Goal orchestrator** with **Plan Critic**: long-running plans broken into TaskGraph steps, validated by an LLM critic before execution, retried on failure, replanned when blocked.
+- **Capability tiers per skill** (4 explicit levels: PUBLIC / CONTROLLED / RESTRICTED / PRIVILEGED) with **anticipatory simulation** that previews consequences before privileged operations.
+- **Truth-binding response layer**: 5 named deterministic guards (URL substitution, action announcer, response grounder, schedule honesty, prompt-leak redaction). No LLM in the policy path.
+- **Behavioral learning loop**: user corrections become persistent rules via LLM extraction, injected into every future prompt automatically.
+- **Controlled self-improvement**: agent reads, patches, and rebuilds its own source code. AST + sandbox validation. Patches persisted across container rebuilds.
+- **Dashboard**: 151 HTTP endpoints across chat, traces, scheduler, memory, knowledge graph, world model, agents, integrations, audit log, self-improve.
+- **41 background jobs**: memory consolidation, perception, autonomous goals, self-integrity monitor, CPI monitor, behavioral learner. Running 24/7 with persistent state and catch-up on restart.
+
 ### 💼 Autonomous Employee Staff & Roles
 * **16 Specialized Digital Employees**: Defined across Operations, Architecture, Security, Communications, Research, and Executive Decision-Making (e.g. *Athena* for Fleet Governance, *Ares* for Red-Team Auditing, *Prometheus* as Enclave Broker, *Dr. Albert* for Anti-Hype Scientific Forensics).
 * **Cross-Departmental Collaboration**: Agents divide complex briefs, execute consensus reviews, challenge assumptions, and produce verified artifacts.
@@ -87,15 +107,16 @@ WASP doesn't need to hand-code everything because it commands specialized execut
 
 * **An Autonomous Employee Operator**: Designed to execute business tasks, audit systems, handle client messages, manage schedules, and run continuous operations.
 * **NOT a Bare Syntax Generator / Code-Typing IDE**: It does not replace code editors like Claude Code or Cursor. When development or maintenance tasks arise, it coordinates developer tooling, reviews diffs, runs tests, and applies verified atomic patches.
-* **Self-Hosted & Sovereign**: Runs on your hardware, server, or cloud node without vendor lock-in or multi-tenant surveillance.
+* **Self-Hosted & Sovereign**: Runs on your hardware, server, or cloud node without vendor lock-in or multi-tenant surveillance. Not a hosted multi-tenant SaaS.
 * **Safe by Default**: Sandboxed execution, Quota Guard RPM pacing, and human-in-the-loop review for high-impact actions.
+* **Not Magic**: The underlying LLM is probabilistic; the truth layer, capability tiers, and policy guards ground outputs against actions actually taken.
 
 ## Requirements
 
 - Linux x86_64 (Ubuntu 22.04+ / Debian 12+ recommended) — or macOS / Windows via WSL2.
 - 4 GB RAM minimum, 8 GB recommended.
 - 10 GB free disk.
-- At least one LLM provider key (Anthropic / OpenAI / xAI / Google) — or Ollama for fully self-hosted (slower with small models; see [STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md)).
+- At least one LLM provider credential (Anthropic / OpenAI API key / experimental OpenAI Codex OAuth token / xAI / Google) — or Ollama for fully self-hosted (slower with small models; see [STATUS_AND_LIMITS.md](docs/STATUS_AND_LIMITS.md)).
 
 ## Installer flags
 
@@ -176,7 +197,7 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 - [docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md](docs/EMPLOYEE_SPEC_DR_ALBERT_RESEARCH.md) — Dr. Albert (Bot 09): Principal Scientist, 4-tier truth classification, anti-hype filter
 - [docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md](docs/DR_ALBERT_SCIENTIFIC_WORKBENCH_AND_TOOLS.md) — Dr. Albert's 5-tier scientific lab workbench, scraper, visual chart forensics, statistical engine
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common errors with fixes
-- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, BSL implications
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, release process, license terms for contributions
 - [CHANGELOG.md](CHANGELOG.md) — version history (v2.7 is the first public release; pre-OSS history at [docs.agentwasp.com/changelog](https://docs.agentwasp.com/changelog))
 
 ## Status
@@ -185,9 +206,9 @@ WASP v2.7 is the first public OSS release. The core systems (event bus, goal orc
 
 ## License
 
-WASP is released under the [Business Source License 1.1](LICENSE.md). Plain English: you can self-host, evaluate, modify, and use it freely — including in production and even offering services to third parties — **as long as your aggregate annual revenue from products incorporating WASP stays below USD $1,000,000**. Above that threshold, a commercial license is required. The license auto-converts to Apache 2.0 on **2029-05-13** (3 years from launch).
+WASP is released under the [Apache License 2.0](LICENSE.md). You may use, modify, and distribute it freely, including for commercial and production deployments, subject to the standard Apache 2.0 terms (preserve the license notice, mark modified files, and include a copy of the license with redistributions). Apache 2.0 also grants an explicit patent license from each contributor and includes a patent retaliation clause.
 
-This is a one-paragraph summary, not legal advice — read the full license before using WASP commercially.
+The "WASP" name and logo are trademarks of the project and are not granted by this license.
 
 ## Support
 
@@ -203,6 +224,6 @@ WASP is a young public project (v2.7 is the first release outside the original o
 
 <br/>
 
-**[agentwasp.com](https://agentwasp.com)** · Built to evolve.
+**[agentwasp.com](https://agentwasp.com)** · Built to operate.
 
 </div>

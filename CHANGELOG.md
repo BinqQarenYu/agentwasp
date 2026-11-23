@@ -45,6 +45,59 @@ Feature and resilience release introducing the unified React 19 + Express 5 work
 - **Workflow Task Deadlock**: One-shot workflow tasks previously remained dead after a single transient failure; now automatically diagnosed and self-healed.
 - **Active Task Clutter**: Completed workflow tasks previously remained in `custom_tasks` with `enabled=False`; now cleanly promoted to the completed database.
 
+## [Unreleased]
+
+### Fixed
+
+- **Docusaurus broken anchors.** Updated three stale cross-page links: temporal reasoning now targets the scheduler's current Cognitive systems section, and Skill Safety no longer uses obsolete `-v26` suffixes for the Cold-Start Hallucination Guard and Multi-URL Aggregator anchors.
+
+### Changed
+
+- **License: Business Source License 1.1 → Apache License 2.0.** WASP is now under standard permissive open-source terms. The previous BSL 1.1 + USD $1M annual revenue threshold + Change Date 2029-05-13 mechanism has been removed entirely. Apache 2.0 grants explicit patent rights from contributors, includes a patent retaliation clause, and reserves the "WASP" trademark to the project. Commercial use, redistribution, and modification are all permitted under standard Apache 2.0 terms. All prior contributions are relicensed under Apache 2.0; future contributions are accepted under the same terms.
+- **Operator-facing rename: Dream Mode → Background Consolidation.** Applied across README, docs-site, and dashboard labels. Internal scheduler module (`scheduler/dream.py`) and DB table (`dream_log`) are unchanged; the cycle behavior is identical (memory consolidation, KG enrichment, LLM reflection, failure pattern analysis, crypto prefetch every hour when idle >2h or 1–7 am).
+- **README and docs-site index rewritten** with explicit naming of architectural commitments: truth-binding response layer, plan critic, capability tiers per skill with anticipatory simulation, knowledge graph + temporal world model, 10+ persistent memory tiers. Dropped the "not a chatbot framework" framing (wrong opponent for the self-hosted-harness audience). Docs-site index title is now "Self-Hosted Autonomous Agent Runtime". Added link to the row-by-row comparison vs Hermes Agent and OpenClaw at agentwasp.com.
+- **GitHub repo metadata**: repo description rewritten to match the reliability-runtime framing (was "...rather than a simple chatbot"). GitHub Discussions enabled for community Q&A.
+
+### Notes
+
+No runtime behavior changes. License (Apache 2.0), documentation, and metadata only.
+
+## [2.7.3] — 2026-08-04 (macOS installer hotfix)
+
+Single-bug hotfix completing the macOS compatibility work originally reported in #1.
+
+### Fixed
+
+- **macOS installer aborted before OS detection** (#1, PR #25). The earlier macOS compatibility fix guarded Linux-only memory, disk, port, and Docker-group checks, but `install.sh` still sourced `/etc/os-release` unconditionally before reaching the Darwin branch. On a clean Mac, the missing file returned a non-zero status and `set -Eeuo pipefail` terminated the installer. The pre-flight now starts with safe `OS_ID`/`OS_LIKE` defaults and sources `/etc/os-release` only when it is readable.
+
+### Release artifacts
+
+- Updated `install.sh` and its SHA-256 checksum.
+- Rebuilt `wasp-release.tar.gz` so the bundled installer matches the repository and hosted installer.
+- Validated macOS/Darwin without `/etc/os-release`, Debian, `ID_LIKE` fallback, Linux without `/etc/os-release`, Bash syntax, checksum parity, and release archive contents.
+
+## [2.7.2] — 2026-05-20 (installer hotfix)
+
+Single-bug hotfix on top of v2.7.1. The v2.7.1 installer aborted at step 9/10 on fresh installs because the new UFW gating logic introduced in PR #9 grepped for `DASHBOARD_BIND=` in `.env` without tolerating a missing match under `set -Eeuo pipefail`. The shipped `.env.example` did not include the key, so every new install hit the error. Existing v2.7 to v2.7.1 upgrades via `wasp update` were not affected (the installer is only used for fresh installs).
+
+### Fixed
+
+- **Fresh install fails at step 9/10** (#11, PR #12). `install.sh` lines 559 and 621 now wrap the `grep` in `{ grep ... || true; }` so a missing key falls back to the default `127.0.0.1` instead of triggering pipefail. `.env.example` now ships with `DASHBOARD_BIND=127.0.0.1` plus a comment documenting the SSH tunnel and the `0.0.0.0` opt-in path.
+
+### Docs
+
+- **Dashboard access not documented after the v2.7.1 binding change.** The v2.7.1 release moved the dashboard to `127.0.0.1:8080` by default, but the README still claimed `Default dashboard: http://<your-host>:8080` and the docs-site had only a single passing reference. A new operator following the README would conclude the dashboard was broken. Fixed:
+  - `README.md` line 39 corrected to point at the new Dashboard Access page.
+  - New page `docs/getting-started/dashboard-access.md` covering the three supported patterns: SSH tunnel, TLS reverse proxy (Caddy + nginx examples), and the `DASHBOARD_BIND=0.0.0.0` opt-in for short-lived LAN testing.
+  - `environment-variables.md` now lists `DASHBOARD_BIND` (was missing despite shipping in `.env.example`).
+  - `first-launch.md` and `installation.md` link to the new page.
+
+### Notes
+
+- This is a maintainer-self-reported regression. The bug ships in the v2.7.1 tarball but is not exploitable; it just blocks the installer. The fix is mechanical and changes no runtime behavior.
+- v2.7.1 users who already have a working install do not need to update — nothing changes for them. v2.7.2 is only relevant for anyone running `install.sh` from scratch.
+- The docs additions above ship in the v2.7.2 docs build on `docs.agentwasp.com`. No new version tag is cut for docs-only follow-up.
+
 ## [2.7.1] — 2026-05-19 (security patch release)
 
 Security-focused patch release. Closes a security audit reported by [@Lucky3mc](https://github.com/Lucky3mc) using the 9-engine Debuggix scan, plus the post-launch hardening commits that landed between the v2.7 tag and this release.
@@ -127,7 +180,7 @@ The work in this entry is what made v2.7 publishable as an OSS project on top of
 - Centralized SSRF guard (`utils/network_safety.py`) with DNS rebinding protection and manual redirect re-validation.
 - Volume-aware `wasp backup` / `wasp restore` covering Postgres + named Docker volumes (redis, ollama, memory, logs, screenshots, browser sessions, uploads).
 - Public docs: README, INSTALL, QUICKSTART, DEPLOYMENT, TROUBLESHOOTING, SECURITY, CONTRIBUTING.
-- BSL 1.1 license with Change Date 2029-05-13 → Apache 2.0. Production use permitted under USD $1M annual revenue threshold.
+- Initial public license: Business Source License 1.1 with Change Date 2029-05-13 → Apache 2.0 (subsequently changed to Apache 2.0 outright — see Unreleased entry above).
 
 ### Security
 - Fail-closed defaults: Telegram refuses startup if `TELEGRAM_ALLOWED_USERS` is empty. There is no public-bot mode and no escape hatch.
@@ -140,7 +193,7 @@ The work in this entry is what made v2.7 publishable as an OSS project on top of
 
 ### Known limits
 - Some cognitive systems (procedural memory, behavioral rules, learning examples, opportunities) require accumulated usage before they show data. See `docs/STATUS_AND_LIMITS.md`.
-- BSL 1.1 prohibits production use by entities with >USD $1M annual revenue from WASP-incorporating products until 2029-05-13.
+- (Superseded by the Unreleased license change above — WASP is now Apache 2.0 with no revenue threshold.)
 - Single-operator design: there is no built-in multi-tenancy. The dashboard supports multiple admin accounts but every operator shares the same memory, scheduler, and skill surface.
 
 ### Removed
