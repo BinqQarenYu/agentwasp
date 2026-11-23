@@ -1056,6 +1056,7 @@ function _navigate(href, pushState) {
             if (!newMain) { window.location.href = href; return; }
 
             _injectPageCss(doc);
+            if (doc.title) document.title = doc.title;
             main.innerHTML = newMain.innerHTML;
             if (window.applyDynStyles) window.applyDynStyles(main);
             _runScripts(doc);
