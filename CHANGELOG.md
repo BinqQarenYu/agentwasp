@@ -5,12 +5,18 @@ All notable changes to WASP are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: [SemVer](https://semver.org/). Full pre-OSS history (v2.3 → v2.6) lives at https://docs.agentwasp.com/changelog — the entries below cover the public-release work on top of that baseline.
 
-## [2.8.0] — 2026-11-21
+## [2.8.0] — 2026-11-23 (Agent Workforce Management & Task Self-Healing System)
 
-Feature and resilience release introducing autonomous task self-healing, permanent completed task archival, tiered AI provider distribution, and zero-amnesia state persistence.
+Feature and resilience release introducing the unified React 19 + Express 5 workforce management console, autonomous task self-healing, permanent completed task archival, tiered AI provider distribution, and zero-amnesia state persistence.
 
 ### Added
 
+- **Unified Agent Workforce Management Console**: Modern single-process Express 5 + Vite + React 19 + TypeScript + Tailwind CSS v4 command center running on port `3000`.
+- **01 Workforce Command Center**: Reconciled KPI strip (`Active`, `Available`, `Blocked`, `Approval`, `Spend today`, `Resource pressure`), saved views, server-side search/filter/sort/pagination, column visibility toggle, authenticated CSV/JSON export, bulk workforce actions, and `+ Register agent` modal.
+- **02 Agent Detail Workspace**: Canonical agent workspace with all 10 domain-backed tabs (`Overview`, `Tasks`, `Skills & Tools`, `Model`, `Memory`, `Activity`, `Quality`, `Incidents`, `Governance`, `Configuration`), idempotent command controls (`Pause`, `Resume`, `Safe stop`, `Retry`, `Request approval`, `Rollback`, `Disable`), approval decisions, and optimistic-locked configuration updates (`409 VERSION_CONFLICT`).
+- **03 Organization & Handoff View**: Team-filtered reporting hierarchy and task-handoff graph (`Reporting` / `Task flow`), blocked dependency alert card, clickable node inspector (`GET /api/v1/graph/nodes/:node_id`), unowned task assignment, overload and cycle diagnostics.
+- **Secondary Operational Views**: Dedicated `Tasks`, `Knowledge / Graphify` (non-blocking async refresh with atomic promotion and failure safety), `Integrations` (idempotent sync & dead-letter replay), `Incidents`, `Audit`, and `Settings` (RBAC role/tenant switcher + Resource Management & backpressure dashboard).
+- **Acceptance Test Suite & Docs**: Added 15 automated backend acceptance tests (`tests/acceptance.test.ts`), `docs/feature-integrity.md`, and `docs/architecture.md`.
 - **Self-Healing Task Diagnostic Engine** (`src/events/handlers.py`):
   - Added `_diagnose_task_failure()` to analyze failed task telemetry, isolating root causes across tool execution crashes, timeouts, unhandled exceptions, missing required actions (e.g. email delivery), and failsafe deflection phrases.
   - Structured failure history and diagnosis stored in `task["last_error_diagnosis"]` and `task["failure_history"]`.
