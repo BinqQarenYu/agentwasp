@@ -4,7 +4,10 @@ import type {
   ActivityEvent,
   AgentCommandType,
   AgentHealth,
+  AgentPerformancePoint,
   AgentStatus,
+  AgentTrend30dBadge,
+  AgentTrend30dSummary,
   ApprovalRecord,
   AuditEvent,
   CanonicalAgent,
@@ -14,6 +17,7 @@ import type {
   IntegrationConnector,
   LiveStreamEvent,
   MemoryItem,
+  PerformanceTrendStatus,
   QualityEvaluation,
   RiskLevel,
   TaskRecord,
@@ -682,6 +686,152 @@ export class WorkforceStore {
         min_system_headroom_pct: 20,
       },
       data_as_of: new Date().toISOString(),
+    };
+  }
+
+  public getPerformanceHistory(agent: CanonicalAgent, days = 30): AgentPerformancePoint[] {
+    const seed = Array.from(agent.agent_id).reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 7), 0);
+    const baseEff = agent.telemetry.success_rate_pct || 95;
+    const baseLatency = Math.max(85, agent.telemetry.avg_latency_ms || 380);
+    const dailyTasksBase = Math.max(4, Math.round((agent.telemetry.tasks_completed || 20) / 3));
+    const isDegradedNow =
+      agent.status === 'blocked' ||
+      agent.status === 'degraded' ||
+      agent.health === 'api_issue' ||
+      agent.health === 'degraded';
+
+    const points: AgentPerformancePoint[] = [];
+    const today = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+      const isoDate = d.toISOString().slice(0, 10);
+      const label = `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+
+      // Deterministic harmonic variation anchored to agent_id
+      const t = (days - 1 - i) / Math.max(1, days - 1); // 0 -> 1
+      const waveA = Math.sin((i + (seed % 11)) * 0.55);
+      const waveB = Math.cos((i * 1.15 + (seed % 7)) * 0.42);
+      const recentDegrade = isDegradedNow && i <= 2 ? (3 - i) * 2.1 : 0;
+
+      // Converge smoothly to current metrics on day 0 (today)
+      const driftWeight = i === 0 ? 0 : 1;
+      const rawEff =
+        baseEff +
+        driftWeight * (waveA * 2.1 + waveB * 1.1 - (1 - t) * 1.6) -
+        recentDegrade;
+      const efficiency_pct = Number(Math.min(100, Math.max(60, rawEff)).toFixed(1));
+
+      const latencySpike = isDegradedNow && i <= 2 ? (3 - i) * 75 : 0;
+      const rawLatency =
+        baseLatency +
+        driftWeight * (waveB * (baseLatency * 0.1) - waveA * (baseLatency * 0.06) + (1 - t) * 24) +
+        latencySpike;
+      const avg_latency_ms = Math.max(50, Math.round(rawLatency));
+
+      const tasks_completed = Math.max(
+        1,
+        Math.round(dailyTasksBase + waveA * Math.max(2, dailyTasksBase * 0.2)),
+      );
+      const tasks_failed = Math.max(0, Math.round((tasks_completed * (100 - efficiency_pct)) / 100));
+
+      points.push({
+        date: isoDate,
+        label,
+        efficiency_pct,
+        avg_latency_ms,
+        tasks_completed,
+        tasks_failed,
+      });
+    }
+
+    return points;
+  }
+
+  public summarizePerformanceTrend30d(agent: CanonicalAgent): AgentTrend30dSummary {
+    const points = this.getPerformanceHistory(agent, 30);
+    const effHealth = this.computeEffectiveHealth(agent);
+    const avgEff = Number(
+      (points.reduce((sum, p) => sum + p.efficiency_pct, 0) / Math.max(1, points.length)).toFixed(1),
+    );
+    const avgLat = Math.round(
+      points.reduce((sum, p) => sum + p.avg_latency_ms, 0) / Math.max(1, points.length),
+    );
+    const sortedLat = [...points.map((p) => p.avg_latency_ms)].sort((a, b) => a - b);
+    const p95Idx = Math.min(sortedLat.length - 1, Math.floor(sortedLat.length * 0.95));
+    const p95Lat = sortedLat[p95Idx] ?? avgLat;
+
+    const recent7 = points.slice(-7);
+    const prior7 = points.slice(-14, -7);
+    const recentEff = recent7.reduce((s, p) => s + p.efficiency_pct, 0) / Math.max(1, recent7.length);
+    const priorEff = prior7.reduce((s, p) => s + p.efficiency_pct, 0) / Math.max(1, prior7.length);
+    const recentLat = recent7.reduce((s, p) => s + p.avg_latency_ms, 0) / Math.max(1, recent7.length);
+    const priorLat = prior7.reduce((s, p) => s + p.avg_latency_ms, 0) / Math.max(1, prior7.length);
+
+    const effDelta7d = Number((recentEff - priorEff).toFixed(1));
+    const latDelta7d = Math.round(recentLat - priorLat);
+
+    const badges: AgentTrend30dBadge[] = [];
+
+    if (effHealth === 'stale' || !agent.telemetry.telemetry_available) {
+      badges.push({
+        code: 'stale',
+        label: 'Stale Data',
+        reason: `Telemetry heartbeat is stale; last recorded 30d avg ${avgEff}% efficiency · ${avgLat}ms latency.`,
+      });
+      return {
+        status: 'stale',
+        badges,
+        avg_efficiency_pct: avgEff,
+        avg_latency_ms: avgLat,
+        p95_latency_ms: p95Lat,
+        efficiency_delta_7d: effDelta7d,
+        latency_delta_7d_ms: latDelta7d,
+        window_days: 30,
+      };
+    }
+
+    if (avgEff < 88) {
+      badges.push({
+        code: 'critical',
+        label: 'Critical',
+        reason: `30d task efficiency ${avgEff}% is below the 88% critical floor (7d delta ${effDelta7d >= 0 ? '+' : ''}${effDelta7d}%).`,
+      });
+    } else if (avgEff < 95 || effDelta7d <= -2.5 || agent.status === 'degraded' || agent.status === 'blocked') {
+      badges.push({
+        code: 'degraded',
+        label: 'Degraded',
+        reason: `30d task efficiency ${avgEff}% (SLA target 95%; 7d delta ${effDelta7d >= 0 ? '+' : ''}${effDelta7d}%).`,
+      });
+    }
+
+    if (avgLat >= 600 || p95Lat >= 750) {
+      badges.push({
+        code: 'latency_high',
+        label: 'Latency High',
+        reason: `30d avg latency ${avgLat}ms (p95 ${p95Lat}ms) exceeds 600ms / 750ms p95 ceiling.`,
+      });
+    }
+
+    if (badges.length === 0) {
+      badges.push({
+        code: 'healthy',
+        label: 'Healthy',
+        reason: `30d avg ${avgEff}% efficiency · ${avgLat}ms latency (p95 ${p95Lat}ms).`,
+      });
+    }
+
+    const primaryStatus: PerformanceTrendStatus = badges[0].code;
+    return {
+      status: primaryStatus,
+      badges,
+      avg_efficiency_pct: avgEff,
+      avg_latency_ms: avgLat,
+      p95_latency_ms: p95Lat,
+      efficiency_delta_7d: effDelta7d,
+      latency_delta_7d_ms: latDelta7d,
+      window_days: 30,
     };
   }
 

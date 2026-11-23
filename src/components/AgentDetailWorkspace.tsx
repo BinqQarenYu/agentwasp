@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   ChevronDown,
@@ -13,6 +13,8 @@ import {
 import type {
   ActivityEvent,
   AgentCommandType,
+  AgentPerformancePoint,
+  AgentTrend30dSummary,
   ApprovalRecord,
   AuditEvent,
   CanonicalAgent,
@@ -22,7 +24,8 @@ import type {
   TaskRecord,
 } from '../shared/types';
 import { apiRequest, makeIdempotencyKey } from '../api/client';
-import { AgentHealthChip, AgentStatusChip, formatShortTime, RiskText } from './StatusBadge';
+import { AgentHealthChip, AgentStatusChip, AgentTrend30dBadges, formatShortTime, RiskText } from './StatusBadge';
+import { AgentPerformanceChart, type CompareCandidate } from './AgentPerformanceChart';
 
 type DetailTab =
   | 'overview'
@@ -51,6 +54,7 @@ const TABS: Array<{ id: DetailTab; label: string }> = [
 
 interface AgentDetailWorkspaceProps {
   agentId: string | null;
+  availableAgents?: CanonicalAgent[];
   refreshNonce: number;
   onSelectAgent: (id: string) => void;
   onAgentMutated: () => void;
@@ -59,18 +63,72 @@ interface AgentDetailWorkspaceProps {
 
 export function AgentDetailWorkspace({
   agentId,
+  availableAgents = [],
   refreshNonce,
   onSelectAgent,
   onAgentMutated,
   onNotify,
 }: AgentDetailWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
-  const [agent, setAgent] = useState<CanonicalAgent | null>(null);
+  const [agent, setAgent] = useState<(CanonicalAgent & { trend_30d?: AgentTrend30dSummary }) | null>(null);
   const [tabData, setTabData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [cmdBusy, setCmdBusy] = useState(false);
+
+  // Comparison overlay state (persisted across Overview & Quality tab switches)
+  const [compareAgentId, setCompareAgentId] = useState<string | null>(null);
+  const [compareTrend, setCompareTrend] = useState<AgentPerformancePoint[]>([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+
+  const compareCandidates = useMemo<CompareCandidate[]>(
+    () =>
+      availableAgents
+        .filter((a) => a.agent_id !== agentId)
+        .map((a) => ({ agent_id: a.agent_id, display_name: a.display_name, role: a.role })),
+    [availableAgents, agentId],
+  );
+
+  const compareAgentName = useMemo(
+    () => compareCandidates.find((c) => c.agent_id === compareAgentId)?.display_name ?? null,
+    [compareCandidates, compareAgentId],
+  );
+
+  // Clear comparison if user switches primary agent to the compared agent
+  useEffect(() => {
+    if (compareAgentId && compareAgentId === agentId) {
+      setCompareAgentId(null);
+      setCompareTrend([]);
+    }
+  }, [agentId, compareAgentId]);
+
+  // Fetch comparison agent's 30-day metrics whenever selected
+  useEffect(() => {
+    if (!compareAgentId) {
+      setCompareTrend([]);
+      setCompareLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCompareLoading(true);
+    apiRequest<{ performance_trend_30d?: AgentPerformancePoint[] }>(`/agents/${compareAgentId}/quality`)
+      .then((res) => {
+        if (!cancelled) setCompareTrend(res.performance_trend_30d ?? []);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setCompareTrend([]);
+          onNotify(err instanceof Error ? err.message : 'Failed to load comparison agent metrics', 'error');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCompareLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [compareAgentId, refreshNonce, onNotify]);
 
   // Configuration form state
   const [cfgModel, setCfgModel] = useState('');
@@ -89,7 +147,7 @@ export function AgentDetailWorkspace({
     setError(null);
 
     Promise.all([
-      apiRequest<CanonicalAgent>(`/agents/${agentId}`),
+      apiRequest<CanonicalAgent & { trend_30d?: AgentTrend30dSummary }>(`/agents/${agentId}`),
       activeTab === 'configuration'
         ? Promise.resolve(null)
         : apiRequest<Record<string, unknown>>(`/agents/${agentId}/${activeTab}`),
@@ -223,10 +281,17 @@ export function AgentDetailWorkspace({
       {agent && (
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 pb-3">
           <div>
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold text-slate-900">{agent.display_name}</h3>
               <AgentStatusChip status={agent.status} />
-              <AgentHealthChip health={agent.health} />
+              {agent.trend_30d ? (
+                <AgentTrend30dBadges summary={agent.trend_30d} onInspect={() => setActiveTab('quality')} />
+              ) : (
+                <AgentHealthChip health={agent.health} />
+              )}
+              {(agent.health === 'api_issue' || agent.health === 'offline') && (
+                <AgentHealthChip health={agent.health} />
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
               <span className="font-mono font-medium text-slate-700">{agent.agent_id}</span>
@@ -353,8 +418,16 @@ export function AgentDetailWorkspace({
         ) : activeTab === 'overview' && tabData ? (
           <OverviewTab
             data={tabData as unknown as OverviewPayload}
+            agentName={agent?.display_name ?? 'Agent'}
+            compareCandidates={compareCandidates}
+            compareAgentId={compareAgentId}
+            compareAgentName={compareAgentName}
+            compareTrend={compareTrend}
+            compareLoading={compareLoading}
+            onCompareChange={setCompareAgentId}
             onSelectAgent={onSelectAgent}
             onOpenTrace={() => setActiveTab('activity')}
+            onOpenQuality={() => setActiveTab('quality')}
           />
         ) : activeTab === 'tasks' && tabData ? (
           <TasksTab
@@ -371,7 +444,16 @@ export function AgentDetailWorkspace({
         ) : activeTab === 'activity' && tabData ? (
           <ActivityTab items={(tabData.items as ActivityEvent[]) ?? []} />
         ) : activeTab === 'quality' && tabData ? (
-          <QualityTab data={tabData as unknown as QualityPayload} />
+          <QualityTab
+            data={tabData as unknown as QualityPayload}
+            agentName={agent?.display_name ?? 'Agent'}
+            compareCandidates={compareCandidates}
+            compareAgentId={compareAgentId}
+            compareAgentName={compareAgentName}
+            compareTrend={compareTrend}
+            compareLoading={compareLoading}
+            onCompareChange={setCompareAgentId}
+          />
         ) : activeTab === 'incidents' && tabData ? (
           <IncidentsTab items={(tabData.items as IncidentRecord[]) ?? []} />
         ) : activeTab === 'governance' && tabData ? (
@@ -455,16 +537,33 @@ interface OverviewPayload {
     permissions_summary: string;
   };
   recent_activity: ActivityEvent[];
+  performance_trend_30d?: AgentPerformancePoint[];
 }
 
 function OverviewTab({
   data,
+  agentName,
+  compareCandidates,
+  compareAgentId,
+  compareAgentName,
+  compareTrend,
+  compareLoading,
+  onCompareChange,
   onSelectAgent,
   onOpenTrace,
+  onOpenQuality,
 }: {
   data: OverviewPayload;
+  agentName: string;
+  compareCandidates: CompareCandidate[];
+  compareAgentId: string | null;
+  compareAgentName: string | null;
+  compareTrend: AgentPerformancePoint[];
+  compareLoading: boolean;
+  onCompareChange: (id: string | null) => void;
   onSelectAgent: (id: string) => void;
   onOpenTrace: () => void;
+  onOpenQuality: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -558,6 +657,23 @@ function OverviewTab({
           )}
         </div>
       </div>
+
+      {data.performance_trend_30d && data.performance_trend_30d.length > 0 && (
+        <AgentPerformanceChart
+          data={data.performance_trend_30d}
+          agentName={agentName}
+          telemetryAvailable={data.capabilities_runtime.telemetry_available}
+          compact
+          defaultMode="efficiency"
+          compareCandidates={compareCandidates}
+          compareAgentId={compareAgentId}
+          compareAgentName={compareAgentName}
+          compareData={compareTrend}
+          compareLoading={compareLoading}
+          onCompareChange={onCompareChange}
+          onOpenQualityTab={onOpenQuality}
+        />
+      )}
 
       <button
         type="button"
@@ -794,13 +910,34 @@ interface QualityPayload {
   tasks_completed: number;
   tasks_failed: number;
   sla_compliance_pct: number;
+  avg_latency_ms?: number;
+  telemetry_available?: boolean;
+  performance_trend_30d?: AgentPerformancePoint[];
   evaluations: QualityEvaluation[];
 }
 
-function QualityTab({ data }: { data: QualityPayload }) {
+function QualityTab({
+  data,
+  agentName,
+  compareCandidates,
+  compareAgentId,
+  compareAgentName,
+  compareTrend,
+  compareLoading,
+  onCompareChange,
+}: {
+  data: QualityPayload;
+  agentName: string;
+  compareCandidates: CompareCandidate[];
+  compareAgentId: string | null;
+  compareAgentName: string | null;
+  compareTrend: AgentPerformancePoint[];
+  compareLoading: boolean;
+  onCompareChange: (id: string | null) => void;
+}) {
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-3">
+    <div className="space-y-3.5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-slate-200 p-2.5">
           <div className="text-[11px] text-slate-500">Success rate</div>
           <div className="font-mono text-base font-bold text-slate-900 tabular-nums">{data.success_rate_pct}%</div>
@@ -818,6 +955,20 @@ function QualityTab({ data }: { data: QualityPayload }) {
           <div className="font-mono text-base font-bold text-slate-900 tabular-nums">{data.sla_compliance_pct}%</div>
         </div>
       </div>
+
+      <AgentPerformanceChart
+        data={data.performance_trend_30d ?? []}
+        agentName={agentName}
+        telemetryAvailable={data.telemetry_available ?? true}
+        defaultMode="both"
+        compareCandidates={compareCandidates}
+        compareAgentId={compareAgentId}
+        compareAgentName={compareAgentName}
+        compareData={compareTrend}
+        compareLoading={compareLoading}
+        onCompareChange={onCompareChange}
+      />
+
       {data.evaluations.length === 0 ? (
         <div className="py-3 text-slate-500">No dedicated evaluation suites recorded yet.</div>
       ) : (
