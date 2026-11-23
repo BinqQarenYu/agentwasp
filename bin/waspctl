@@ -1,6 +1,0 @@
-#!/usr/bin/env sh
-# Cross-platform launcher for Agent WASP's `waspctl` teammate CLI.
-set -eu
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-REPO_ROOT="$(dirname -- "$SCRIPT_DIR")"
-exec python3 "$REPO_ROOT/containers/agent-core/src/harnesses/waspctl.py" "$@"

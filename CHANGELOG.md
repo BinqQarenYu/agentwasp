@@ -5,6 +5,17 @@ All notable changes to WASP are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: [SemVer](https://semver.org/). Full pre-OSS history (v2.3 → v2.6) lives at https://docs.agentwasp.com/changelog — the entries below cover the public-release work on top of that baseline.
 
+## [2.8.0] — 2026-11-23 (Agent Workforce Management System)
+
+### Added
+
+- **Unified Agent Workforce Management Console**: Replaced the legacy Python dashboard with a single-process Express 5 + Vite + React 19 + TypeScript + Tailwind CSS v4 runtime running on port `3000`.
+- **01 Workforce Command Center**: Reconciled KPI strip (`Active`, `Available`, `Blocked`, `Approval`, `Spend today`, `Resource pressure`), saved views, server-side search/filter/sort/pagination, column visibility toggle, authenticated CSV/JSON export, bulk workforce actions, and `+ Register agent` modal.
+- **02 Agent Detail Workspace**: Canonical agent workspace with all 10 domain-backed tabs (`Overview`, `Tasks`, `Skills & Tools`, `Model`, `Memory`, `Activity`, `Quality`, `Incidents`, `Governance`, `Configuration`), idempotent command controls (`Pause`, `Resume`, `Safe stop`, `Retry`, `Request approval`, `Rollback`, `Disable`), approval decisions, and optimistic-locked configuration updates (`409 VERSION_CONFLICT`).
+- **03 Organization & Handoff View**: Team-filtered reporting hierarchy and task-handoff graph (`Reporting` / `Task flow`), blocked dependency alert card, clickable node inspector (`GET /api/v1/graph/nodes/:node_id`), unowned task assignment, overload and cycle diagnostics.
+- **Secondary Operational Views**: Dedicated `Tasks`, `Knowledge / Graphify` (non-blocking async refresh with atomic promotion and failure safety), `Integrations` (idempotent sync & dead-letter replay), `Incidents`, `Audit`, and `Settings` (RBAC role/tenant switcher + Resource Management & backpressure dashboard).
+- **Acceptance Test Suite & Docs**: Added 15 automated backend acceptance tests (`tests/acceptance.test.ts`), `docs/feature-integrity.md`, and `docs/architecture.md`.
+
 ## [2.7.1] — 2026-05-19 (security patch release)
 
 Security-focused patch release. Closes a security audit reported by [@Lucky3mc](https://github.com/Lucky3mc) using the 9-engine Debuggix scan, plus the post-launch hardening commits that landed between the v2.7 tag and this release.
