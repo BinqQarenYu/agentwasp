@@ -53,6 +53,11 @@ DEFAULT_QUOTAS = {
         "max_rpd": 999999,
         "min_request_interval": 0.0,
     },
+    "ollama:cloud": {
+        "max_rpm": 30,
+        "max_rpd": 3000,
+        "min_request_interval": 1.0,
+    },
 }
 
 

@@ -10,7 +10,12 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
-repo_root = Path(__file__).resolve().parents[3]
+repo_root = None
+for p in Path(__file__).resolve().parents:
+    if (p / "containers" / "agent-screens" / "screen_daemon.py").exists():
+        repo_root = p
+        break
+
 core_dir = Path(__file__).resolve().parent.parent
 if str(core_dir) not in sys.path:
     sys.path.insert(0, str(core_dir))
@@ -26,14 +31,16 @@ from src.harnesses import HarnessRunner, ScreenClient, waspctl
 from src.policy.approvals import ApprovalManager, RuleKind
 
 # Load `containers/agent-screens/screen_daemon.py` directly for unit & live HTTP testing
-_daemon_spec = importlib.util.spec_from_file_location(
-    "screen_daemon",
-    repo_root / "containers" / "agent-screens" / "screen_daemon.py",
-)
-assert _daemon_spec and _daemon_spec.loader
-screen_daemon = importlib.util.module_from_spec(_daemon_spec)
-sys.modules["screen_daemon"] = screen_daemon
-_daemon_spec.loader.exec_module(screen_daemon)
+daemon_path = (repo_root / "containers" / "agent-screens" / "screen_daemon.py") if repo_root else None
+if daemon_path and daemon_path.exists():
+    _daemon_spec = importlib.util.spec_from_file_location("screen_daemon", daemon_path)
+    assert _daemon_spec and _daemon_spec.loader
+    screen_daemon = importlib.util.module_from_spec(_daemon_spec)
+    sys.modules["screen_daemon"] = screen_daemon
+    _daemon_spec.loader.exec_module(screen_daemon)
+else:
+    screen_daemon = None
+    pytestmark = pytest.mark.skip(reason="agent-screens daemon not available in this test environment")
 
 
 class _FakeProc:

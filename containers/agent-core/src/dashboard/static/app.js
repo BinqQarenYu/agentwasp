@@ -294,6 +294,7 @@ function getCsrf() {
     'reload':              function()    { window.location.reload(); },
     'goBack':              function()    { window.history.back(); },
     'toggleTheme':         function()    { if (window.toggleTheme) window.toggleTheme(); },
+    'toggleUiMode':        function()    { if (window.toggleUiMode) window.toggleUiMode(); },
     'togglePanel':         function(el)  {
       var target = el.dataset.target;
       if (target) {

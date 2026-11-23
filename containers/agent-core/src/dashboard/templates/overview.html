@@ -50,23 +50,32 @@
 {% block content %}
 
 <!-- ── Header ─────────────────────────────────────────────────────────── -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 border-b border-[#1E293B] pb-3">
     <div class="flex items-center gap-3">
         <div class="relative flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
         </div>
         <div>
-            <h1 class="text-2xl font-bold tracking-tight leading-tight">System Overview</h1>
-            <p class="text-xs text-base-content/40 font-mono mt-0.5">Agent Wasp · WASP v2.7 · <span id="ov-tz">{{ timezone }}</span></p>
+            <h1 class="text-xl font-bold tracking-tight leading-tight text-white flex items-center gap-2">
+                System Overview
+                <span class="badge badge-xs bg-amber-400/10 text-amber-300 border border-amber-400/30 font-mono text-[9px] uppercase tracking-wider">LIVE TOC</span>
+            </h1>
+            <p class="text-[11px] text-slate-400 font-mono mt-0.5">Agent Wasp · WASP v2.7 · <span id="ov-tz" class="text-slate-300">{{ timezone }}</span></p>
         </div>
     </div>
     <div class="flex items-center gap-2">
-        <div class="bg-base-200/50 p-1 rounded-lg border border-base-300 flex items-center">
-            <button id="btn-fast-path" class="btn btn-xs btn-ghost hover:bg-transparent text-success font-bold" onclick="setExecutionMode('fast')">
+        <button type="button" data-action="wasp:toggleUiMode"
+                class="ui-mode-pill flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0B111E] border border-amber-400/40 text-[11px] font-mono text-amber-300 cursor-pointer hover:bg-amber-400/20 active:scale-95 transition-all shadow-sm"
+                title="Click to toggle between New (HUD v2) and Old (Classic) UI">
+            <span class="ui-mode-dot w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span class="ui-mode-label font-bold">HUD v2 (New)</span>
+        </button>
+        <div class="bg-[#0B111E] p-0.5 rounded-lg border border-[#1E293B] flex items-center">
+            <button id="btn-fast-path" class="btn btn-xs btn-ghost hover:bg-transparent text-emerald-400 font-bold" onclick="setExecutionMode('fast')">
                 ⚡ Fast Path
             </button>
-            <button id="btn-quality-path" class="btn btn-xs btn-ghost hover:bg-transparent text-base-content/40" onclick="setExecutionMode('quality')">
+            <button id="btn-quality-path" class="btn btn-xs btn-ghost hover:bg-transparent text-slate-500" onclick="setExecutionMode('quality')">
                 🏛️ Quality Path
             </button>
         </div>
@@ -79,32 +88,32 @@
                     var bQual = document.getElementById('btn-quality-path');
                     if (!bFast || !bQual) return;
                     if (m === 'quality') {
-                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-base-content/40';
-                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-primary font-bold';
+                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-slate-500';
+                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-amber-400 font-bold';
                     } else {
-                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-success font-bold';
-                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-base-content/40';
+                        bFast.className = 'btn btn-xs btn-ghost hover:bg-transparent text-emerald-400 font-bold';
+                        bQual.className = 'btn btn-xs btn-ghost hover:bg-transparent text-slate-500';
                     }
                 };
                 // Must defer execution slightly until DOM has loaded
                 document.addEventListener('DOMContentLoaded', function() { setExecutionMode(mode); });
             })();
         </script>
-        <div class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center" id="ov-clock">{{ now }}</div>
-        <a href="/brain" class="text-xs text-primary/80 border border-primary/20 rounded-lg px-3 py-1.5 bg-primary/5 font-mono whitespace-nowrap self-stretch flex items-center hover:bg-primary/10 transition-colors">
+        <div class="text-xs text-amber-300 border border-amber-400/30 rounded-lg px-2.5 py-1 bg-amber-400/10 font-mono whitespace-nowrap self-stretch flex items-center" id="ov-clock">{{ now }}</div>
+        <a href="/brain" class="text-xs text-slate-300 border border-[#334155] rounded-lg px-2.5 py-1 bg-[#0F172A] font-mono whitespace-nowrap self-stretch flex items-center hover:bg-[#1E293B] hover:text-white transition-colors">
             Full Brain
         </a>
-        <a href="/blackboard" class="text-xs text-cyan-400 border border-cyan-500/30 rounded-lg px-3 py-1.5 bg-cyan-500/10 font-mono whitespace-nowrap self-stretch flex items-center hover:bg-cyan-500/20 transition-colors">
+        <a href="/blackboard" class="text-xs text-cyan-400 border border-cyan-500/40 rounded-lg px-2.5 py-1 bg-cyan-500/10 font-mono whitespace-nowrap self-stretch flex items-center hover:bg-cyan-500/20 transition-colors">
             🧠 Blackboard
         </a>
     </div>
 </div>
 
 <!-- ── Hero grid: Neural Brain + Life Orb + KPIs ───────────────────── -->
-<div class="grid grid-cols-1 lg:grid-cols-[1fr_340px_340px] gap-4 mb-4">
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_340px_340px] gap-3.5 mb-4">
 
     <!-- Neural Brain — Three.js display-only (same renderer as /brain, no interaction) -->
-    <div class="card overflow-hidden" id="ov-brain-wrap" data-ds="1">
+    <div class="card bg-[#080C14] border border-[#1E293B] shadow-lg rounded-lg overflow-hidden" id="ov-brain-wrap" data-ds="1">
         <!-- Three.js canvas — pointer-events:none so overlays stay clickable -->
         <canvas id="ov-brain-canvas" data-ds="2"></canvas>
 
@@ -147,13 +156,13 @@
     {%- set dash = (lv.pct * circ / 100) | round(1) -%}
     {%- set gap  = (circ - dash) | round(1) -%}
 
-    <div class="card bg-base-100 shadow-sm wasp-accent flex flex-col items-center justify-between gap-0 py-7 px-4"
+    <div class="card bg-[#080C14] border border-[#1E293B] shadow-lg rounded-lg flex flex-col items-center justify-between gap-0 py-6 px-4"
          data-ds="18">
 
         <!-- Header label -->
         <div class="flex items-center gap-2 self-start w-full mb-1">
-            <span class="text-xs font-bold uppercase tracking-widest" data-ds="19">Agent Life</span>
-            <span class="ml-auto text-xs font-mono text-base-content/30 uppercase tracking-wider">Lv <span class="font-bold" data-ds="20">{{ lv.level }}</span></span>
+            <span class="text-xs font-bold uppercase tracking-widest text-amber-400 font-mono" data-ds="19">Agent Life</span>
+            <span class="ml-auto text-xs font-mono text-slate-500 uppercase tracking-wider">Lv <span class="font-bold text-amber-400" data-ds="20">{{ lv.level }}</span></span>
         </div>
 
         <!-- Circular XP ring with age inside — r=80, viewBox 192x192 -->
@@ -207,19 +216,19 @@
         <!-- XP total -->
         <div class="flex flex-col items-center gap-0.5 w-full mb-3">
             <div class="flex items-baseline gap-1.5">
-                <span class="text-2xl font-bold font-mono tabular" data-ds="22">{{ "{:,}".format(xp) }}</span>
-                <span class="text-sm font-mono text-base-content/40">XP</span>
+                <span class="text-2xl font-bold font-mono tabular text-amber-400" data-ds="22">{{ "{:,}".format(xp) }}</span>
+                <span class="text-xs font-mono text-slate-500">XP</span>
             </div>
-            <div class="text-xs text-base-content/25 font-mono tracking-widest">next level at {{ "{:,}".format(lv.xp_next) }}</div>
+            <div class="text-[11px] text-slate-500 font-mono tracking-wider">next level at {{ "{:,}".format(lv.xp_next) }}</div>
         </div>
 
         <!-- XP bar — orange, thicker -->
         <div class="w-full">
-            <div class="flex justify-between mb-1.5" data-ds="23">
-                <span class="font-mono text-base-content/30">{{ lv.xp_progress }} / {{ lv.xp_needed }}</span>
-                <span class="font-mono font-bold" data-ds="24">{{ lv.pct }}%</span>
+            <div class="flex justify-between mb-1.5 text-[11px]" data-ds="23">
+                <span class="font-mono text-slate-500">{{ lv.xp_progress }} / {{ lv.xp_needed }}</span>
+                <span class="font-mono font-bold text-amber-400" data-ds="24">{{ lv.pct }}%</span>
             </div>
-            <div class="w-full rounded-full overflow-hidden" data-ds="25">
+            <div class="w-full rounded-full overflow-hidden bg-[#020408] border border-[#1E293B]" data-ds="25">
                 <div class="h-full rounded-full relative overflow-hidden"
                      data-ds="26" data-dv="width:{{ lv.pct}}%">
                     <div class="absolute inset-0" data-ds="27"></div>
@@ -230,83 +239,83 @@
     </div>
 
     <!-- KPIs column -->
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-2.5">
 
         <!-- KPI: Events 24h — sparkline -->
-        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg flex-1">
+            <div class="card-body p-3.5 flex flex-row items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
                 <div class="min-w-0 flex-1 overflow-hidden">
-                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Events (24h)</div>
-                    <div class="text-2xl font-bold tabular text-primary ov-counter" data-target="{{ perf_summary.total_events | default(0) }}">0</div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold font-mono">Events (24h)</div>
+                    <div class="text-xl font-bold tabular text-amber-400 ov-counter font-mono" data-target="{{ perf_summary.total_events | default(0) }}">0</div>
                     {% if perf_summary and perf_summary.hourly and (perf_summary.hourly|length) > 1 %}
                     {%- set H = perf_summary.hourly -%}
                     {%- set ns = namespace(mx=1) -%}
                     {%- for p in H %}{% if p.total > ns.mx %}{% set ns.mx = p.total %}{% endif %}{% endfor -%}
                     {%- set n = H|length -%}
                     <svg viewBox="0 0 80 18" preserveAspectRatio="none" class="w-full mt-1.5" data-ds="28">
-                        <polyline class="stroke-primary fill-none" stroke-width="1.5" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round"
+                        <polyline class="stroke-amber-400 fill-none" stroke-width="1.5" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round"
                             points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-(p.total-p.errors)*16/ns.mx)|round(1) }} {% endfor %}"/>
-                        <polyline class="stroke-error fill-none" stroke-width="1.2" stroke-opacity="0.9" stroke-linejoin="round" stroke-linecap="round"
+                        <polyline class="stroke-red-400 fill-none" stroke-width="1.2" stroke-opacity="0.9" stroke-linejoin="round" stroke-linecap="round"
                             points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-p.errors*16/ns.mx)|round(1) }} {% endfor %}"/>
                     </svg>
-                    <div class="flex items-center gap-2 mt-0.5">
-                        <span class="inline-flex items-center gap-1 text-xs text-base-content/40"><span class="w-2.5 h-px bg-primary/70 inline-block"></span>ok</span>
-                        <span class="inline-flex items-center gap-1 text-xs text-base-content/40"><span class="w-2.5 h-px bg-error/80 inline-block"></span>err</span>
+                    <div class="flex items-center gap-2 mt-0.5 font-mono text-[10px]">
+                        <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-2.5 h-px bg-amber-400 inline-block"></span>ok</span>
+                        <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-2.5 h-px bg-red-400 inline-block"></span>err</span>
                     </div>
                     {% endif %}
                 </div>
                 {% if perf_summary and perf_summary.errors > 0 %}
-                <span class="badge badge-error badge-sm shrink-0">{{ perf_summary.errors }} err</span>
+                <span class="badge badge-error badge-xs font-mono shrink-0">{{ perf_summary.errors }} err</span>
                 {% else %}
-                <span class="badge badge-success badge-sm shrink-0">clean</span>
+                <span class="badge badge-success badge-xs font-mono shrink-0">clean</span>
                 {% endif %}
             </div>
         </div>
 
         <!-- KPI: Memory -->
-        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+        <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg flex-1">
+            <div class="card-body p-3.5 flex flex-row items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Memory</div>
-                    <div class="text-2xl font-bold tabular text-secondary ov-counter" data-target="{{ stats.total }}">0</div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold font-mono">Memory</div>
+                    <div class="text-xl font-bold tabular text-cyan-300 ov-counter font-mono" data-target="{{ stats.total }}">0</div>
                 </div>
-                <a href="/memory" class="btn btn-xs btn-ghost text-secondary">View</a>
+                <a href="/memory" class="btn btn-xs btn-ghost text-cyan-400 hover:bg-[#1E293B] font-mono">View</a>
             </div>
         </div>
 
         <!-- KPI: Skills -->
-        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg flex-1">
+            <div class="card-body p-3.5 flex flex-row items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Skills</div>
-                    <div class="text-2xl font-bold tabular text-success">
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold font-mono">Skills</div>
+                    <div class="text-xl font-bold tabular text-emerald-400 font-mono">
                         <span class="ov-counter" data-target="{{ skills_enabled }}">0</span>
-                        <span class="text-base font-normal text-base-content/30">/{{ skills_count }}</span>
+                        <span class="text-sm font-normal text-slate-500">/{{ skills_count }}</span>
                     </div>
                 </div>
-                <a href="/skills" class="btn btn-xs btn-ghost text-success">View</a>
+                <a href="/skills" class="btn btn-xs btn-ghost text-emerald-400 hover:bg-[#1E293B] font-mono">View</a>
             </div>
         </div>
 
         <!-- KPI: Avg Latency — sparkline -->
-        <div class="card bg-base-100 shadow-sm wasp-accent flex-1">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg flex-1">
+            <div class="card-body p-3.5 flex flex-row items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div class="min-w-0 flex-1 overflow-hidden">
-                    <div class="text-xs text-base-content/50 uppercase tracking-wider font-semibold">Avg Latency</div>
-                    <div class="text-2xl font-bold tabular text-warning">
-                        <span class="ov-counter" data-target="{{ perf_summary.avg_latency_ms | default(0) }}">0</span><span class="text-sm font-normal text-base-content/40">ms</span>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold font-mono">Avg Latency</div>
+                    <div class="text-xl font-bold tabular text-amber-300 font-mono">
+                        <span class="ov-counter" data-target="{{ perf_summary.avg_latency_ms | default(0) }}">0</span><span class="text-xs font-normal text-slate-500">ms</span>
                     </div>
                     {% if perf_summary and perf_summary.hourly and (perf_summary.hourly|length) > 1 %}
                     {%- set H = perf_summary.hourly -%}
@@ -315,16 +324,16 @@
                     {%- set n = H|length -%}
                     {%- set last = H[-1] -%}
                     <svg viewBox="0 0 80 18" preserveAspectRatio="none" class="w-full mt-1.5" data-ds="29">
-                        <polyline class="stroke-warning fill-none" stroke-width="1.5" stroke-opacity="0.8" stroke-linejoin="round" stroke-linecap="round"
+                        <polyline class="stroke-amber-400 fill-none" stroke-width="1.5" stroke-opacity="0.8" stroke-linejoin="round" stroke-linecap="round"
                             points="{% for p in H %}{{ (loop.index0*80/(n-1))|round(1) }},{{ (18-p.avg_lat*16/ns.mx)|round(1) }} {% endfor %}"/>
-                        <circle class="fill-warning" cx="80" cy="{{ (18-last.avg_lat*16/ns.mx)|round(1) }}" r="2"/>
+                        <circle class="fill-amber-400" cx="80" cy="{{ (18-last.avg_lat*16/ns.mx)|round(1) }}" r="2"/>
                     </svg>
                     {% endif %}
                 </div>
                 {% if econ_today %}
                 <div class="text-right shrink-0">
-                    <div class="text-xs text-base-content/40">cost</div>
-                    <div class="text-xs font-mono font-bold text-warning">${{ "%.4f"|format(econ_today.cost_usd | default(0)) }}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">cost</div>
+                    <div class="text-xs font-mono font-bold text-amber-300">${{ "%.4f"|format(econ_today.cost_usd | default(0)) }}</div>
                 </div>
                 {% endif %}
             </div>
@@ -334,13 +343,13 @@
 </div><!-- /Hero grid -->
 
 <!-- ── Pulse Wave ──────────────────────────────────────────────────────── -->
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4 overflow-hidden">
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4 overflow-hidden">
     <div class="relative" data-ds="30">
         <!-- Wave label -->
         <div class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
-            <span class="text-xs font-semibold text-base-content/50 uppercase tracking-widest">System Pulse</span>
-            <span class="inline-flex items-center gap-1 text-xs text-success font-mono">
-                <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>LIVE
+            <span class="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-widest">System Pulse</span>
+            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>LIVE
             </span>
         </div>
         <!-- Heatmap mini bars on right -->
@@ -352,7 +361,7 @@
             {% elif cnt <= 10 %}{% set h = 20 %}{% set op = "opacity-50" %}
             {% elif cnt <= 30 %}{% set h = 32 %}{% set op = "opacity-70" %}
             {% else %}{% set h = 40 %}{% set op = "opacity-100" %}{% endif %}
-            <div class="w-1.5 rounded-sm bg-primary {{ op }} transition-all hover:opacity-100"
+            <div class="w-1.5 rounded-sm bg-amber-400 {{ op }} transition-all hover:opacity-100"
                  data-ds="31" data-dv="height:{{ h}}px"
                  title="{{ cell.date }}: {{ cnt }} events"></div>
             {% endfor %}
@@ -371,7 +380,7 @@
             <path id="ov-wave-path2" fill="none" stroke="url(#waveGrad)" stroke-width="1" opacity="0.4"/>
         </svg>
         {% if streak > 0 %}
-        <div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 text-xs text-warning font-semibold">
+        <div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[11px] text-amber-300 font-mono font-semibold">
             🔥 {{ streak }}-day streak
         </div>
         {% endif %}
@@ -379,25 +388,25 @@
 </div>
 
 <!-- ── Memory + Scheduler ──────────────────────────────────────────────── -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-4">
 
     <!-- Memory Breakdown -->
-    <div class="card bg-base-100 shadow-sm wasp-accent">
-        <div class="card-body p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="card-title text-base">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
-                    Memory
+    <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between mb-3 border-b border-[#1E293B]/60 pb-2">
+                <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                    Memory Hierarchy
                 </h2>
-                <span class="text-xs text-base-content/40 font-mono">{{ stats.total }} total</span>
+                <span class="text-[11px] text-slate-400 font-mono">{{ stats.total }} total</span>
             </div>
             {% set mem_items = [
-                ("facts",    stats.facts,    "--p",  "text-primary"),
-                ("episodic", stats.episodic, "--s",  "text-secondary"),
-                ("semantic", stats.semantic, "--a",  "text-accent"),
-                ("policy",   stats.policy,  "--in", "text-info"),
-                ("working",  stats.working, "--wa", "text-warning"),
-                ("meta",     stats.meta,    "--er", "text-error"),
+                ("facts",    stats.facts,    "--p",  "text-amber-400"),
+                ("episodic", stats.episodic, "--s",  "text-cyan-400"),
+                ("semantic", stats.semantic, "--a",  "text-emerald-400"),
+                ("policy",   stats.policy,  "--in", "text-blue-400"),
+                ("working",  stats.working, "--wa", "text-yellow-400"),
+                ("meta",     stats.meta,    "--er", "text-rose-400"),
             ] %}
             {% set total_safe = stats.total if stats.total > 0 else 1 %}
             <div class="space-y-2.5">
@@ -405,10 +414,10 @@
                 {% set pct = ((count / total_safe) * 100) | round(1) %}
                 <a href="/memory?type={{ name }}" class="block group">
                     <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-medium capitalize text-base-content/70 group-hover:text-base-content transition-colors">{{ name }}</span>
+                        <span class="text-xs font-medium capitalize text-slate-400 group-hover:text-slate-200 transition-colors">{{ name }}</span>
                         <span class="text-xs font-mono {{ color }} font-bold">{{ count }}</span>
                     </div>
-                    <div class="h-1.5 w-full rounded-full bg-base-300 overflow-hidden">
+                    <div class="h-1.5 w-full rounded-full bg-[#020408] border border-[#1E293B]/60 overflow-hidden">
                         <div class="h-full rounded-full ov-bar transition-all duration-700"
                              data-ds="36" data-dv="background:oklch(var({{ cssvar}})/.7);"
                              data-width="{{ pct }}"></div>
@@ -416,53 +425,53 @@
                 </a>
                 {% endfor %}
             </div>
-            <div class="card-actions justify-end mt-3">
-                <a href="/memory" class="btn btn-sm btn-ghost text-primary gap-1">Browse
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <div class="card-actions justify-end mt-3 border-t border-[#1E293B]/60 pt-2">
+                <a href="/memory" class="btn btn-xs btn-ghost text-amber-400 hover:bg-[#1E293B] gap-1 font-mono">Browse
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </div>
         </div>
     </div>
 
     <!-- Scheduler Jobs -->
-    <div class="card bg-base-100 shadow-sm wasp-accent">
-        <div class="card-body p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="card-title text-base">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Scheduler
+    <div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between mb-3 border-b border-[#1E293B]/60 pb-2">
+                <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Scheduler Jobs
                 </h2>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 font-mono text-[11px]">
                     {% set active_jobs = scheduler_jobs | selectattr("paused", "equalto", false) | list %}
-                    <span class="text-xs font-mono text-success">{{ active_jobs | length }} active</span>
+                    <span class="text-emerald-400 font-semibold">{{ active_jobs | length }} active</span>
                     {% if scheduler_jobs | selectattr("paused") | list | length > 0 %}
-                    <span class="text-xs font-mono text-warning">{{ scheduler_jobs | selectattr("paused") | list | length }} paused</span>
+                    <span class="text-amber-400">{{ scheduler_jobs | selectattr("paused") | list | length }} paused</span>
                     {% endif %}
                 </div>
             </div>
             <div class="space-y-1 overflow-y-auto" data-ds="37">
                 {% for job in scheduler_jobs %}
-                <div class="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-base-200 transition-colors group">
+                <div class="flex items-center justify-between rounded px-2.5 py-1.5 hover:bg-[#0B111E] transition-colors group">
                     <div class="flex items-center gap-2 min-w-0">
                         {% if job.paused %}
-                        <span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
                         {% else %}
                         <span class="relative flex w-1.5 h-1.5 shrink-0">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60"></span>
-                            <span class="relative inline-flex rounded-full w-1.5 h-1.5 bg-success"></span>
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+                            <span class="relative inline-flex rounded-full w-1.5 h-1.5 bg-emerald-500"></span>
                         </span>
                         {% endif %}
-                        <span class="font-mono text-xs truncate text-base-content/70 group-hover:text-base-content transition-colors">{{ job.name }}</span>
+                        <span class="font-mono text-xs truncate text-slate-300 group-hover:text-white transition-colors">{{ job.name }}</span>
                     </div>
-                    <span class="text-xs text-base-content/30 tabular font-mono shrink-0">{{ job.run_count }}×</span>
+                    <span class="text-xs text-slate-500 tabular font-mono shrink-0">{{ job.run_count }}×</span>
                 </div>
                 {% else %}
-                <div class="text-xs text-base-content/30 text-center py-8">No jobs</div>
+                <div class="text-xs text-slate-500 text-center py-8 font-mono">No active jobs scheduled</div>
                 {% endfor %}
             </div>
-            <div class="card-actions justify-end mt-3">
-                <a href="/scheduler" class="btn btn-sm btn-ghost text-primary gap-1">Manage
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <div class="card-actions justify-end mt-3 border-t border-[#1E293B]/60 pt-2">
+                <a href="/scheduler" class="btn btn-xs btn-ghost text-amber-400 hover:bg-[#1E293B] gap-1 font-mono">Manage
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </div>
         </div>
@@ -471,33 +480,33 @@
 
 <!-- ── Performance + Model ─────────────────────────────────────────────── -->
 {% if perf_summary %}
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
-    <div class="card-body p-5">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="card-title text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                Performance (24h)
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4">
+    <div class="card-body p-4">
+        <div class="flex items-center justify-between mb-3 border-b border-[#1E293B]/60 pb-2">
+            <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Performance Telemetry (24h)
             </h2>
-            <a href="/metrics" class="text-xs text-primary/60 hover:text-primary transition-colors">Full metrics →</a>
+            <a href="/metrics" class="text-xs text-amber-400 hover:text-amber-300 font-mono transition-colors">Full metrics →</a>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {% set perf_items = [
-                ("Events",      perf_summary.total_events | default(0),    "text-primary",  ""),
-                ("Avg Latency", (perf_summary.avg_latency_ms | default(0)) ~ "ms", "text-warning", ""),
-                ("Errors",      perf_summary.errors | default(0),           "text-error" if perf_summary.errors | default(0) > 0 else "text-success", ""),
-                ("Cost Today",  "$" ~ "%.4f"|format(econ_today.cost_usd | default(0)) if econ_today else "—", "text-warning", ""),
+                ("Events",      perf_summary.total_events | default(0),    "text-amber-400",  ""),
+                ("Avg Latency", (perf_summary.avg_latency_ms | default(0)) ~ "ms", "text-amber-300", ""),
+                ("Errors",      perf_summary.errors | default(0),           "text-rose-400" if perf_summary.errors | default(0) > 0 else "text-emerald-400", ""),
+                ("Cost Today",  "$" ~ "%.4f"|format(econ_today.cost_usd | default(0)) if econ_today else "—", "text-amber-300", ""),
             ] %}
             {% for label, val, color, _ in perf_items %}
-            <div class="bg-base-200 rounded-xl p-3 text-center">
-                <div class="text-xl font-bold tabular {{ color }}">{{ val }}</div>
-                <div class="text-xs text-base-content/50 mt-0.5">{{ label }}</div>
+            <div class="bg-[#0B111E] border border-[#1E293B] rounded-lg p-2.5 text-center">
+                <div class="text-lg font-bold tabular {{ color }} font-mono">{{ val }}</div>
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5 uppercase tracking-wider">{{ label }}</div>
             </div>
             {% endfor %}
         </div>
         {% if perf_summary.top_events %}
-        <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-base-300/50">
+        <div class="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-[#1E293B]/60">
             {% for ev in perf_summary.top_events[:6] %}
-            <span class="pill pill-neutral pill-xs font-mono">{{ ev.type }}: {{ ev.count }}</span>
+            <span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ ev.type }}: {{ ev.count }}</span>
             {% endfor %}
         </div>
         {% endif %}
@@ -506,29 +515,29 @@
 {% endif %}
 
 <!-- Model & Fallback chain -->
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
-    <div class="card-body p-5">
-        <h2 class="card-title text-base mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            Active Model
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4">
+    <div class="card-body p-4">
+        <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Active Cognitive Model
         </h2>
         <div class="flex flex-wrap gap-3 items-center">
-            <div class="flex items-center gap-2 bg-primary/5 border border-primary/15 rounded-xl px-4 py-2.5">
-                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                <span class="font-bold text-primary text-sm">{{ model_status.active_model or "None" }}</span>
-                <span class="text-xs text-base-content/40">via {{ model_status.active_provider or "—" }}</span>
+            <div class="flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-1.5">
+                <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                <span class="font-bold text-amber-300 text-xs font-mono">{{ model_status.active_model or "None" }}</span>
+                <span class="text-[11px] text-slate-400 font-mono">via {{ model_status.active_provider or "—" }}</span>
             </div>
             {% if model_status.fallback_order %}
             <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs text-base-content/30 uppercase tracking-wider">fallback</span>
+                <span class="text-[10px] text-slate-500 font-mono uppercase tracking-wider">fallback</span>
                 {% for m in model_status.fallback_order %}
-                <span class="pill pill-neutral pill-xs font-mono">{{ m }}</span>
-                {% if not loop.last %}<span class="text-base-content/20 text-xs">→</span>{% endif %}
+                <span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ m }}</span>
+                {% if not loop.last %}<span class="text-slate-600 text-xs font-mono">→</span>{% endif %}
                 {% endfor %}
             </div>
             {% endif %}
-            <a href="/models" class="ml-auto btn btn-sm btn-ghost text-primary gap-1">Manage
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <a href="/models" class="ml-auto btn btn-xs btn-ghost text-amber-400 hover:bg-[#1E293B] gap-1 font-mono">Manage
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
         </div>
     </div>
@@ -536,51 +545,51 @@
 
 <!-- ── Wasp Digest ─────────────────────────────────────────────────────── -->
 {% if digest %}
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4" data-ds="38">
-    <div class="card-body p-5">
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <h2 class="card-title text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Wasp Digest
-                {% if digest.stats and digest.stats.week_label %}<span class="badge badge-xs badge-primary normal-case font-normal ml-1">{{ digest.stats.week_label }}</span>{% endif %}
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4" data-ds="38">
+    <div class="card-body p-4">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3 border-b border-[#1E293B]/60 pb-2">
+            <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Wasp Weekly Digest
+                {% if digest.stats and digest.stats.week_label %}<span class="badge badge-xs bg-amber-400/20 text-amber-300 border border-amber-400/30 font-mono font-normal ml-1">{{ digest.stats.week_label }}</span>{% endif %}
             </h2>
             <div class="flex items-center gap-3">
-                <span class="text-xs text-base-content/40 font-mono">{{ digest.generated_at[:16] | replace("T"," ") if digest.generated_at else "" }}</span>
+                <span class="text-[11px] text-slate-500 font-mono">{{ digest.generated_at[:16] | replace("T"," ") if digest.generated_at else "" }}</span>
                 <form method="post" action="/scheduler/trigger" class="contents">
                     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                     <input type="hidden" name="job" value="digest">
-                    <button type="submit" class="btn btn-xs btn-ghost text-primary/60 hover:text-primary">Regenerate</button>
+                    <button type="submit" class="btn btn-xs btn-ghost text-amber-400 hover:text-amber-300 font-mono">Regenerate</button>
                 </form>
             </div>
         </div>
-        <div class="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 text-sm leading-relaxed text-base-content/80 italic whitespace-pre-line">{{ digest.text }}</div>
+        <div class="bg-[#0B111E] border border-[#1E293B] rounded-lg px-4 py-3 text-xs leading-relaxed text-slate-300 italic whitespace-pre-line font-mono">{{ digest.text }}</div>
         {% set s = digest.stats if digest.stats else {} %}
-        <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-base-300/50">
-            {% if s.get('total_messages_7d') %}<span class="pill pill-neutral pill-xs">{{ s['total_messages_7d'] }} conversations (7d)</span>{% endif %}
-            {% if s.get('total_skill_calls_7d') %}<span class="pill pill-neutral pill-xs">{{ s['total_skill_calls_7d'] }} skill calls</span>{% endif %}
-            {% if s.get('dream_count') %}<span class="pill pill-neutral pill-xs">{{ s['dream_count'] }} dream cycles</span>{% endif %}
-            {% if s.get('procedures_count') %}<span class="pill pill-neutral pill-xs">{{ s['procedures_count'] }} procedures</span>{% endif %}
-            {% if s.get('epistemic_top_domain') %}<span class="pill pill-primary pill-xs">{{ s['epistemic_top_domain'] }} {{ s.get('epistemic_top_confidence',0) }}%</span>{% endif %}
-            {% if s.get('best_skill') %}<span class="pill pill-success pill-xs">Best: {{ s['best_skill'] }} {{ s.get('best_skill_pct',0) }}%</span>{% endif %}
+        <div class="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-[#1E293B]/60">
+            {% if s.get('total_messages_7d') %}<span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ s['total_messages_7d'] }} conversations (7d)</span>{% endif %}
+            {% if s.get('total_skill_calls_7d') %}<span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ s['total_skill_calls_7d'] }} skill calls</span>{% endif %}
+            {% if s.get('dream_count') %}<span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ s['dream_count'] }} dream cycles</span>{% endif %}
+            {% if s.get('procedures_count') %}<span class="badge badge-xs bg-[#0F172A] border border-[#334155] text-slate-300 font-mono text-[10px]">{{ s['procedures_count'] }} procedures</span>{% endif %}
+            {% if s.get('epistemic_top_domain') %}<span class="badge badge-xs bg-amber-400/10 text-amber-300 border border-amber-400/30 font-mono text-[10px]">{{ s['epistemic_top_domain'] }} {{ s.get('epistemic_top_confidence',0) }}%</span>{% endif %}
+            {% if s.get('best_skill') %}<span class="badge badge-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono text-[10px]">Best: {{ s['best_skill'] }} {{ s.get('best_skill_pct',0) }}%</span>{% endif %}
         </div>
     </div>
 </div>
 {% else %}
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
-    <div class="card-body p-5">
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4">
+    <div class="card-body p-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
             <div>
-                <h2 class="card-title text-base">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Wasp Digest
+                <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Wasp Weekly Digest
                 </h2>
-                <p class="text-xs text-base-content/40 mt-1">Auto-generated weekly narrative. Click Generate to trigger now.</p>
+                <p class="text-[11px] text-slate-400 font-mono mt-0.5">Auto-generated weekly narrative. Click Generate to trigger now.</p>
             </div>
             <form method="post" action="/scheduler/trigger" data-confirm="Generate the weekly digest?" class="contents js-confirm-form">
                 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <input type="hidden" name="job" value="digest">
-                <button type="submit" class="btn btn-sm btn-primary gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <button type="submit" class="btn btn-sm btn-primary bg-amber-500 hover:bg-amber-400 text-black font-semibold border-none text-xs font-mono gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     Generate
                 </button>
             </form>
@@ -590,32 +599,32 @@
 {% endif %}
 
 <!-- ── Quick Actions ───────────────────────────────────────────────────── -->
-<div class="card bg-base-100 shadow-sm wasp-accent mb-4">
-    <div class="card-body p-5">
-        <h2 class="card-title text-base mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Quick Actions
+<div class="card bg-[#080C14] border border-[#1E293B] shadow-sm rounded-lg mb-4">
+    <div class="card-body p-4">
+        <h2 class="card-title text-xs font-mono font-semibold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Command Quick Actions
         </h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {% set actions = [
-                ("health_check", "Health Check", "btn-success",  "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", "Run health check?"),
-                ("reflection",   "Reflect",      "btn-info",     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01", "Run reflection?"),
-                ("proactive",    "Proactive",    "btn-primary",  "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z", "Send a proactive Telegram message?"),
-                ("memory_cleanup","Cleanup",     "btn-warning",  "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16", "Run memory cleanup?"),
+                ("health_check", "Health Check", "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10",  "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", "Run health check?"),
+                ("reflection",   "Reflect",      "border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10",     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01", "Run reflection?"),
+                ("proactive",    "Proactive",    "border-amber-500/40 text-amber-400 hover:bg-amber-500/10",  "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z", "Send a proactive Telegram message?"),
+                ("memory_cleanup","Cleanup",     "border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10",  "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16", "Run memory cleanup?"),
             ] %}
             {% for job, label, cls, icon_path, confirm_msg in actions %}
             <form method="post" action="/scheduler/trigger" data-confirm="{{ confirm_msg }}" class="contents js-confirm-form">
                 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <input type="hidden" name="job" value="{{ job }}">
                 <input type="hidden" name="from_overview" value="1">
-                <button type="submit" class="btn btn-sm btn-outline {{ cls }} gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon_path }}"/></svg>
+                <button type="submit" class="btn btn-sm btn-outline {{ cls }} font-mono text-xs gap-1.5 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon_path }}"/></svg>
                     {{ label }}
                 </button>
             </form>
             {% endfor %}
         </div>
-        <p class="text-xs text-base-content/30 mt-3">All actions are CSRF-gated and audited in the log.</p>
+        <p class="text-[11px] text-slate-500 font-mono mt-3 border-t border-[#1E293B]/60 pt-2">All actions are CSRF-gated and audited in the log.</p>
     </div>
 </div>
 

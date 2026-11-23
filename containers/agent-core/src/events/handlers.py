@@ -3,7 +3,7 @@ import hashlib
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import redis.asyncio as aioredis
@@ -948,7 +948,7 @@ async def _redis_set_lang(redis_url: str, chat_id: str, lang: str) -> None:
 async def _db_set_lang(chat_id: str, lang: str) -> None:
     """Upsert language to DB (internal helper, fire-and-forget safe)."""
     try:
-        from datetime import datetime, timezone as _tz
+        from datetime import datetime, timedelta, timezone as _tz
         from sqlalchemy.dialects.postgresql import insert as _pg_insert
         from ..db.models import UserPreference as _UP
         from ..db.session import async_session as _asession
@@ -2900,7 +2900,7 @@ async def _resolve_agent_wakeup(text: str, agent_orchestrator) -> str:
     if not agent:
         return text  # Agent not found — fall through with raw signal
 
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime, timedelta, timezone as _tz
     try:
         from ..config import get_tz as _get_tz
         _local_now = datetime.now(_tz.utc).astimezone(_get_tz())
@@ -3695,6 +3695,53 @@ class EventHandler:
             # Boot failsafe: do NOT clear is_fresh — retry on next message
             return None
 
+    @staticmethod
+    def _diagnose_task_failure(
+        *,
+        outcome: str,
+        response_text: str,
+        trace_spans: list[dict] | None,
+        task: dict,
+    ) -> str:
+        """Analyze root cause of task failure using trace spans, response text, and outcome."""
+        if outcome == "timeout":
+            return "TIMEOUT: Task execution exceeded 180s timeout limit without completing."
+        if outcome == "exception":
+            resp_sample = (response_text or "").strip()[:100]
+            return f"EXCEPTION: Handler crashed during execution: {resp_sample or 'Pipeline crash'}"
+
+        spans = trace_spans or []
+        failed_spans = [s for s in spans if s.get("success") is False or s.get("error")]
+        if failed_spans:
+            first_fail = failed_spans[0]
+            skill_name = first_fail.get("skill") or "tool"
+            err_msg = first_fail.get("error") or first_fail.get("output") or "Tool returned failure status"
+            return f"TOOL_FAILURE ({skill_name}): {str(err_msg)[:120]}"
+
+        # Check required side effects
+        instr = (task.get("instruction") or "").lower()
+        needs_email = any(k in instr for k in ("email", "correo", "gmail", "@"))
+        if needs_email:
+            gmail_spans = [s for s in spans if s.get("skill", "").lower() == "gmail"]
+            if not gmail_spans:
+                return "MISSING_ACTION: Instruction required email delivery, but Gmail skill was never invoked."
+            elif not any(s.get("success") for s in gmail_spans):
+                return "DELIVERY_FAILURE: Gmail skill execution did not succeed."
+
+        # Check failsafe phrases
+        failsafe_phrases = (
+            "No pude completar", "Intentare nuevamente", "Lo siento",
+            "No pude generar una respuesta", "tardó demasiado",
+        )
+        for phrase in failsafe_phrases:
+            if phrase in response_text:
+                return f"FAILSAFE_TRIGGERED: Model response contained fallback message: '{phrase}'"
+
+        if not spans:
+            return "NO_TOOLS_USED: Agent finished without executing any tools or skills for the task."
+
+        return f"INCOMPLETE_OUTPUT: Execution completed without verifiable output: {(response_text or '')[:80]}"
+
     async def _writeback_task_outcome(
         self,
         *,
@@ -3709,7 +3756,9 @@ class EventHandler:
         Looks up by task_id first (UUID), falls back to name (legacy/agent path).
         Marks success only if outcome=='completed' AND the response is not a
         failsafe AND any required side-effect skills succeeded. Increments
-        failure_count on timeout/exception/failsafe.
+        failure_count on timeout/exception/failsafe, diagnoses root cause,
+        and auto-reloads with self-healing feedback until completion.
+        On success, archives permanently to completed_tasks database.
         """
         if not self.redis_url or not task_id:
             return
@@ -3768,9 +3817,70 @@ class EventHandler:
                 _task["last_result"] = _result_text
                 if not _success:
                     _task["failure_count"] = int(_task.get("failure_count", 0) or 0) + 1
+                    # Self-healing diagnosis: analyze why it failed
+                    _diag = self._diagnose_task_failure(
+                        outcome=outcome,
+                        response_text=response_text,
+                        trace_spans=trace_spans,
+                        task=_task,
+                    )
+                    _task["last_error_diagnosis"] = _diag
+                    if "failure_history" not in _task or not isinstance(_task["failure_history"], list):
+                        _task["failure_history"] = []
+                    _task["failure_history"].append({
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "attempt": int(_task.get("auto_reload_count", 0) or 0) + 1,
+                        "outcome": outcome,
+                        "diagnosis": _diag,
+                    })
+
+                    # Auto-reload loop: reload up to 3 times with progressive backoff and self-healing instruction
+                    _current_reloads = int(_task.get("auto_reload_count", 0) or 0)
+                    _MAX_AUTO_RELOADS = 3
+                    if _current_reloads < _MAX_AUTO_RELOADS:
+                        _next_reload = _current_reloads + 1
+                        _task["auto_reload_count"] = _next_reload
+                        _task["enabled"] = True
+                        _delay_sec = 5 * (2 ** _current_reloads)  # 5s, 10s, 20s
+                        _task["next_run"] = (datetime.now(timezone.utc) + timedelta(seconds=_delay_sec)).isoformat()
+                        _task["self_healing_context"] = (
+                            f"Previous attempt {_next_reload}/{_MAX_AUTO_RELOADS} failed with diagnosis: '{_diag}'. "
+                            f"Analyze this error, adapt your tools or approach, fix the root cause, and complete the instruction."
+                        )
+                        _task["last_result"] = (
+                            f"Auto-Reloading (Attempt {_next_reload}/{_MAX_AUTO_RELOADS} in {_delay_sec}s) — Issue: {_diag[:70]}"
+                        )
+                        logger.info(
+                            "custom_task.auto_reload_scheduled",
+                            task_id=_task.get("task_id", task_id),
+                            name=_task.get("name", ""),
+                            attempt=_next_reload,
+                            delay=_delay_sec,
+                            diagnosis=_diag,
+                        )
+                    else:
+                        _task["self_healing_context"] = ""
+                        _task["last_result"] = f"FAILED ({_current_reloads} attempts exhausted) — {_diag[:70]}"
                 else:
-                    # Reset on a real success — circuit breaker forgives past failures.
+                    # Reset on a real success — circuit breaker and auto-reload forgive past failures
                     _task["failure_count"] = 0
+                    _task["auto_reload_count"] = 0
+                    _task["self_healing_context"] = ""
+                    # Archive into completed tasks database (Redis + Postgres)
+                    try:
+                        from ..scheduler.completed_tasks import archive_completed_task
+                        await archive_completed_task(
+                            _r,
+                            task=_task,
+                            final_output=response_text or _result_text,
+                            trace_spans=trace_spans,
+                        )
+                    except Exception as arch_err:
+                        logger.warning(
+                            "custom_task.archive_completed_failed",
+                            task_id=_task.get("task_id", task_id),
+                            error=str(arch_err)[:120],
+                        )
 
                 # B4 fix: circuit breaker — auto-disable after 5 consecutive failures.
                 _CB_THRESHOLD = 5
@@ -8896,7 +9006,7 @@ class EventHandler:
             make_task as _make_task, next_run_from_now as _next_run,
             parse_interval as _parse_iv, save_task as _save_task,
         )
-        from datetime import datetime, timezone as _tz
+        from datetime import datetime, timedelta, timezone as _tz
 
         from ..config import settings as _settings
         r = _aioredis.from_url(_settings.redis_url, decode_responses=True)
@@ -11325,13 +11435,27 @@ class EventHandler:
                         _db_lang = await _get_user_lang(self.redis_url, str(chat_id)) if chat_id else "en"
                     except Exception:
                         _db_lang = "en"
-                    return await self._get_formatter().format_task_created(
+                    _conf = await self._get_formatter().format_task_created(
                         user_request=text,
                         task_params=_tp_db,
                         success=bool(_tr_db and _tr_db.success),
                         raw_output=(_tr_db.output or _tr_db.error or "") if _tr_db else "",
                         user_lang=_db_lang,
                     )
+                    _interval_val = str(_tp_db.get("interval", "")).lower().strip()
+                    _is_workflow_task = (
+                        not _interval_val
+                        or _interval_val in ("workflow", "once", "now", "0")
+                        or any(w in text.lower() for w in ("workflow", "proceso", "ejecuta", "continua", "continue", "crea", "analiza", "audit"))
+                    )
+                    if _is_workflow_task:
+                        pre_results_text = (
+                            f"[TASK_CREATED]\n{_conf}\n[/TASK_CREATED]\n\n"
+                            "Task is registered and visible on /tasks under ⚡ Workflows. "
+                            "Now continuously execute: detail the workflow phases and immediately execute the necessary skills to advance the task."
+                        )
+                    else:
+                        return _conf
 
                 elif _dl_strategy_db == Strategy.SUB_AGENT:
                     if self.governor:
@@ -11383,7 +11507,10 @@ class EventHandler:
                                 chat_id=chat_id,
                                 objective=text[:80],
                             )
-                            return "✅ Objetivo registrado — ejecutando en segundo plano."
+                            pre_results_text = (
+                                "[GOAL_REGISTERED]\n✅ Objetivo registrado y activo en /tasks y /goals (Prioridad 8).\n[/GOAL_REGISTERED]\n\n"
+                                "Explica el proceso de workflow y comienza de inmediato la ejecución del primer paso usando skills."
+                            )
                         except Exception as _ge:
                             logger.warning(
                                 "goal.enqueue_failure",
@@ -11557,20 +11684,30 @@ class EventHandler:
         # ── End Action Commitment Injection (dashboard) ───────────────────────
 
         if pre_results_text:
-            insert_pos = len(messages) - 1
-            for fs_user, fs_assistant in WEB_FEWSHOT:
-                messages.insert(insert_pos, Message(role="user", content=fs_user))
-                insert_pos += 1
-                messages.insert(insert_pos, Message(role="assistant", content=fs_assistant))
-                insert_pos += 1
-            messages[-1] = Message(
-                role="user",
-                content=(
-                    f"{text}\n\n[DATA]:\n{pre_results_text}\n[/DATA]\n\n"
-                    "Analyze the [DATA] above and answer the user's specific question. "
-                    "Be concise. If the data doesn't contain what was asked, use a skill to find it."
-                ),
-            )
+            if "[TASK_CREATED]" in pre_results_text or "[GOAL_REGISTERED]" in pre_results_text:
+                messages[-1] = Message(
+                    role="user",
+                    content=(
+                        f"{text}\n\n[SYSTEM STATE]:\n{pre_results_text}\n[/SYSTEM STATE]\n\n"
+                        "The task/goal is registered and tracked on the /tasks and /goals pages. "
+                        "Now seamlessly structure the workflow process into clear phases, report the task registration, and begin immediate execution of the first steps using skills."
+                    ),
+                )
+            else:
+                insert_pos = len(messages) - 1
+                for fs_user, fs_assistant in WEB_FEWSHOT:
+                    messages.insert(insert_pos, Message(role="user", content=fs_user))
+                    insert_pos += 1
+                    messages.insert(insert_pos, Message(role="assistant", content=fs_assistant))
+                    insert_pos += 1
+                messages[-1] = Message(
+                    role="user",
+                    content=(
+                        f"{text}\n\n[DATA]:\n{pre_results_text}\n[/DATA]\n\n"
+                        "Analyze the [DATA] above and answer the user's specific question. "
+                        "Be concise. If the data doesn't contain what was asked, use a skill to find it."
+                    ),
+                )
 
         # Track media files found in skill results for auto-injection
         _media_from_skills: list[str] = []

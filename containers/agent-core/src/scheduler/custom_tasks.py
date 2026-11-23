@@ -87,6 +87,9 @@ def parse_interval(text: str) -> int | None:
         return text
 
     t = str(text).strip().lower()
+    # Workflow / run-once / ad-hoc task keywords
+    if t in ("workflow", "once", "run_once", "run-once", "una vez", "inmediato", "immediate", "now", "ahora", "adhoc", "ad-hoc", "0", ""):
+        return 0
 
     # "cada N <unit>" — try the numeric form FIRST. The previous order
     # checked named-shortcut substrings first, which mis-routed "6 horas"
@@ -151,7 +154,9 @@ def make_task(
                            interval/at_time when present
     """
     now = _now_utc().isoformat()
-    if next_run_override:
+    if interval_seconds <= 0:
+        first_run = now
+    elif next_run_override:
         first_run = next_run_override
     elif at_time:
         first_run = compute_next_run_at_time(at_time) or next_run_from_now(interval_seconds)
@@ -162,10 +167,11 @@ def make_task(
         "name": name,
         "instruction": instruction,
         "interval_seconds": interval_seconds,
-        "next_run": first_run,
+        "task_type": "workflow" if interval_seconds <= 0 else "scheduled",
+        "next_run": first_run if interval_seconds > 0 else None,
         "at_time": at_time,           # persisted so re-schedules after each run hit the same clock
         "last_run": None,
-        "last_result": "",
+        "last_result": "Pending Execution" if interval_seconds <= 0 else "",
         "last_success": None,
         "run_count": 0,
         "failure_count": 0,
@@ -263,6 +269,8 @@ async def delete_task(r, task_id: str) -> bool:
 
 
 def fmt_interval(seconds: int) -> str:
+    if seconds <= 0:
+        return "Workflow Task"
     if seconds < 60:
         return f"{seconds}s"
     if seconds < 3600:

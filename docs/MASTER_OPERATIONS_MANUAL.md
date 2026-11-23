@@ -39,6 +39,13 @@ Agent WASP is architected as a sovereign, multi-agent autonomous cockpit uniting
 8. **Curiosity & Goal Teleological Integration (`src/curiosity/`):**
    - Elevates **Curiosity** ($\mathcal{C}_t$) as the engine of epistemic discovery and **Goal** ($\vec{G}$) as the teleological boundary attractor.
    - Prevents infinite loops or curiosity drift via mathematical vector alignment ($\cos(\vec{v}, \vec{G}) \ge \tau$).
+9. **Self-Healing Task Diagnosis & Auto-Reload Engine (`_diagnose_task_failure` & `jobs.py`):**
+   - Root-cause telemetry extractor classifying tool crashes, timeouts, unhandled exceptions, and missing required actions.
+   - 3-attempt progressive backoff loop (5s, 10s, 20s) with adaptive self-healing prompt injection before tripping circuit breakers.
+10. **Zero-Amnesia Completed Tasks Database (`completed_tasks.py` & `models.py`):**
+    - Dual-layer storage in PostgreSQL (`completed_tasks` table) and Redis (`completed_tasks` hash + index zset).
+    - Preserves deliverables, execution durations, retry counters, and diagnostic resolution notes across container restarts and crashes.
+    - Full Web UI integration on `/tasks` with `✅ Completed` filter tab and `GET /tasks/api/completed`.
 
 ---
 
@@ -106,4 +113,21 @@ The **Autonomous Teleological Self-Evolution (ATSE)** system runs 24/7 as a back
 * **Live ATSE Status API:** `GET http://localhost:1434/mesh/api/atse/status`
 * **Trigger Interactive Diagnostic Cycle:** `POST http://localhost:1434/mesh/api/atse/trigger-cycle`
 * **Automated Test Suite:** `python -m unittest containers/agent-core/tests/test_mesh_cockpit_atse.py` (28/28 unit tests passing).
+
+---
+
+## 6. Self-Healing Task Execution & Completed Tasks Database
+
+Detailed Reference: [docs/TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md](TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md)
+
+### 6.1 Architectural Summary
+1. **Prompt-to-Task Genesis:** Complex user instructions automatically instantiate active workflow tasks (`interval_seconds=0`), making work immediately visible on `/tasks` and the Desktop Widget.
+2. **Failure Diagnosis:** When execution encounters a blocker, `_diagnose_task_failure` isolates the root cause (e.g. `TOOL_FAILURE`, `TIMEOUT`, `EXCEPTION`, `MISSING_ACTION`) and stores it in `last_error_diagnosis`.
+3. **Adaptive Auto-Reload Loop:** The task is re-armed up to 3 times with progressive backoff (5s, 10s, 20s). The next attempt receives explicit `[SELF-HEALING RETRY]` guidance with instructions to fix the isolated blocker.
+4. **Permanent Completed Archive:** Verifiable deliverables are written to PostgreSQL `completed_tasks` and Redis cache, calculating runtime duration and documenting self-healing notes (e.g., *"Self-healed after 1 retry attempt(s). Overcame previous issue: Browser timeout"*).
+5. **Multi-Provider Mesh Distribution:**
+   * **Gemini Free Tier:** Governed by `quota_guard.py` across multi-account pool (`likha`, `benjohn`) with 9 RPM / 240 RPD and 5.0s safety spacing.
+   * **Local Ollama:** Hardware-fitted capacity guard halts models $>14\text{B}$ if host RAM $>80\%$.
+   * **Ollama Cloud:** Remote offloading with 30 RPM / 3000 RPD, bypassing host RAM checks.
+
 

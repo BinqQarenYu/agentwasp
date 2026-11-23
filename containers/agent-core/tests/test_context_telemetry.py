@@ -33,14 +33,19 @@ def test_system_prompt_antigravity_knowledge():
     assert "harnesses" in SYSTEM_PROMPT
     assert "waspctl" in SYSTEM_PROMPT
 
+    # 4. Zero-Amnesia Contract
+    assert "PERMANENT CONTINUITY & ZERO-AMNESIA CONTRACT" in SYSTEM_PROMPT
+    assert "ZERO AMNESIA ACROSS RESTARTS, REBOOTS & SHUTDOWNS" in SYSTEM_PROMPT
+
 
 def test_identity_fewshots_coverage():
-    """Verify few-shots cover employees, capabilities, codebase, and active state."""
+    """Verify few-shots cover employees, capabilities, codebase, active state, and zero-amnesia."""
     questions = [q for q, _ in IDENTITY_FEWSHOT]
     assert any("employees" in q.lower() or "who works with you" in q.lower() for q in questions)
     assert any("capabilities" in q.lower() or "what can you do" in q.lower() for q in questions)
     assert any("codebase" in q.lower() or "where is your code" in q.lower() for q in questions)
     assert any("currently doing" in q.lower() or "what's running" in q.lower() for q in questions)
+    assert any("restart" in q.lower() or "shutdown" in q.lower() or "forget" in q.lower() for q in questions)
 
 
 @pytest.mark.asyncio

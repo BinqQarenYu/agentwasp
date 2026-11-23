@@ -4,8 +4,16 @@ from pathlib import Path
 os.environ.setdefault("MEDIA_SIGNING_SECRET", "test-media-signing-secret-for-pytest")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://agent:agent@localhost/agent")
 
+import pytest
 from src.skills.openclaw import loader
 from src.skills.openclaw.models import OpenClawSkill
+
+
+@pytest.fixture(autouse=True)
+def _isolate_crystallized_skills(tmp_path, monkeypatch):
+    empty_dir = tmp_path / "empty_crystallized"
+    empty_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(loader, "CRYSTALLIZED_SKILLS_DIR", empty_dir)
 
 
 def _write_skill(parent: Path, slug: str, name: str) -> Path:

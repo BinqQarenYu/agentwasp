@@ -1028,6 +1028,17 @@ class CustomTaskRunnerJob:
                     skipped += 1
                     continue
 
+                # If this task has self-healing context from a previous failed attempt, inject it
+                self_healing = task.get("self_healing_context", "")
+                healing_instruction = ""
+                if self_healing:
+                    attempt_num = task.get("auto_reload_count", 1)
+                    healing_instruction = (
+                        f"\n[SELF-HEALING RETRY — Attempt {attempt_num}/3]\n"
+                        f"PREVIOUS FAILURE CAUSE: {self_healing}\n"
+                        f"ADAPTIVE INSTRUCTION: Directly fix the root cause above. Do not repeat the failed action. Adapt tool parameters or alternatives to complete successfully.\n\n"
+                    )
+
                 # If this task is linked to a sub-agent, emit a wake-up signal instead of
                 # injecting the full instruction. The agent reconstructs its behavior from
                 # its stored intent — the task is only the trigger.
@@ -1036,6 +1047,7 @@ class CustomTaskRunnerJob:
                 if linked_agent_id:
                     trigger_text = (
                         f"[AGENT_WAKEUP: agent_id={linked_agent_id}]\n"
+                        f"{healing_instruction}"
                         f"task={task['name']} triggered_at={now.isoformat()}"
                     )
                 else:
@@ -1046,6 +1058,7 @@ class CustomTaskRunnerJob:
                     trigger_text = (
                         f"[TAREA PROGRAMADA: {task['name']} | id={task['task_id']}]\n"
                         f"EJECUTA AHORA step by step. Do not create new tasks or agents.\n"
+                        f"{healing_instruction}"
                         f"INSTRUCCION:\n{task['instruction']}\n"
                         f"MANDATORY VALIDATION before responding:\n"
                         f"- If the task requires screenshots: at least 2 distinct /data/screenshots/*.png paths must exist in your context\n"
@@ -1074,7 +1087,10 @@ class CustomTaskRunnerJob:
                 # stays None — that itself is honest signal.
                 task["last_run"] = now.isoformat()
                 _at_time_after = task.get("at_time", "")
-                if _at_time_after:
+                if task.get("interval_seconds", 0) <= 0:
+                    task["enabled"] = False
+                    task["next_run"] = None
+                elif _at_time_after:
                     from .custom_tasks import compute_next_run_at_time as _crt
                     _next_iso = _crt(_at_time_after)
                     task["next_run"] = _next_iso or next_run_from_now(task["interval_seconds"])

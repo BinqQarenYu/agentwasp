@@ -323,7 +323,13 @@ class ModelManager:
                     try:
                         # Free-tier Quota & RPM throttling guard
                         # Note: GoogleProvider manages per-account & per-model-tier pooling directly.
-                        if provider_name != "google":
+                        if provider_name == "ollama" and (":cloud" in current_model.lower() or "cloud" in current_model.lower()):
+                            try:
+                                from .quota_guard import quota_guard
+                                await quota_guard.acquire_slot("ollama:cloud")
+                            except Exception as _q_err:
+                                logger.warning("model_manager.ollama_cloud_quota_warning", error=str(_q_err))
+                        elif provider_name != "google":
                             try:
                                 from .quota_guard import quota_guard
                                 await quota_guard.acquire_slot(provider_name)

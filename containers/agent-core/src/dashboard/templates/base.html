@@ -21,11 +21,45 @@
     <meta name="csp-nonce" content="{{ request.state.csp_nonce }}">
     <script nonce="{{ request.state.csp_nonce }}">
         (function() {
-            localStorage.setItem('wasp-theme', 'wasp-dark');
-            document.documentElement.setAttribute('data-theme', 'wasp-dark');
+            var savedMode = localStorage.getItem('wasp-ui-mode') || 'hud';
+            document.documentElement.setAttribute('data-ui-mode', savedMode);
+            var theme = savedMode === 'classic' ? 'wasp-classic' : (localStorage.getItem('wasp-theme') || 'wasp-dark');
+            document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
     <script nonce="{{ request.state.csp_nonce }}">
+        function toggleUiMode() {
+            var html = document.documentElement;
+            var current = html.getAttribute('data-ui-mode') || 'hud';
+            var next = current === 'hud' ? 'classic' : 'hud';
+            html.setAttribute('data-ui-mode', next);
+            var theme = next === 'classic' ? 'wasp-classic' : 'wasp-dark';
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('wasp-ui-mode', next);
+            localStorage.setItem('wasp-theme', theme);
+            updateUiModeBadge(next);
+        }
+        function updateUiModeBadge(mode) {
+            document.querySelectorAll('.ui-mode-label').forEach(function(el) {
+                el.textContent = mode === 'hud' ? 'HUD v2 (New)' : 'Classic (Old)';
+            });
+            document.querySelectorAll('.ui-mode-pill').forEach(function(el) {
+                if (mode === 'hud') {
+                    el.classList.add('bg-amber-400/10', 'text-amber-300', 'border-amber-400/30');
+                    el.classList.remove('bg-slate-700/60', 'text-slate-300', 'border-slate-600');
+                } else {
+                    el.classList.remove('bg-amber-400/10', 'text-amber-300', 'border-amber-400/30');
+                    el.classList.add('bg-slate-700/60', 'text-slate-300', 'border-slate-600');
+                }
+            });
+            document.querySelectorAll('.ui-mode-dot').forEach(function(el) {
+                if (mode === 'hud') {
+                    el.className = 'ui-mode-dot w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse';
+                } else {
+                    el.className = 'ui-mode-dot w-1.5 h-1.5 rounded-full bg-slate-400';
+                }
+            });
+        }
         function toggleTheme() {
             var html = document.documentElement;
             var current = html.getAttribute('data-theme');
@@ -49,6 +83,15 @@
                 if (st) st.checked = false;
             }
             updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+            updateUiModeBadge(document.documentElement.getAttribute('data-ui-mode') || 'hud');
+            // Central CSP-safe listener for UI mode toggle buttons
+            document.addEventListener('click', function(e) {
+                var btn = e.target.closest('#btn-ui-mode-toggle, #btn-ui-mode-footer, .ui-mode-pill, [data-action="wasp:toggleUiMode"]');
+                if (btn) {
+                    e.preventDefault();
+                    toggleUiMode();
+                }
+            });
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 var meta = document.querySelector('meta[name="csrf-token"]');
                 if (meta) { evt.detail.headers['X-CSRF-Token'] = meta.content; }
@@ -72,17 +115,17 @@
         });
     </script>
 </head>
-<body class="min-h-screen bg-base-100 text-base-content">
+<body class="min-h-screen bg-black text-slate-100 font-sans antialiased selection:bg-amber-400 selection:text-black">
 {% block body %}
 <div class="drawer lg:drawer-open">
     <input id="sidebar-toggle" type="checkbox" class="drawer-toggle" autocomplete="off">
 
     <!-- Page content -->
-    <div class="drawer-content flex flex-col">
+    <div class="drawer-content flex flex-col min-w-0">
         <!-- Mobile top bar -->
-        <div class="navbar bg-base-100 shadow-sm lg:hidden navbar-wasp sticky top-0 z-40">
+        <div class="navbar bg-[#080C14]/95 border-b border-[#1E293B] shadow-lg lg:hidden navbar-wasp sticky top-0 z-40 backdrop-blur-md px-3 py-1.5">
             <div class="navbar-start">
-                <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-square" aria-label="Toggle sidebar">
+                <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-square text-slate-300 hover:text-white hover:bg-[#1E293B]" aria-label="Toggle sidebar">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
                     </svg>
@@ -90,12 +133,21 @@
             </div>
             <div class="navbar-center">
                 <a href="/overview" class="flex items-center gap-2">
-                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-12 logo-dark">
-                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-12 logo-light">
+                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-9 logo-dark">
+                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-9 logo-light">
                 </a>
             </div>
-            <div class="navbar-end gap-1">
-                <!-- Theme toggle removed as per request for pure black design -->
+            <div class="navbar-end gap-1.5">
+                <button type="button" data-action="wasp:toggleUiMode"
+                        class="ui-mode-pill flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0F172A] border border-amber-400/40 text-[11px] font-mono text-amber-300 cursor-pointer hover:bg-amber-400/20 active:scale-95 transition-all shadow-sm"
+                        title="Click to toggle between New (HUD v2) and Old (Classic) UI">
+                    <span class="ui-mode-dot w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span class="ui-mode-label font-bold">HUD v2</span>
+                </button>
+                <div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/30 text-[10px] font-mono text-emerald-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    ONLINE
+                </div>
             </div>
         </div>
 
@@ -104,14 +156,14 @@
         <script src="/static/app.js" nonce="{{ request.state.csp_nonce }}"></script>
 
         <!-- Global Workflow Heartbeat Ribbon (Omni-present Beating & Working Visualizer) -->
-        <div id="global-workflow-ribbon" class="px-4 pt-4 lg:px-8 max-w-full mx-auto w-full hidden">
-            <div class="relative overflow-hidden rounded-xl border border-emerald-500/80 bg-base-200/90 p-3 shadow-lg connected-active-glow backdrop-blur-md">
+        <div id="global-workflow-ribbon" class="px-3 pt-3 lg:px-6 max-w-full mx-auto w-full hidden">
+            <div class="relative overflow-hidden rounded-lg border border-emerald-500/80 bg-[#080C14]/95 p-2.5 shadow-xl connected-active-glow backdrop-blur-md">
                 <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-emerald-500/15 to-emerald-500/5 animate-pulse pointer-events-none"></div>
-                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="relative flex h-4 w-4 shrink-0 items-center justify-center">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
@@ -119,34 +171,34 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                     LIVE EXECUTION
                                 </span>
-                                <span class="font-bold text-sm text-base-content" id="gw-title">Email Management &amp; Inbox Triage</span>
-                                <span class="text-xs font-mono text-emerald-400/90 font-semibold" id="gw-step-indicator">[Step 1/4]</span>
+                                <span class="font-bold text-xs text-white" id="gw-title">Email Management &amp; Inbox Triage</span>
+                                <span class="text-[11px] font-mono text-emerald-400 font-semibold" id="gw-step-indicator">[Step 1/4]</span>
                             </div>
-                            <p class="text-xs font-mono text-base-content/70 mt-0.5" id="gw-step-desc">
+                            <p class="text-[11px] font-mono text-slate-400 mt-0.5 truncate max-w-xl" id="gw-step-desc">
                                 Scanning INBOX via Gmail Connector (IMAP port 993)...
                             </p>
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-                        <a href="/agents" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Agent Employee in charge">
-                            <span class="text-base-content/40 text-[10px]">WHO:</span>
+                    <div class="flex flex-wrap items-center gap-1 text-[11px] font-mono">
+                        <a href="/agents" class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Agent Employee in charge">
+                            <span class="text-slate-500 text-[10px]">WHO:</span>
                             <span class="font-bold" id="gw-agent">Inbox Triage (IT)</span>
                         </a>
-                        <a href="/models" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Model">
-                            <span class="text-base-content/40 text-[10px]">MODEL:</span>
+                        <a href="/models" class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Model">
+                            <span class="text-slate-500 text-[10px]">MODEL:</span>
                             <span class="font-bold" id="gw-model">Claude 3.5 / Gemini</span>
                         </a>
-                        <a href="/integrations" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Integration Tool">
-                            <span class="text-base-content/40 text-[10px]">TOOL:</span>
+                        <a href="/integrations" class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Active Integration Tool">
+                            <span class="text-slate-500 text-[10px]">TOOL:</span>
                             <span class="font-bold" id="gw-intg">Gmail (IMAP/SMTP)</span>
                         </a>
-                        <a href="/workspaces" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Codebase AST Node (Graphify)">
-                            <span class="text-base-content/40 text-[10px]">CODE:</span>
-                            <span class="font-bold max-w-[130px] truncate" id="gw-code">gmail_connector.py</span>
+                        <a href="/workspaces" class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Codebase AST Node (Graphify)">
+                            <span class="text-slate-500 text-[10px]">CODE:</span>
+                            <span class="font-bold max-w-[120px] truncate" id="gw-code">gmail_connector.py</span>
                         </a>
-                        <a href="/mesh" class="flex items-center gap-1 px-2 py-0.5 rounded bg-base-100/80 border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Grok Bot Mesh Node">
-                            <span class="text-base-content/40 text-[10px]">MESH:</span>
+                        <a href="/mesh" class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#0F172A] border border-emerald-500/40 text-emerald-300 hover:border-emerald-400 transition-colors" title="Grok Bot Mesh Node">
+                            <span class="text-slate-500 text-[10px]">MESH:</span>
                             <span class="font-bold" id="gw-mesh">Bot 01</span>
                         </a>
                         <button onclick="toggleGlobalEmailWorkflow()" class="btn btn-xs btn-outline btn-error ml-1 gap-1" title="Stop live workflow">
@@ -157,14 +209,14 @@
             </div>
         </div>
 
-        <main id="spa-main" class="flex-1 px-4 py-6 lg:px-8 max-w-full mx-auto w-full fade-in">
+        <main id="spa-main" class="flex-1 px-4 py-5 lg:px-8 max-w-full mx-auto w-full fade-in">
             {% block content %}{% endblock %}
         </main>
 
-        <footer class="footer footer-center p-4 text-base-content/40 text-xs">
+        <footer class="footer footer-center py-3 border-t border-[#1E293B] bg-[#000000]/60 text-slate-500 text-[11px] font-mono">
             <div class="flex items-center gap-2 justify-center">
                 <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                <p>Agent Wasp</p>
+                <p>Agent Wasp TOC &mdash; Autonomous Multi-Agent Orchestration</p>
             </div>
         </footer>
     </div>
@@ -172,17 +224,23 @@
     <!-- Sidebar -->
     <div class="drawer-side z-50">
         <label for="sidebar-toggle" aria-label="close sidebar" class="drawer-overlay"></label>
-        <aside class="bg-base-100 w-60 h-screen sticky top-0 flex flex-col border-r border-base-300/50 overflow-hidden">
-            <!-- Logo -->
-            <div class="px-3 py-1.5 flex items-center justify-center border-b border-base-300/50">
+        <aside class="bg-[#080C14] w-60 h-screen sticky top-0 flex flex-col border-r border-[#1E293B] overflow-hidden select-none">
+            <!-- Logo & Brand Header -->
+            <div class="px-3 py-2 flex items-center justify-between border-b border-[#1E293B] bg-[#000000]/60">
                 <a href="/overview" class="flex items-center">
-                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-9 logo-dark">
-                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-9 logo-light">
+                    <img src="/static/logo-dark.png" alt="Agent Wasp" class="h-8 logo-dark">
+                    <img src="/static/logo-light.png" alt="Agent Wasp" class="h-8 logo-light">
                 </a>
+                <button type="button" data-action="wasp:toggleUiMode" id="btn-ui-mode-toggle"
+                        class="ui-mode-pill flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0F172A] border border-amber-400/40 text-[10px] font-mono text-amber-300 cursor-pointer hover:bg-amber-400/20 active:scale-95 transition-all shadow-sm"
+                        title="Click to toggle between New (HUD v2) and Old (Classic) UI">
+                    <span class="ui-mode-dot w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span class="ui-mode-label font-bold">HUD v2 (New)</span>
+                </button>
             </div>
 
             <!-- Navigation -->
-            <ul class="menu menu-sm flex-1 flex-col flex-nowrap px-2 py-0.5 gap-0 overflow-y-auto text-xs">
+            <ul class="menu menu-sm flex-1 flex-col flex-nowrap px-1.5 py-1 gap-0.5 overflow-y-auto text-xs custom-scroll">
 
                 <!-- ── Dashboard ─────────────────────────────────────── -->
                 <li><span class="menu-title text-[9px] font-bold tracking-widest text-primary/50 uppercase px-2 py-0">Dashboard</span></li>
@@ -330,19 +388,17 @@
             </ul>
 
             <!-- Mini Neural Brain widget -->
-            <div class="border-t border-base-300/30 flex flex-col items-center justify-center gap-1 py-2">
+            <div class="border-t border-[#1E293B] bg-[#000000]/40 flex flex-col items-center justify-center gap-1 py-2">
                 <a href="/brain" title="Open Neural Brain" class="brain-mini-link">
                     <canvas id="brain-mini" width="64" height="64"></canvas>
                 </a>
-                <span class="neural-brain-label">Neural Brain</span>
+                <span class="neural-brain-label text-[9px] font-mono tracking-widest uppercase text-slate-500">Neural Brain</span>
             </div>
 
-
-            
             <!-- Connected Live Accounts Strip -->
-            <div id="sidebar-connected-accounts" class="border-t border-base-300/40 px-3 py-2 bg-base-200/20">
+            <div id="sidebar-connected-accounts" class="border-t border-[#1E293B] px-2.5 py-2 bg-[#05070D]/90">
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[9px] font-bold tracking-widest text-primary/60 uppercase">Connected Services</span>
+                    <span class="text-[9px] font-bold tracking-widest text-primary/70 uppercase font-mono">Connected Services</span>
                     <a href="/integrations" class="text-[9px] font-mono text-primary hover:underline">Manage</a>
                 </div>
                 <div class="space-y-1">
@@ -351,19 +407,19 @@
                         <span id="btn-simulate-email-text">▶ Run Email Workflow</span>
                     </button>
                     <!-- Gmail / Email account (Active & Breathing) -->
-                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-base-100 border border-emerald-500/80 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Gmail: Integrated & Working">
+                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0B0F19] border border-emerald-500/60 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Gmail: Integrated & Working">
                         <div class="flex items-center gap-1.5 truncate">
                             <span class="relative flex h-2 w-2 shrink-0">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
                             <span class="text-xs font-semibold text-emerald-400 group-hover:text-primary">Gmail</span>
-                            <span class="text-[10px] text-base-content/40 font-mono truncate max-w-[80px]">benjohncarino</span>
+                            <span class="text-[10px] text-slate-400 font-mono truncate max-w-[80px]">benjohncarino</span>
                         </div>
                         <span class="active-live-tag">LIVE</span>
                     </a>
                     <!-- Windows Host Platform (Active & Breathing) -->
-                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-base-100 border border-emerald-500/80 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Windows Host: Active & Connected">
+                    <a href="/integrations" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0B0F19] border border-emerald-500/60 text-xs hover:border-emerald-400 transition-all group connected-active-glow" title="Windows Host: Active & Connected">
                         <div class="flex items-center gap-1.5 truncate">
                             <span class="relative flex h-2 w-2 shrink-0">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -377,27 +433,34 @@
             </div>
 
             <!-- Bottom: controls -->
-            <div class="px-3 py-1.5 border-t border-base-300/50 flex items-center justify-end gap-1">
-                <a href="/reset" title="Panic Reset — erase agent brain" aria-label="Panic Reset" class="btn btn-ghost btn-sm btn-circle text-error/50 hover:text-error hover:bg-error/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="px-2.5 py-1.5 border-t border-[#1E293B] bg-[#000000]/70 flex items-center justify-between gap-1">
+                <a href="/reset" title="Panic Reset — erase agent brain" aria-label="Panic Reset" class="btn btn-ghost btn-xs btn-circle text-error/60 hover:text-error hover:bg-error/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </a>
-                <button id="btn-shortcuts-open" class="btn btn-ghost btn-sm btn-circle" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-action="wasp:openShortcutsModal">
-                    <span class="text-xs font-bold text-base-content/40">?</span>
-                </button>
-                <button id="btn-theme-toggle-sidebar" class="btn btn-ghost btn-sm btn-circle theme-toggle" title="Toggle theme" aria-label="Toggle theme" data-action="wasp:toggleTheme">
-                    <svg class="theme-sun h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    <svg class="theme-moon h-4 w-4 text-primary hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                </button>
-                <a href="/logout" class="btn btn-ghost btn-sm text-error hover:bg-error/10 gap-1" title="Logout">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    Logout
-                </a>
+                <div class="flex items-center gap-1">
+                    <button type="button" data-action="wasp:toggleUiMode" id="btn-ui-mode-footer" class="btn btn-ghost btn-xs btn-circle text-slate-400 hover:text-amber-400" title="Switch UI Mode (Old Classic / New HUD)" aria-label="Toggle UI Mode">
+                        <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </button>
+                    <button id="btn-shortcuts-open" class="btn btn-ghost btn-xs btn-circle text-slate-400 hover:text-white" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-action="wasp:openShortcutsModal">
+                        <span class="text-xs font-mono font-bold">?</span>
+                    </button>
+                    <button id="btn-theme-toggle-sidebar" class="btn btn-ghost btn-xs btn-circle theme-toggle text-slate-400 hover:text-primary" title="Toggle theme" aria-label="Toggle theme" data-action="wasp:toggleTheme">
+                        <svg class="theme-sun h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <svg class="theme-moon h-3.5 w-3.5 text-primary hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <a href="/logout" class="btn btn-ghost btn-xs text-error/80 hover:text-error hover:bg-error/10 gap-1 text-[11px] font-mono" title="Logout">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Exit
+                    </a>
+                </div>
             </div>
         </aside>
     </div>
@@ -628,52 +691,58 @@ setInterval(load,30000);
 </script>
 <!-- Keyboard Shortcuts Modal -->
 <div id="shortcuts-modal" class="modal" data-close-on-backdrop-click="wasp:closeShortcutsModal">
-    <div class="modal-box max-w-sm">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-base">Keyboard Shortcuts</h3>
-            <button class="btn btn-ghost btn-xs btn-circle" id="btn-shortcuts-close" data-action="wasp:closeShortcutsModal" aria-label="Close shortcuts modal">✕</button>
+    <div class="modal-box max-w-sm bg-[#0B111E]/95 border border-[#334155]/60 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.85)] backdrop-blur-md rounded-lg">
+        <div class="flex items-center justify-between mb-4 border-b border-[#1E293B] pb-2.5">
+            <h3 class="font-semibold text-sm tracking-wide text-slate-100 flex items-center gap-2">
+                <span class="w-1.5 h-3.5 bg-amber-400 rounded-sm inline-block"></span>
+                Keyboard Shortcuts
+            </h3>
+            <button class="btn btn-ghost btn-xs btn-circle text-slate-400 hover:text-slate-100 hover:bg-[#1E293B]" id="btn-shortcuts-close" data-action="wasp:closeShortcutsModal" aria-label="Close shortcuts modal">✕</button>
         </div>
-        <div class="space-y-3 text-sm">
+        <div class="space-y-3 text-xs">
             <div>
-                <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">Navigation</p>
+                <p class="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider mb-2">Navigation</p>
                 <div class="grid grid-cols-2 gap-1.5">
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">1</kbd><span class="text-base-content/70">Overview</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">2</kbd><span class="text-base-content/70">Memory</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">3</kbd><span class="text-base-content/70">Chat</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">4</kbd><span class="text-base-content/70">Models</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">5</kbd><span class="text-base-content/70">Skills</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">6</kbd><span class="text-base-content/70">Scheduler</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">7</kbd><span class="text-base-content/70">Health</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">8</kbd><span class="text-base-content/70">Live Feed</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">9</kbd><span class="text-base-content/70">Audit Log</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">0</kbd><span class="text-base-content/70">Metrics</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">1</kbd><span class="text-slate-300">Overview</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">2</kbd><span class="text-slate-300">Memory</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">3</kbd><span class="text-slate-300">Chat</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">4</kbd><span class="text-slate-300">Models</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">5</kbd><span class="text-slate-300">Skills</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">6</kbd><span class="text-slate-300">Scheduler</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">7</kbd><span class="text-slate-300">Health</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">8</kbd><span class="text-slate-300">Live Feed</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">9</kbd><span class="text-slate-300">Audit Log</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">0</kbd><span class="text-slate-300">Metrics</span></div>
                 </div>
             </div>
-            <div class="divider my-1"></div>
+            <div class="border-t border-[#1E293B] my-2"></div>
             <div>
-                <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">Actions</p>
+                <p class="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider mb-2">Actions</p>
                 <div class="space-y-1.5">
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">r</kbd><span class="text-base-content/70">Refresh page</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">?</kbd><span class="text-base-content/70">Show this dialog</span></div>
-                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs">Esc</kbd><span class="text-base-content/70">Close dialog</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">r</kbd><span class="text-slate-300">Refresh page</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">?</kbd><span class="text-slate-300">Show this dialog</span></div>
+                    <div class="flex items-center gap-2"><kbd class="kbd kbd-xs bg-[#1E293B] border border-[#334155] text-amber-300 font-mono shadow-sm">Esc</kbd><span class="text-slate-300">Close dialog</span></div>
                 </div>
             </div>
         </div>
-        <p class="text-xs text-base-content/30 mt-4">Shortcuts are disabled when typing in input fields.</p>
+        <p class="text-[11px] font-mono text-slate-500 mt-4 border-t border-[#1E293B]/60 pt-2">Shortcuts are disabled when typing in input fields.</p>
     </div>
 </div>
 
 <!-- Global confirm modal — one instance for all pages via showConfirmModal() -->
 <dialog id="modal-confirm-global" class="modal">
-    <div class="modal-box">
-        <h3 id="modal-cg-title" class="font-bold text-lg mb-2">Confirm</h3>
-        <p id="modal-cg-msg" class="py-2 text-sm text-base-content/80"></p>
-        <div class="modal-action mt-4">
-            <button id="modal-cg-cancel" class="btn btn-ghost btn-sm">Cancel</button>
-            <button id="modal-cg-ok" class="btn btn-sm btn-primary">Confirm</button>
+    <div class="modal-box bg-[#0B111E]/95 border border-[#334155]/60 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.85)] backdrop-blur-md rounded-lg p-5">
+        <h3 id="modal-cg-title" class="font-semibold text-base text-slate-100 mb-2 flex items-center gap-2">
+            <span class="w-1.5 h-3.5 bg-amber-400 rounded-sm inline-block"></span>
+            Confirm
+        </h3>
+        <p id="modal-cg-msg" class="py-2 text-xs text-slate-300 font-mono leading-relaxed"></p>
+        <div class="modal-action mt-4 flex items-center justify-end gap-2 border-t border-[#1E293B] pt-3">
+            <button id="modal-cg-cancel" class="btn btn-ghost btn-sm text-slate-400 hover:text-slate-200 hover:bg-[#1E293B] text-xs font-mono">Cancel</button>
+            <button id="modal-cg-ok" class="btn btn-sm btn-primary bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs border-none shadow-[0_0_12px_rgba(245,158,11,0.25)]">Confirm</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button aria-label="Close modal">close</button></form>
+    <form method="dialog" class="modal-backdrop bg-black/70 backdrop-blur-sm"><button aria-label="Close modal">close</button></form>
 </dialog>
 <script nonce="{{ request.state.csp_nonce }}">
 window.showConfirmModal = function(opts) {

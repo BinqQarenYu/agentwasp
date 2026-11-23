@@ -240,13 +240,13 @@ class TaskManagerSkill(SkillBase):
         if not interval and at_time:
             interval = "diario"
         if not interval:
-            return SkillResult(skill_name="task_manager", success=False, output="", error="'interval' is required (e.g. 'diario', 'cada 2h')")
+            interval = "workflow"
 
         seconds = parse_interval(interval)
-        if not seconds or seconds < 60:
+        if seconds is None or seconds < 0 or (0 < seconds < 60):
             return SkillResult(
                 skill_name="task_manager", success=False, output="",
-                error=f"Could not parse interval '{interval}'. Try: 'diario', 'cada hora', 'cada 2h', 'semanal'"
+                error=f"Could not parse interval '{interval}'. Try: 'workflow', 'diario', 'cada hora', 'cada 2h', 'semanal'"
             )
 
         # If at_time wasn't passed explicitly, try auto-detecting it from the instruction.
@@ -344,18 +344,30 @@ class TaskManagerSkill(SkillBase):
             at_time=at_time,
         )
         await save_task(r, task)
+        if seconds <= 0:
+            return SkillResult(
+                skill_name="task_manager",
+                success=True,
+                output=(
+                    f"✅ Task created: '{name}' (ID: {task['task_id'][:8]})\n"
+                    f"  Type: Workflow Task (Visible on /tasks page)\n"
+                    f"  Status: ACTIVE / IN PROGRESS\n"
+                    f"  Instruction: {instruction}"
+                ),
+            )
+
         _next_display = self._to_local_time(task["next_run"])
         _schedule_type = f"daily at {at_time} (Chile TZ)" if at_time else "interval"
         return SkillResult(
             skill_name="task_manager",
             success=True,
             output=(
-                f"Task created: '{name}'\n"
+                f"✅ Scheduled Task created: '{name}' (ID: {task['task_id'][:8]})\n"
                 f"  Instruction: {instruction}\n"
                 f"  Interval: every {fmt_interval(seconds)}"
                 + (f"\n  Clock time: {at_time}" if at_time else "")
                 + f"\n  First run: {_next_display}\n"
-                f"  SCHEDULE_TYPE: {_schedule_type}"
+                f"  SCHEDULE_TYPE: {_schedule_type} (Visible on /tasks page)"
             ),
         )
 

@@ -610,3 +610,37 @@ class UserAttributeHistory(Base):
     __table_args__ = (
         Index("ix_uah_chat_key", "chat_id", "key"),
     )
+
+
+class CompletedTaskRecord(Base):
+    """Archive of completed tasks — both workflow and scheduled.
+
+    Persisted in PostgreSQL to provide permanent audit trail and zero amnesia.
+    Mirrors Redis HASH 'completed_tasks' and ZSET 'completed_tasks:index'.
+    Auto-created by SQLAlchemy create_all() on startup.
+    """
+    __tablename__ = "completed_tasks"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    task_id: Mapped[str] = mapped_column(String(100), index=True)
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    instruction: Mapped[str] = mapped_column(Text, default="")
+    task_type: Mapped[str] = mapped_column(String(50), default="workflow", index=True)
+    status: Mapped[str] = mapped_column(String(30), default="completed", index=True)
+    result_summary: Mapped[str] = mapped_column(Text, default="")
+    final_output: Mapped[str] = mapped_column(Text, default="")
+    diagnostic_notes: Mapped[str] = mapped_column(Text, default="")
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    chat_id: Mapped[str] = mapped_column(String(50), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+

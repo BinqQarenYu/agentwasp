@@ -95,20 +95,38 @@
 
 {# ----------------------------------------------------------------
    status_pill(value, size)
-   Standardized status display
+   Standardized mission control status display
    ---------------------------------------------------------------- #}
 {% macro status_pill(value, size="sm") %}
-{%- if value == true or value == "ok" or value == "healthy" or value == "active" -%}
-  {{ pill("OK", "success", size, dot=true) }}
-{%- elif value == "paused" -%}
-  {{ pill("PAUSED", "warning", size) }}
-{%- elif value == "warn" or value == "warning" or value == "degraded" -%}
-  {{ pill("WARN", "warning", size) }}
-{%- elif value == false or value == "error" or value == "fail" or value == "down" -%}
-  {{ pill("FAIL", "danger", size) }}
+{%- if value == true or value == "ok" or value == "healthy" or value == "active" or value == "running" or value == "executing" -%}
+  {{ pill(value | upper if value != true else "OK", "success", size, dot=true) }}
+{%- elif value == "thinking" or value == "reasoning" -%}
+  {{ pill("THINKING", "accent", size, dot=true) }}
+{%- elif value == "waiting" or value == "standby" or value == "paused" -%}
+  {{ pill(value | upper, "warning", size, dot=true) }}
+{%- elif value == "warn" or value == "warning" or value == "degraded" or value == "throttled" -%}
+  {{ pill(value | upper, "warning", size) }}
+{%- elif value == false or value == "error" or value == "fail" or value == "down" or value == "blocked" -%}
+  {{ pill("FAIL" if value == false else value | upper, "danger", size, dot=true) }}
 {%- elif value == "idle" -%}
   {{ pill("IDLE", "neutral", size) }}
+{%- elif value == "offline" or value == "dormant" or value == "halted" -%}
+  {{ pill(value | upper, "neutral", size) }}
 {%- else -%}
   {{ pill(value | upper, "neutral", size) }}
 {%- endif %}
+{% endmacro %}
+
+{# ----------------------------------------------------------------
+   cognitive_vector_chip(curiosity, reality, commonsense, danger, safety)
+   Compact HUD cognitive state vector strip ($Ct, R, CS, D, S)
+   ---------------------------------------------------------------- #}
+{% macro cognitive_vector_chip(curiosity=0.0, reality=1.0, commonsense=1.0, danger=0.0, safety=1.0) %}
+<div class="cog-gauge-strip">
+  <span class="cog-metric cog-metric-curiosity" title="Curiosity / Learning Progress (Ct)">Ct:{{ "%.2f"|format(curiosity) }}</span>
+  <span class="cog-metric cog-metric-reality" title="Reality / Grounding Score (R)">R:{{ "%.2f"|format(reality) }}</span>
+  <span class="cog-metric cog-metric-commonsense" title="Commonsense Score (CS)">CS:{{ "%.2f"|format(commonsense) }}</span>
+  <span class="cog-metric cog-metric-danger" title="Danger Blast Radius (D)">D:{{ "%.2f"|format(danger) }}</span>
+  <span class="cog-metric cog-metric-safety" title="Safety Invariant Margin (S)">S:{{ "%.2f"|format(safety) }}</span>
+</div>
 {% endmacro %}

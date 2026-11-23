@@ -41,9 +41,75 @@ def _detect_destinations(task: dict) -> list[str]:
 
 
 def _enrich(task: dict) -> dict:
-    task["interval_fmt"] = fmt_interval(task["interval_seconds"])
+    sec = task.get("interval_seconds", 0)
+    if sec <= 0:
+        task["interval_fmt"] = "Workflow Task"
+        task["is_workflow"] = True
+    else:
+        task["interval_fmt"] = fmt_interval(sec)
+        task["is_workflow"] = False
     task["destinations"] = _detect_destinations(task)
     return task
+
+
+async def _fetch_all_tasks_and_goals(r) -> tuple[list[dict], dict, list[dict]]:
+    tasks = await list_tasks(r)
+    for t in tasks:
+        _enrich(t)
+
+    # Also load goals from goal_orchestrator
+    goals_as_tasks = []
+    try:
+        from ...goal_orchestrator.store import list_goals
+        goals = await list_goals(r)
+        for g in goals:
+            completed_nodes = sum(1 for n in (g.task_graph.nodes if g.task_graph else []) if n.status.value == "done")
+            total_nodes = len(g.task_graph.nodes) if g.task_graph else 0
+            goals_as_tasks.append({
+                "task_id": g.id,
+                "name": g.title or g.objective[:50],
+                "instruction": g.objective,
+                "interval_seconds": 0,
+                "interval_fmt": f"Goal ({g.state.value.upper()})",
+                "next_run": None,
+                "last_run": g.started_at or g.created_at,
+                "last_result": f"Progress: {g.progress}% ({completed_nodes}/{total_nodes} steps done)" if total_nodes else f"State: {g.state.value.upper()}",
+                "last_success": True if g.state.value == "completed" else (False if g.state.value == "failed" else None),
+                "run_count": g.step_count,
+                "failure_count": 1 if g.state.value == "failed" else 0,
+                "enabled": g.state.value in ("active", "planning"),
+                "is_workflow": True,
+                "is_goal": True,
+                "destinations": [],
+                "created_at": g.created_at or "",
+            })
+    except Exception as e:
+        logger.debug("tasks.list_goals_skip", error=str(e)[:80])
+
+    # Load completed tasks archive
+    completed_tasks = []
+    completed_count = 0
+    try:
+        from ...scheduler.completed_tasks import list_completed_tasks, get_completed_stats
+        completed_tasks = await list_completed_tasks(r, limit=50)
+        c_stats = await get_completed_stats(r)
+        completed_count = c_stats.get("total_completed", len(completed_tasks))
+    except Exception as e:
+        logger.debug("tasks.list_completed_skip", error=str(e)[:80])
+
+    all_tasks = tasks + goals_as_tasks
+    all_tasks.sort(key=lambda t: t.get("created_at") or "", reverse=True)
+
+    stats = {
+        "total": len(all_tasks),
+        "active": sum(1 for t in all_tasks if t.get("enabled", True) and t.get("last_success") is not False),
+        "workflow_count": sum(1 for t in all_tasks if t.get("is_workflow", False)),
+        "scheduled_count": sum(1 for t in all_tasks if not t.get("is_workflow", False)),
+        "paused": sum(1 for t in all_tasks if not t.get("enabled", True)),
+        "failed": sum(1 for t in all_tasks if t.get("last_success") is False),
+        "completed_count": completed_count,
+    }
+    return all_tasks, stats, completed_tasks
 
 
 def _compute_stats(tasks: list[dict]) -> dict:
@@ -58,27 +124,36 @@ def _compute_stats(tasks: list[dict]) -> dict:
 async def tasks_status(request: Request):
     r = _get_redis(request)
     try:
-        tasks = await list_tasks(r)
+        all_tasks, stats, completed_tasks = await _fetch_all_tasks_and_goals(r)
     finally:
         await r.aclose()
-    for t in tasks:
-        _enrich(t)
-    return JSONResponse({**_compute_stats(tasks), "tasks": tasks})
+    return JSONResponse({**stats, "tasks": all_tasks, "completed_tasks": completed_tasks})
+
+
+@router.get("/api/completed")
+async def tasks_completed(request: Request):
+    r = _get_redis(request)
+    try:
+        from ...scheduler.completed_tasks import list_completed_tasks, get_completed_stats
+        completed = await list_completed_tasks(r, limit=100)
+        stats = await get_completed_stats(r)
+    finally:
+        await r.aclose()
+    return JSONResponse({"ok": True, "total": stats.get("total_completed", len(completed)), "tasks": completed})
 
 
 @router.get("/", response_class=HTMLResponse)
 async def tasks_page(request: Request):
     r = _get_redis(request)
     try:
-        tasks = await list_tasks(r)
-        for t in tasks:
-            _enrich(t)
+        all_tasks, stats, completed_tasks = await _fetch_all_tasks_and_goals(r)
     finally:
         await r.aclose()
 
     return request.app.state.templates.TemplateResponse(request, "tasks.html", {
-        "tasks": tasks,
-        "stats": _compute_stats(tasks),
+        "tasks": all_tasks,
+        "stats": stats,
+        "completed_tasks": completed_tasks,
     })
 
 
@@ -97,12 +172,13 @@ async def create_task(request: Request):
         return JSONResponse({"ok": False, "error": "Name is required"})
     if not instruction:
         return JSONResponse({"ok": False, "error": "Instruction is required"})
-    if not interval_text:
-        return JSONResponse({"ok": False, "error": "Interval is required"})
 
-    seconds = parse_interval(interval_text)
-    if not seconds or seconds < 60:
-        return JSONResponse({"ok": False, "error": f"Could not parse interval '{interval_text}'"})
+    if not interval_text or interval_text.lower() in ("workflow", "once", "run_once", "now", "una vez"):
+        seconds = 0
+    else:
+        seconds = parse_interval(interval_text)
+        if seconds is None or seconds < 0 or (0 < seconds < 60):
+            return JSONResponse({"ok": False, "error": f"Could not parse interval '{interval_text}'"})
 
     from ...config import settings
     chat_id = settings.scheduler_notify_chat_id

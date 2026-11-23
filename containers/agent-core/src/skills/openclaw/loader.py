@@ -15,7 +15,20 @@ logger = structlog.get_logger()
 
 SKILLS_DIR = Path("/data/skills")
 BUNDLED_SKILLS_DIR = Path(__file__).with_name("bundled")
+CRYSTALLIZED_SKILLS_DIR: Path | None = None
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+
+
+def get_crystallized_skills_dirs() -> list[Path]:
+    """Return candidates for crystallized repo-level skills directories."""
+    if CRYSTALLIZED_SKILLS_DIR is not None:
+        return [CRYSTALLIZED_SKILLS_DIR]
+    candidates = [Path("/app/.agents/skills"), Path(".agents/skills")]
+    for p in Path(__file__).resolve().parents:
+        candidate = p / ".agents" / "skills"
+        if candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
 
 
 def get_skills_dir() -> Path:
@@ -120,6 +133,23 @@ def load_installed_skills() -> list[OpenClawSkill]:
             skill.source = "clawhub" if (entry / ".clawhub").exists() else "local"
             skills_by_slug[skill.slug] = skill
             logger.info("openclaw.loaded", slug=skill.slug, name=skill.name)
+
+    # Crystallized repo-level skills (.agents/skills)
+    repo_agents_dirs = get_crystallized_skills_dirs()
+    for r_dir in repo_agents_dirs:
+        if r_dir.exists() and r_dir.is_dir():
+            for entry in sorted(r_dir.iterdir()):
+                if not entry.is_dir():
+                    continue
+                if (entry / ".disabled").exists():
+                    skills_by_slug.pop(entry.name, None)
+                    continue
+                skill = load_skill(entry)
+                if skill:
+                    skill.source = "crystallized"
+                    skills_by_slug[skill.slug] = skill
+                    logger.info("openclaw.loaded_crystallized", slug=skill.slug, name=skill.name)
+            break
 
     return list(skills_by_slug.values())
 

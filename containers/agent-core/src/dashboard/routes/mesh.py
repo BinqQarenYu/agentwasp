@@ -130,6 +130,26 @@ async def mesh_state(request: Request):
         except Exception:
             pass
 
+    # 6. Physical LAN fleet awareness (known devices)
+    lan_nodes = []
+    try:
+        roster_p = Path("/app/config/known_devices.json")
+        if not roster_p.exists():
+            roster_p = Path(__file__).resolve().parents[4] / "config" / "known_devices.json"
+        if roster_p.exists():
+            roster_data = json.loads(roster_p.read_text(encoding="utf-8"))
+            lan_nodes = [
+                {
+                    "name": d.get("name"),
+                    "ip": d.get("ip"),
+                    "role": d.get("role", "node"),
+                    "open_ports": d.get("open_ports", []),
+                }
+                for d in roster_data.get("devices", [])
+            ]
+    except Exception:
+        pass
+
     return JSONResponse({
         "ok": True,
         "bots_online": len(unified_bots),
@@ -146,6 +166,10 @@ async def mesh_state(request: Request):
             "active_screens": int(screens_health.get("active_screens", 0)),
         },
         "connected_services": connected,
+        "lan_fleet": {
+            "total_nodes": len(lan_nodes),
+            "nodes": lan_nodes,
+        },
         "memory_total": mem_stats.get("total", 120),
         "last_sync": datetime.now(timezone.utc).isoformat(),
         "bots": unified_bots,
@@ -230,6 +254,33 @@ async def atse_status(request: Request):
     except Exception as exc:
         logger.exception("mesh.atse_status_error", error=str(exc))
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@router.get("/api/lan")
+async def lan_fleet_status(request: Request):
+    """Retrieve the live LAN device roster, detected open services, and physical fleet nodes."""
+    roster_p = Path("/app/config/known_devices.json")
+    if not roster_p.exists():
+        for p in Path(__file__).resolve().parents:
+            cand = p / "config" / "known_devices.json"
+            if cand.exists():
+                roster_p = cand
+                break
+
+    data = {"version": "1.0", "subnet": "192.168.1.0/24", "devices": []}
+    if roster_p.exists():
+        try:
+            data = json.loads(roster_p.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.warning("mesh.lan_roster_read_error", error=str(exc))
+
+    return JSONResponse({
+        "ok": True,
+        "fleet_devices": data.get("devices", []),
+        "subnet": data.get("subnet", "192.168.1.0/24"),
+        "total_devices": len(data.get("devices", [])),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 @router.post("/api/atse/trigger-cycle")

@@ -33,6 +33,16 @@
         </div>
     </div>
     <div class="flex items-center gap-2">
+        <button type="button" data-action="wasp:toggleUiMode"
+                class="ui-mode-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-mono font-medium hover:bg-amber-400/20 active:scale-95 transition-all cursor-pointer"
+                title="Click to toggle between New (HUD v2) and Old (Classic) UI">
+            <span class="ui-mode-dot w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span class="ui-mode-label font-bold">HUD v2 (New)</span>
+        </button>
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono font-medium" title="Zero-Amnesia Memory: Continuous 24/7 PostgreSQL &amp; Redis storage survives restarts &amp; shutdowns">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            ZERO-AMNESIA PERSISTENT
+        </div>
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             MESH READY
@@ -425,32 +435,75 @@
     };
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
 
-    // ── sessionStorage history ────────────────────────────────────────────
-    var HISTORY_KEY = 'wasp_chat_v2';
-    var MAX_HISTORY = 100;
+    // ── Persistent Zero-Amnesia History (localStorage + PostgreSQL Backend Rehydration) ──
+    var HISTORY_KEY = 'wasp_chat_persistent_v3';
+    var MAX_HISTORY = 150;
+
+    function _renderHistoryList(items) {
+        var kids = Array.from(messages.children);
+        kids.forEach(function (k) {
+            if (k.id !== 'welcome-msg') k.remove();
+        });
+        var welcome = document.getElementById('welcome-msg');
+        if (items && items.length) {
+            if (welcome) welcome.style.display = 'none';
+        } else {
+            if (welcome) welcome.style.display = 'flex';
+        }
+        items.forEach(function(item) {
+            var div = addMessage(item.role, item.text, false, item.attachments || []);
+            if (item.role === 'agent' && item.context && Object.keys(item.context).length) {
+                addContextTrace(div, item.context);
+            }
+        });
+        scrollToBottom();
+    }
 
     function loadHistory() {
+        var cached = [];
         try {
-            var stored = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
-            stored.forEach(function(item) {
-                var div = addMessage(item.role, item.text, false, item.attachments || []);
-                if (item.role === 'agent' && item.context && Object.keys(item.context).length) {
-                    addContextTrace(div, item.context);
-                }
-            });
+            cached = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            if (cached.length) {
+                _renderHistoryList(cached);
+            }
         } catch(e) {}
+
+        // Re-hydrate directly from PostgreSQL persistent episodic store (/chat/api/history)
+        fetch('/chat/api/history?limit=100')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok && data.messages && data.messages.length) {
+                    var serverMsgs = data.messages.map(function(m) {
+                        return {
+                            role: m.role,
+                            text: m.text,
+                            context: m.context || null,
+                            attachments: m.attachments || [],
+                            timestamp: m.timestamp || null
+                        };
+                    });
+                    // If local cache is empty or has fewer turns, sync with PostgreSQL
+                    if (!cached.length || serverMsgs.length >= cached.length) {
+                        localStorage.setItem(HISTORY_KEY, JSON.stringify(serverMsgs));
+                        _renderHistoryList(serverMsgs);
+                    }
+                }
+            })
+            .catch(function(err) {
+                console.warn('[Wasp Persistent Memory] Server history sync skipped:', err);
+            });
     }
 
     function saveToHistory(role, text, context, attachments) {
         try {
-            var history = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+            var history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
             // Don't store full base64 in history — just names/types
             var attMeta = (attachments || []).map(function(a) {
                 return {name: a.name, type: a.type, preview: a.preview || null};
             });
             history.push({role: role, text: text, context: context || null, attachments: attMeta});
             if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
-            sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
         } catch(e) {}
     }
 
@@ -1244,11 +1297,16 @@
     };
 
     window.clearChat = function () {
-        sessionStorage.removeItem(HISTORY_KEY);
+        if (!confirm('Clear local chat view? Past conversation turns and tasks remain permanently saved in PostgreSQL persistent memory.')) {
+            return;
+        }
+        localStorage.removeItem(HISTORY_KEY);
         var kids = Array.from(messages.children);
         kids.forEach(function (k) {
             if (k.id !== 'welcome-msg') k.remove();
         });
+        var welcome = document.getElementById('welcome-msg');
+        if (welcome) welcome.style.display = 'flex';
     };
 
     // ── Grok Mode & 15-Bot Mesh Simulation Controller ─────────────────────

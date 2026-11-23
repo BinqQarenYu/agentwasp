@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "subnet": "192.168.1.0/24",
+  "devices": [
+    {
+      "name": "LIKHAHOME-LAPTO",
+      "alias": "laptop",
+      "ip": "192.168.1.46",
+      "role": "secondary-laptop",
+      "mac": "6C-C2-17-75-21-93",
+      "description": "User's laptop on local Wi-Fi / LAN",
+      "open_ports": [
+        445
+      ],
+      "services": [
+        {
+          "port": 445,
+          "name": "SMB",
+          "description": "Windows Networking / File Sharing"
+        }
+      ]
+    },
+    {
+      "name": "Desktop-LikhaHome",
+      "alias": "desktop",
+      "ip": "192.168.1.30",
+      "role": "primary-workstation",
+      "mac": "",
+      "description": "Host workstation running Agent WASP & Antigravity",
+      "open_ports": [
+        445,
+        3000
+      ],
+      "services": [
+        {
+          "port": 445,
+          "name": "SMB",
+          "description": "Windows Networking / File Sharing"
+        },
+        {
+          "port": 3000,
+          "name": "WAHA",
+          "description": "WhatsApp HTTP API Bridge"
+        }
+      ]
+    },
+    {
+      "name": "Home-Gateway",
+      "alias": "router",
+      "ip": "192.168.1.254",
+      "role": "default-gateway",
+      "mac": "94-F7-17-04-25-20",
+      "description": "Local subnet default gateway & DNS router"
+    }
+  ]
+}

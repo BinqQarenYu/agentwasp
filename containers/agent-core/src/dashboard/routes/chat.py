@@ -491,3 +491,59 @@ async def last_grounding(request: Request, request_id: str = ""):
             })
     except Exception:
         return JSONResponse({"ok": True, "grounding": None})
+
+
+@router.get("/api/history")
+async def chat_history(request: Request, limit: int = 50):
+    """Retrieve persistent conversation history from PostgreSQL memory.
+
+    Guarantees zero amnesia across container restarts, browser reloads,
+    and server shutdowns.
+    """
+    memory = getattr(request.app.state, "memory", None)
+    if not memory:
+        return JSONResponse({"ok": True, "messages": [], "count": 0})
+
+    try:
+        from ...db.session import async_session
+        from ...memory.types import MemoryQuery, MemoryType
+
+        async with async_session() as session:
+            rows = await memory.retrieve(
+                session,
+                MemoryQuery(
+                    memory_type=MemoryType.EPISODIC,
+                    tags=["chat:dashboard"],
+                    limit=min(limit, 100),
+                ),
+            )
+
+        messages = []
+        for r in reversed(rows):
+            u_in = r.content.get("user_input", "")
+            a_res = r.content.get("agent_response", "")
+            ts = r.content.get("timestamp") or ""
+            if u_in and not u_in.startswith("[chunk "):
+                messages.append({
+                    "role": "user",
+                    "text": u_in,
+                    "timestamp": ts,
+                    "attachments": [],
+                })
+            if a_res and a_res != "(processing)" and not a_res.startswith("[chunk "):
+                messages.append({
+                    "role": "agent",
+                    "text": _rewrite_paths(a_res),
+                    "timestamp": ts,
+                    "context": {},
+                })
+
+        return JSONResponse({
+            "ok": True,
+            "messages": messages,
+            "count": len(messages),
+            "persisted_source": "postgresql.episodic",
+        })
+    except Exception as exc:
+        logger.warning("chat.history_retrieve_failed", error=str(exc)[:120])
+        return JSONResponse({"ok": True, "messages": [], "count": 0, "error": str(exc)[:80]})

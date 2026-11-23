@@ -5,6 +5,40 @@ All notable changes to WASP are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: [SemVer](https://semver.org/). Full pre-OSS history (v2.3 → v2.6) lives at https://docs.agentwasp.com/changelog — the entries below cover the public-release work on top of that baseline.
 
+## [2.8.0] — 2026-11-21
+
+Feature and resilience release introducing autonomous task self-healing, permanent completed task archival, tiered AI provider distribution, and zero-amnesia state persistence.
+
+### Added
+
+- **Self-Healing Task Diagnostic Engine** (`src/events/handlers.py`):
+  - Added `_diagnose_task_failure()` to analyze failed task telemetry, isolating root causes across tool execution crashes, timeouts, unhandled exceptions, missing required actions (e.g. email delivery), and failsafe deflection phrases.
+  - Structured failure history and diagnosis stored in `task["last_error_diagnosis"]` and `task["failure_history"]`.
+- **Adaptive Auto-Reload Loop** (`src/events/handlers.py` & `src/scheduler/jobs.py`):
+  - Instead of abandoning failed workflow or scheduled tasks, automatically re-arms and reschedules them up to 3 times with progressive backoff (5s, 10s, 20s).
+  - Injects `[SELF-HEALING RETRY — Attempt N/3]` guidance into the prompt, explicitly instructing the agent on the previous root cause and requiring adaptive tool execution.
+  - Tripping circuit breaker after 3 failed auto-reload attempts prevents infinite thrashing.
+- **Permanent Completed Tasks Database** (`src/scheduler/completed_tasks.py` & `src/db/models.py`):
+  - Added `CompletedTaskRecord` in PostgreSQL with indexed columns for `task_id`, `name`, `task_type`, `status`, `duration_seconds`, `retry_count`, and `diagnostic_notes`.
+  - Dual-layer Redis caching (`completed_tasks` hash + `completed_tasks:index` zset) for sub-millisecond retrieval and pagination.
+  - Automatic promotion of completed one-shot workflow tasks from active queue to the completed archive.
+  - Preserves diagnostic resolution notes (e.g., *"Self-healed after 1 retry attempt(s). Overcame previous issue: Browser timeout"*).
+- **Tasks Dashboard (`/tasks`) & API Enhancements**:
+  - Added **`✅ Completed`** filter tab alongside `All`, `⚡ Workflows`, and `⏰ Scheduled`.
+  - Added green Completed stat counter card, duration badges (`⏱️ Xs`), and expandable deliverable output drawers.
+  - Added `GET /tasks/api/completed` endpoint for external clients and widgets.
+- **3-Tier AI Provider Mesh & Quota Distribution**:
+  - Added `ollama:cloud` quota profile (30 RPM / 3000 RPD) in `quota_guard.py` and updated `router.py` to bypass local host RAM restrictions for remote cloud models.
+  - Enforced local Ollama hardware capacity guard prohibiting models $>14\text{B}$ if host RAM exceeds 80%.
+  - Configured Google Gemini Free Tier with multi-account pool (`likha`, `benjohn`), 9 RPM, 240 RPD, and 5.0s spacing.
+- **Zero-Amnesia Memory Architecture**:
+  - User chat prompts, task deliverables, and agent state are dual-backed in PostgreSQL and Redis to survive container restarts, reboots, and dead states.
+
+### Fixed
+
+- **Workflow Task Deadlock**: One-shot workflow tasks previously remained dead after a single transient failure; now automatically diagnosed and self-healed.
+- **Active Task Clutter**: Completed workflow tasks previously remained in `custom_tasks` with `enabled=False`; now cleanly promoted to the completed database.
+
 ## [2.7.1] — 2026-05-19 (security patch release)
 
 Security-focused patch release. Closes a security audit reported by [@Lucky3mc](https://github.com/Lucky3mc) using the 9-engine Debuggix scan, plus the post-launch hardening commits that landed between the v2.7 tag and this release.

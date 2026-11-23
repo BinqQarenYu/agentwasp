@@ -31,6 +31,9 @@ _PC_FITTED_LOCAL_MODELS = [
 def is_model_fit_for_host_pc(model_name: str) -> Tuple[bool, str]:
     """Check if model can run locally without freezing or crashing the host PC."""
     m = model_name.lower().strip()
+    if ":cloud" in m or m.endswith("-cloud") or "/cloud" in m:
+        return True, "Cloud-hosted model runs remotely; does not load into host RAM."
+
     if _PROHIBITED_LOCAL_PATTERNS.search(m):
         return False, f"Model '{model_name}' exceeds host PC hardware limits (>=14B). Route to cloud tier instead."
 

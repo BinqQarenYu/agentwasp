@@ -84,3 +84,10 @@ wasp-release.tar.gz
 
 # ── agent-nginx is operator-only (agentwasp.com landing) — NOT for public repo ──
 containers/agent-nginx/
+
+# ── Agent Skills & Design System Artifacts ──────────────────────────────
+.agents/
+design-system/
+widget/widget_pos.json
+
+

@@ -3,20 +3,23 @@
 {% block title %}Agents - Agent Wasp{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-5">
+<div class="flex items-center justify-between mb-5 border-b border-[#1E293B] pb-3">
     <div>
-        <h1 class="text-2xl font-bold tracking-tight">Agents</h1>
-        <p class="text-sm text-base-content/50 mt-0.5">
-            Autonomous workers with isolated memory and cognitive budgets
+        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            Agents Fleet
+            <span class="badge badge-xs bg-amber-400/10 text-amber-300 border border-amber-400/30 font-mono text-[9px] uppercase tracking-wider">SWARM ROSTER</span>
+        </h1>
+        <p class="text-xs text-slate-400 font-mono mt-0.5">
+            Autonomous workers with isolated memory, capability sandboxes, and per-agent cognitive budgets
             {% if not ao_enabled %}
-            <span class="badge badge-error badge-sm ml-2">Orchestrator disabled</span>
+            <span class="badge badge-error badge-xs ml-2 font-mono">Orchestrator disabled</span>
             {% endif %}
         </p>
     </div>
     <div class="flex items-center gap-2">
         {% if ao_enabled %}
-        <button data-dialog-open="modal-create" class="btn btn-primary btn-sm gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button data-dialog-open="modal-create" class="btn btn-primary btn-sm gap-1.5 font-mono text-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             New Agent
@@ -26,52 +29,52 @@
 </div>
 
 <!-- Stats bar -->
-<div class="flex flex-wrap items-center gap-2 mb-6" id="stats-bar">
+<div class="flex flex-wrap items-center gap-2 mb-5" id="stats-bar">
 
     {# Total — always visible #}
-    <div class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="bg-[#080C14] border border-[#1E293B] rounded-lg px-3.5 py-2 flex items-center gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
         <div>
-            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Agents</div>
-            <div class="text-lg font-bold tabular-nums leading-none" id="stat-total">{{ stats.total }}</div>
+            <div class="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none mb-0.5">Agents</div>
+            <div class="text-base font-bold tabular-nums leading-none text-slate-100 font-mono" id="stat-total">{{ stats.total }}</div>
         </div>
     </div>
 
     {# Running — hidden when 0 #}
-    <div id="stat-running-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.running == 0 %}hidden{% endif %}">
-        <span class="w-2 h-2 rounded-full bg-success animate-pulse shrink-0"></span>
+    <div id="stat-running-wrap" class="bg-[#080C14] border border-[#1E293B] rounded-lg px-3.5 py-2 flex items-center gap-2.5 {% if stats.running == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
         <div>
-            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Running</div>
-            <div class="text-lg font-bold tabular-nums text-success leading-none" id="stat-running">{{ stats.running }}</div>
+            <div class="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none mb-0.5">Running</div>
+            <div class="text-base font-bold tabular-nums text-emerald-400 font-mono leading-none" id="stat-running">{{ stats.running }}</div>
         </div>
     </div>
 
     {# Paused — hidden when 0 #}
-    <div id="stat-paused-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.paused == 0 %}hidden{% endif %}">
-        <span class="w-2 h-2 rounded-full bg-warning shrink-0"></span>
+    <div id="stat-paused-wrap" class="bg-[#080C14] border border-[#1E293B] rounded-lg px-3.5 py-2 flex items-center gap-2.5 {% if stats.paused == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
         <div>
-            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Paused</div>
-            <div class="text-lg font-bold tabular-nums text-warning leading-none" id="stat-paused">{{ stats.paused }}</div>
+            <div class="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none mb-0.5">Paused</div>
+            <div class="text-base font-bold tabular-nums text-amber-400 font-mono leading-none" id="stat-paused">{{ stats.paused }}</div>
         </div>
     </div>
 
     {# Idle — hidden when 0 #}
-    <div id="stat-idle-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.idle == 0 %}hidden{% endif %}">
-        <span class="w-2 h-2 rounded-full bg-base-content/25 shrink-0"></span>
+    <div id="stat-idle-wrap" class="bg-[#080C14] border border-[#1E293B] rounded-lg px-3.5 py-2 flex items-center gap-2.5 {% if stats.idle == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
         <div>
-            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Idle</div>
-            <div class="text-lg font-bold tabular-nums text-base-content/50 leading-none" id="stat-idle">{{ stats.idle }}</div>
+            <div class="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none mb-0.5">Idle</div>
+            <div class="text-base font-bold tabular-nums text-slate-400 font-mono leading-none" id="stat-idle">{{ stats.idle }}</div>
         </div>
     </div>
 
     {# Archived — hidden when 0 #}
-    <div id="stat-archived-wrap" class="bg-base-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 {% if stats.archived == 0 %}hidden{% endif %}">
-        <span class="w-2 h-2 rounded-full bg-base-300 shrink-0"></span>
+    <div id="stat-archived-wrap" class="bg-[#080C14] border border-[#1E293B] rounded-lg px-3.5 py-2 flex items-center gap-2.5 {% if stats.archived == 0 %}hidden{% endif %}">
+        <span class="w-2 h-2 rounded-full bg-slate-700 shrink-0"></span>
         <div>
-            <div class="text-[10px] text-base-content/40 uppercase tracking-widest leading-none mb-0.5">Archived</div>
-            <div class="text-lg font-bold tabular-nums text-base-content/30 leading-none" id="stat-archived">{{ stats.archived }}</div>
+            <div class="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none mb-0.5">Archived</div>
+            <div class="text-base font-bold tabular-nums text-slate-500 font-mono leading-none" id="stat-archived">{{ stats.archived }}</div>
         </div>
     </div>
 
@@ -84,43 +87,43 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="agents-grid">
 {% for a in agents %}
 {% set is_active = (a.status == 'running') %}
-<div class="card bg-base-100 shadow-sm wasp-accent agent-card {% if is_active %}agent-card-active wasp-breathing-active border border-emerald-500/80{% else %}agent-card-idle wasp-locked border border-base-300/30{% endif %}" data-agent-id="{{ a.id }}" data-status="{{ a.status }}">
-    <div class="card-body p-5">
+<div class="card bg-[#080C14] shadow-sm rounded-lg agent-card {% if is_active %}agent-card-active wasp-breathing-active border border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.15)]{% else %}agent-card-idle wasp-locked border border-[#1E293B]{% endif %}" data-agent-id="{{ a.id }}" data-status="{{ a.status }}">
+    <div class="card-body p-4">
 
         <!-- Row 1: status dot + name + link -->
         <div class="flex items-start justify-between gap-2">
-            <div class="flex items-start gap-3 min-w-0 flex-1">
-                <div class="flex-shrink-0 mt-1.5 agent-dot-wrap">
+            <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                <div class="flex-shrink-0 mt-1 agent-dot-wrap">
                     {% if a.status == 'running' %}
-                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-success animate-pulse block" title="Running"></span>
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse block" title="Running"></span>
                     {% elif a.status == 'paused' %}
-                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-warning block" title="Paused"></span>
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-amber-400 block" title="Paused"></span>
                     {% elif a.status == 'archived' %}
-                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-base-300 block" title="Archived"></span>
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-slate-700 block" title="Archived"></span>
                     {% else %}
-                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-base-content/20 block" title="Idle"></span>
+                    <span class="agent-dot w-2.5 h-2.5 rounded-full bg-slate-500 block" title="Idle"></span>
                     {% endif %}
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                        <a href="/agents/{{ a.id }}" class="font-bold text-sm hover:text-primary leading-tight block truncate">{{ a.name }}</a>
-                        {% if a.metadata and a.metadata.dept %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-primary/20 text-primary/80 bg-primary/5">{{ a.metadata.dept }}</span>{% endif %}
-                        {% if a.metadata and a.metadata.mesh_role %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-base-300 text-base-content/60 bg-base-200/60">Mesh: {{ a.metadata.mesh_role }}</span>{% endif %}
+                        <a href="/agents/{{ a.id }}" class="font-bold text-sm text-slate-100 hover:text-amber-400 leading-tight block truncate font-mono">{{ a.name }}</a>
+                        {% if a.metadata and a.metadata.dept %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-amber-400/30 text-amber-300 bg-amber-400/10 font-mono">{{ a.metadata.dept }}</span>{% endif %}
+                        {% if a.metadata and a.metadata.mesh_role %}<span class="badge badge-xs text-[10px] py-0 px-1.5 border-[#334155] text-slate-300 bg-[#0F172A] font-mono">Mesh: {{ a.metadata.mesh_role }}</span>{% endif %}
                         {% if a.depth == 0 %}
-                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-primary/40 text-primary bg-primary/10 font-mono">Depth 0 (Root)</span>
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-amber-400/40 text-amber-400 bg-amber-400/10 font-mono">Depth 0 (Root)</span>
                         {% else %}
-                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-accent/40 text-accent bg-accent/10 font-mono">Depth 1 (Subagent)</span>
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-cyan-400/40 text-cyan-400 bg-cyan-400/10 font-mono">Depth 1 (Subagent)</span>
                         {% endif %}
                         {% if a.is_ephemeral %}
-                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-warning/40 text-warning bg-warning/10 font-mono">Ephemeral (TTL: {{ a.task_timeout_seconds }}s)</span>
+                        <span class="badge badge-xs text-[10px] py-0 px-1.5 border-yellow-400/40 text-yellow-400 bg-yellow-400/10 font-mono">Ephemeral (TTL: {{ a.task_timeout_seconds }}s)</span>
                         {% endif %}
                     </div>
                     {% if a.description %}
-                    <p class="text-xs text-base-content/50 mt-0.5 line-clamp-1">{{ a.description }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5 line-clamp-1 font-mono">{{ a.description }}</p>
                     {% endif %}
                 </div>
             </div>
-            <a href="/agents/{{ a.id }}" class="btn btn-ghost btn-xs flex-shrink-0 text-base-content/30 hover:text-primary" title="Detail" aria-label="View agent details">
+            <a href="/agents/{{ a.id }}" class="btn btn-ghost btn-xs flex-shrink-0 text-slate-400 hover:text-white" title="Detail" aria-label="View agent details">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
@@ -128,75 +131,79 @@
         </div>
 
         <!-- Row 2: badges -->
-        <div class="flex flex-wrap items-center gap-1 mt-1.5 agent-badges">
+        <div class="flex flex-wrap items-center gap-1 mt-2 agent-badges">
             {% if a.status == 'running' %}
             <span class="active-live-tag agent-live-badge"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>ACTIVE · WORKING</span>
             {% elif a.status == 'paused' %}
-            <span class="lock-tag text-warning border-warning/30 agent-live-badge">PAUSED</span>
+            <span class="lock-tag text-amber-300 border-amber-400/30 agent-live-badge">PAUSED</span>
             {% elif a.status == 'archived' %}
             <span class="lock-tag agent-live-badge"><svg class="h-2.5 w-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>LOCKED</span>
             {% else %}
-            <span class="lock-tag agent-live-badge"><span class="w-1.5 h-1.5 rounded-full bg-base-content/25"></span>IDLE / STANDBY</span>
+            <span class="lock-tag agent-live-badge"><span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>IDLE / STANDBY</span>
             {% endif %}
 
             {% if a.autonomy_mode == 'full' %}
-            <span class="pill pill-sm pill-success">FULL</span>
+            <span class="pill pill-sm pill-success font-mono text-[10px]">FULL</span>
             {% elif a.autonomy_mode == 'semi' %}
-            <span class="pill pill-sm pill-warning">SEMI</span>
+            <span class="pill pill-sm pill-warning font-mono text-[10px]">SEMI</span>
             {% else %}
-            <span class="pill pill-sm pill-danger">ASSIST</span>
+            <span class="pill pill-sm pill-danger font-mono text-[10px]">ASSIST</span>
             {% endif %}
 
             {% if a.budget_exceeded %}
-            <span class="pill pill-sm pill-danger animate-pulse">BUDGET!</span>
+            <span class="pill pill-sm pill-danger animate-pulse font-mono text-[10px]">BUDGET!</span>
             {% endif %}
 
             {% if a.model_provider %}
-            <span class="pill pill-sm pill-ghost">{{ a.model_provider }}</span>
+            <span class="pill pill-sm pill-ghost font-mono text-[10px]">{{ a.model_provider }}</span>
             {% endif %}
             {% if a.model_name %}
-            <span class="pill pill-sm pill-neutral">{{ a.model_name[:28] }}</span>
+            <span class="pill pill-sm pill-neutral font-mono text-[10px]">{{ a.model_name[:28] }}</span>
             {% endif %}
         </div>
 
         <!-- Mission block -->
         {% if a.intent_description %}
-        <div class="mt-2 px-2.5 py-2 bg-base-200 rounded-lg text-xs text-base-content/70">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-base-content/35">Mission</span>
-            <p class="mt-0.5 line-clamp-2">{{ a.intent_description }}</p>
+        <div class="mt-2.5 px-3 py-2 bg-[#0B111E] border border-[#1E293B] rounded-lg text-xs text-slate-300 font-mono">
+            <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block mb-0.5">Mission</span>
+            <p class="line-clamp-2 leading-relaxed">{{ a.intent_description }}</p>
         </div>
         {% endif %}
 
         <!-- Budget bars (only when agent is doing work) -->
         {% if a.budget_used_planning > 0 or a.budget_used_steps > 0 %}
-        <div class="mt-3 space-y-1.5 agent-budget">
+        <div class="mt-2.5 space-y-1.5 agent-budget">
             {% if a.budget_used_planning > 0 %}
             <div>
-                <div class="flex justify-between text-xs text-base-content/40 mb-0.5">
+                <div class="flex justify-between text-[11px] font-mono text-slate-400 mb-0.5">
                     <span>Planning tokens</span>
                     <span>{{ a.budget_used_planning }}/{{ a.budget_max_planning }}</span>
                 </div>
-                <progress class="progress {% if a.budget_pct_planning >= 80 %}progress-error{% elif a.budget_pct_planning >= 60 %}progress-warning{% else %}progress-primary{% endif %} h-1.5 w-full"
-                    value="{{ a.budget_pct_planning }}" max="100"></progress>
+                <div class="h-1.5 w-full rounded-full bg-[#020408] border border-[#1E293B]/60 overflow-hidden">
+                    <progress class="progress {% if a.budget_pct_planning >= 80 %}progress-error{% elif a.budget_pct_planning >= 60 %}progress-warning{% else %}progress-primary{% endif %} h-1.5 w-full"
+                        value="{{ a.budget_pct_planning }}" max="100"></progress>
+                </div>
             </div>
             {% endif %}
             {% if a.budget_used_steps > 0 %}
             <div>
-                <div class="flex justify-between text-xs text-base-content/40 mb-0.5">
+                <div class="flex justify-between text-[11px] font-mono text-slate-400 mb-0.5">
                     <span>Steps executed</span>
-                    <span {% if a.budget_pct_steps >= 80 %}class="text-error"{% elif a.budget_pct_steps >= 60 %}class="text-warning"{% endif %}>
+                    <span {% if a.budget_pct_steps >= 80 %}class="text-rose-400"{% elif a.budget_pct_steps >= 60 %}class="text-amber-400"{% endif %}>
                         {{ a.budget_used_steps }}/{{ a.budget_max_steps }}
                     </span>
                 </div>
-                <progress class="progress {% if a.budget_pct_steps >= 80 %}progress-error{% elif a.budget_pct_steps >= 60 %}progress-warning{% else %}progress-secondary{% endif %} h-1.5 w-full"
-                    value="{{ a.budget_pct_steps }}" max="100"></progress>
+                <div class="h-1.5 w-full rounded-full bg-[#020408] border border-[#1E293B]/60 overflow-hidden">
+                    <progress class="progress {% if a.budget_pct_steps >= 80 %}progress-error{% elif a.budget_pct_steps >= 60 %}progress-warning{% else %}progress-secondary{% endif %} h-1.5 w-full"
+                        value="{{ a.budget_pct_steps }}" max="100"></progress>
+                </div>
             </div>
             {% endif %}
         </div>
         {% endif %}
 
         <!-- Footer: goals + capabilities + actions -->
-        <div class="flex items-center justify-between mt-3 pt-3 border-t border-base-200">
+        <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-[#1E293B]">
             <div class="flex items-center gap-3 text-xs text-base-content/45">
                 <span class="agent-goals">
                     {% if a.active_goal_count > 0 %}

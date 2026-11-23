@@ -7,7 +7,7 @@
 Self-hosted autonomous AI agent. Plans, executes, and improves itself running on infrastructure you own.
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-F5C542?style=flat-square)](LICENSE.md)
-[![Version](https://img.shields.io/badge/version-2.7.1-F5C542?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.8.0-F5C542?style=flat-square)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-agentwasp.com-F5C542?style=flat-square)](https://docs.agentwasp.com)
 [![Install](https://img.shields.io/badge/install-1%20line-F5C542?style=flat-square)](#install)
 [![Python](https://img.shields.io/badge/python-3.12-F5C542?style=flat-square)](https://www.python.org)
@@ -72,6 +72,7 @@ WASP transforms autonomous agents into an **operational enterprise staff**. It i
 ### 🛠️ Execution Through High-Leverage Tools
 WASP doesn't need to hand-code everything because it commands specialized execution engines:
 * **Antigravity & MCP Client Ecosystem**: Direct integration with Model Context Protocol (MCP) servers across databases, filesystems, browsers, and cloud runtimes.
+* **Self-Healing Task Architecture & Completed Database**: Automated prompt-to-task genesis, root-cause failure diagnosis (isolating tool crashes, timeouts, and missing actions), progressive backoff auto-reload loop (up to 3 attempts with adaptive cognitive prompts), and permanent dual-layer completed tasks database in PostgreSQL & Redis. See [docs/TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md](docs/TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md).
 * **Multi-Model Orchestration**: Intelligently routes workloads to Claude 3.5, Gemini 2.0/2.5, xAI Grok, or local Ollama models based on task nature, quota budget, and required precision.
 * **Communications & Office Suite**: Full autonomous email triage (IMAP/SMTP with malicious-link quarantine), Google Workspace (Drive, Sheets, Photos, Calendar), Telegram, Discord, and Slack bridges.
 * **Deterministic Tool Execution**: Sandboxed Python execution, browser automation (nodriver/Selenium), automated REST webhooks, and direct OS bridges (Windows/Linux).
@@ -158,6 +159,8 @@ See [docs.agentwasp.com](https://docs.agentwasp.com) for the full architecture r
 
 ## Docs
 
+- [docs/TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md](docs/TASK_LIFECYCLE_SELF_HEALING_AND_COMPLETED_DATABASE.md) — Self-healing task execution, failure diagnostic engine, progressive auto-reload loop, and completed tasks database
+- [docs/MASTER_OPERATIONS_MANUAL.md](docs/MASTER_OPERATIONS_MANUAL.md) — Master operations manual, threat sentinel, and multi-provider mesh guide
 - [docs/INSTALL.md](docs/INSTALL.md) — full install reference, env vars, distro notes
 - [docs/QUICKSTART.md](docs/QUICKSTART.md) — first 10 minutes
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — VPS + local + reverse-proxy guidance

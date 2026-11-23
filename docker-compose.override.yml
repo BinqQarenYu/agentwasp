@@ -13,6 +13,7 @@ services:
       - ./containers/agent-core/src:/app/src:ro
       - ./containers/agent-core/config:/app/config:ro
       - ./containers/agent-core/tests:/app/tests:ro
+      - ./.agents:/app/.agents:ro
     deploy:
       resources:
         limits:
