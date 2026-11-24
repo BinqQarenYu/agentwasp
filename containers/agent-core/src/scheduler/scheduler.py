@@ -304,6 +304,9 @@ class Scheduler:
             result = await job.callback()
             job.last_success = True
             job.last_result = result
+        except asyncio.CancelledError:
+            job.last_result = "Cancelled"
+            raise
         except Exception as e:
             result = f"Error: {e}"
             job.last_success = False

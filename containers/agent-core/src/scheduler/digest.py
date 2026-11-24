@@ -55,10 +55,15 @@ class DigestJob:
             }
             await r.set(DIGEST_KEY, json.dumps(digest))
             logger.info("digest.generated", messages=stats["total_messages_7d"])
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             logger.warning("digest.failed", error=str(e))
         finally:
-            await r.aclose()
+            try:
+                await r.aclose()
+            except BaseException:
+                pass
 
     async def _gather_stats(self, r) -> dict:
         stats = {

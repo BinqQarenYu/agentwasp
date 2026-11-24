@@ -116,7 +116,14 @@ async def overview(request: Request):
                 pass
         if stale and scheduler:
             import asyncio
-            asyncio.ensure_future(scheduler.trigger("digest"))
+            r_lock = aioredis.from_url(request.app.state.redis_url, decode_responses=True)
+            try:
+                # 15-minute cooldown debounce to avoid flooding asyncio event loop
+                should_trigger = await r_lock.set("agent:digest:cooldown", "1", nx=True, ex=900)
+                if should_trigger:
+                    asyncio.ensure_future(scheduler.trigger("digest"))
+            finally:
+                await r_lock.aclose()
     except Exception:
         pass
 

@@ -79,7 +79,7 @@ body_html = """<html>
     <p>As per the <b>"1 task at a time"</b> directive, standing by for user confirmation to execute <b>Task 05: 24/7 Autonomic Evolution Daemon Job</b> (Autonomous continuous scheduler background job operating the full cycle: Observe AST &rarr; Red-Team consensus &rarr; Shadow staging &rarr; Atomic promote).</p>
     
     <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
-    <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Agent WASP Autonomic Mesh &bull; Prometheus Root Liaison &bull; Host: 192.168.1.3</p>
+    <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Agent WASP Autonomic Mesh &bull; Prometheus Root Liaison &bull; Dashboard: <a href="http://192.168.1.30:1434/overview" style="color: #38bdf8; text-decoration: none; font-weight: bold;">http://192.168.1.30:1434/overview</a></p>
   </div>
 </body>
 </html>
