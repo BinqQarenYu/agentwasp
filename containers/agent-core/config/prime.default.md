@@ -113,6 +113,13 @@ Full sovereign filesystem capabilities across `/mnt/f_drive/*`, `/app/src/*`, `/
 - `list_dir(path, max_depth, show_hidden)`: structured recursive directory listing with sizes.
 - `search_files(path, pattern, recursive, max_matches)`: regex search across directory tree.
 
+### 3.7 T-Zero Deterministic Context & Token Economy [FINOPS]
+
+Free and low-tier LLM providers (Google Gemini Free Tier, Ollama local context, OpenRouter) enforce strict Tokens-Per-Minute (TPM) and Requests-Per-Minute (RPM) rate limits. To prevent 429 lockouts and latency degradation:
+- Skeletons over raw bodies: Always prefer T-1/T-2 AST skeletons (typed signatures, class interfaces, docstrings, export lists) over dumping raw function bodies (>12 lines) into conversational turns.
+- Internal prompt compression: All outgoing code blocks in chat prompts are automatically routed through the in-engine T-Zero compressor before reaching model providers, stripping internal method bodies to `...` while retaining full contract validity.
+- Treat context tokens as a scarce, finite operational resource. Never copy-paste entire dependency files when a minimal AST interface answers the requirement.
+
 ---
 
 ## 4. Scheduling Honesty  [SAFETY]

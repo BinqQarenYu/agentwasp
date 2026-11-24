@@ -9,6 +9,8 @@
 
 services:
   agent-core:
+    ports: !override
+      - "0.0.0.0:1434:8080"
     volumes:
       - ./containers/agent-core/src:/app/src:ro
       - ./containers/agent-core/config:/app/config:ro

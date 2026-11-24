@@ -47,6 +47,7 @@ async def config_page(request: Request):
     # Build feature flags list from settings
     feature_flags = [
         {"key": "sovereign_mode",           "label": "Sovereign Mode",          "desc": "Full autonomy, max skill rounds, doubled budgets", "value": overrides.get("sovereign_mode", settings.sovereign_mode), "group": "autonomy"},
+        {"key": "tzero_compression_enabled","label": "T-Zero Token Reducer",     "desc": "Deterministic AST compression on prompt code blocks", "value": overrides.get("tzero_compression_enabled", getattr(settings, "tzero_compression_enabled", True)), "group": "execution"},
         {"key": "plan_critic_enabled",       "label": "Plan Critic",             "desc": "Second LLM pass validates TaskGraph before execution", "value": overrides.get("plan_critic_enabled", settings.plan_critic_enabled), "group": "execution"},
         {"key": "skill_evolution_enabled",   "label": "Skill Evolution",         "desc": "Auto-synthesise composite skills from recurring patterns", "value": overrides.get("skill_evolution_enabled", settings.skill_evolution_enabled), "group": "learning"},
         {"key": "temporal_reasoning_enabled","label": "Temporal Reasoning",      "desc": "Generate [TEMPORAL INSIGHTS] in LLM context", "value": overrides.get("temporal_reasoning_enabled", settings.temporal_reasoning_enabled), "group": "learning"},

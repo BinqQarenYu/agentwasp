@@ -161,3 +161,36 @@ This section formally reconciles this cognitive contract with AgentWasp's operat
   - The $D \le 0.40$ rule strictly reinforces AgentWasp's **Immutable Enclave** (`_CRITICAL_SOURCE_PATHS` like `sandbox.py`, `python_exec.py`, `control_layer.py`, `redaction.py`).
   - Production secrets in `.env` or Redis SecretVault remain read-only / zero-knowledge.
   - Permitted self-modification is conducted via shadow worktree staging (`/data/shadow_staging/<session_id>/`) with pre-flight AST validation and atomic promotion.
+
+---
+
+## 7. THE MASTER ENGINEERING CONSTITUTION & RELEASE GATE
+
+Every turn and pull request executed by Antigravity (`agy`) is governed by the **Antigravity Master Engineering Prompt** ([docs/ANTIGRAVITY_MASTER_ENGINEERING_PROMPT.md](docs/ANTIGRAVITY_MASTER_ENGINEERING_PROMPT.md)):
+
+### 7.1 Required Execution Cycle
+**PLAN → BUILD → VERIFY → COMPARE → FIX → COMPLETE**
+1. Inspect repository, ASTs, and contracts before modifying code.
+2. Make minimal, coherent, atomic changes.
+3. Execute regression and acceptance tests (`npm test`, `pytest`). Never report completion without live test telemetry.
+4. Attempt at most 3 distinct repair iterations before emitting a structured blocker report.
+
+### 7.2 Frontend-Backend Integrity Standard
+- Every interactive control must bind to a real, server-side `/api/v1/*` endpoint, RBAC permission, and automated test.
+- Decorative UI, mock states, or client-only side effects are strictly forbidden. Maintain [docs/feature-integrity.md](docs/feature-integrity.md).
+
+### 7.3 Agent Workforce Management Architecture (Wireframe Baseline)
+All workforce surfaces adhere to the canonical 3-tier operational model ([AGENT_WORKFORCE_WIREFRAME.png](AGENT_WORKFORCE_WIREFRAME.png)):
+- **01 Workforce Command Center:** Server-side sortable/filterable data grid, compact operational KPIs (Active, Available, Blocked, Approval, Spend, Resource pressure).
+- **02 Agent Detail Workspace:** Canonical agent record with all 10 domain-backed tabs (`Overview`, `Tasks`, `Skills & Tools`, `Model`, `Memory`, `Activity`, `Quality`, `Incidents`, `Governance`, `Configuration`).
+- **03 Organization & Handoff View:** Navigable supervisor hierarchy and task-handoff graph with blocked dependency alerts and cycle diagnostics.
+
+### 7.4 Mandatory Release Gate
+Report **NOT READY** if any of the following exist:
+- Critical or high security defect.
+- Data corruption or cross-tenant leakage.
+- Frontend control without a verified backend route.
+- Failing API contract, migration, or acceptance test.
+- Missing agent identity, memory provenance, or audit records.
+- Documentation drift from live deployed behavior.
+- High-risk mutation without a tested rollback path.

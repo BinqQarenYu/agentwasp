@@ -268,6 +268,22 @@ class ModelManager:
         original_model = request.model
         original_messages = list(request.messages)
 
+        # T-Zero Pre-Flight AST Token Compression Pipeline
+        # Automatically prunes oversized code blocks and dependencies to protect free-tier TPM quotas
+        try:
+            from .tzero_compressor import tzero_compressor
+            compressed_msgs, tokens_saved = tzero_compressor.compress_messages(original_messages)
+            if tokens_saved > 0:
+                logger.info(
+                    "model_manager.tzero_compressed",
+                    tokens_saved=tokens_saved,
+                    model=request.model or self.active_model,
+                )
+                original_messages = compressed_msgs
+                request.messages = compressed_msgs
+        except Exception as _tz_err:
+            logger.warning("model_manager.tzero_compression_bypassed", error=str(_tz_err))
+
         for provider_name in self._get_chain():
             provider = self.providers.get(provider_name)
             if not provider:

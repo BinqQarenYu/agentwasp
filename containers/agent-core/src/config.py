@@ -221,6 +221,10 @@ class Settings(BaseSettings):
     temporal_reasoning_enabled: bool = True
     temporal_reasoning_max_insights: int = 5
 
+    # System 7: T-Zero Token Engine & Pre-flight AST Prompt Compression
+    tzero_compression_enabled: bool = True
+    tzero_line_threshold: int = 12
+
 
 settings = Settings()
 
